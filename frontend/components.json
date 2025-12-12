@@ -19,7 +19,8 @@
     "hooks": "@/hooks"
   },
   "registries": {
-     "@acme": "https://acme.com/r/{name}.json",
+    "@acme": "https://acme.com/r/{name}.json",
     "@react-bits": "https://reactbits.dev/r/{name}.json",
+    "@prompt-kit": "https://prompt-kit.com/c/{name}.json"
   }
 }
