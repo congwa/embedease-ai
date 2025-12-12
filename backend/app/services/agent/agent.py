@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import AsyncGenerator
+import profile
 from typing import Any
 
 import aiosqlite
@@ -9,6 +10,7 @@ from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
+from app.core.models_dev import get_model_profile
 
 from app.core.config import settings
 from app.core.llm import get_chat_model
