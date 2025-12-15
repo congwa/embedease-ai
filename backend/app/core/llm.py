@@ -91,6 +91,22 @@ def get_chat_model() -> BaseChatModel:
 
     return model
 
+    # 打印最终生效的 profile
+    try:
+        actual_profile = getattr(model, "profile", None)
+        logger.info(
+            "模型初始化完成",
+            model=settings.SILICONFLOW_CHAT_MODEL,
+            structured_output=(actual_profile or {}).get("structured_output") if isinstance(actual_profile, dict) else None,
+            reasoning_output=(actual_profile or {}).get("reasoning_output") if isinstance(actual_profile, dict) else None,
+            tool_calling=(actual_profile or {}).get("tool_calling") if isinstance(actual_profile, dict) else None,
+            final_profile=actual_profile,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("读取模型 profile 失败", error=str(e))
+
+    return model
+
 
 @lru_cache
 def get_embeddings() -> OpenAIEmbeddings:
