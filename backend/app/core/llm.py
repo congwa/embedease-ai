@@ -9,6 +9,7 @@ from langchain_openai import OpenAIEmbeddings
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.models_dev import get_model_profile
+from app.core.chat_models import create_chat_model
 
 logger = get_logger("llm")
 
@@ -47,12 +48,32 @@ def get_chat_model() -> BaseChatModel:
     # 如果 profile 为空，传 None 让 LangChain 使用默认行为
     profile_arg = custom_profile if custom_profile else None
 
-    model = init_chat_model(
-        f"openai:{settings.SILICONFLOW_CHAT_MODEL}",
+    # 使用统一的模型创建接口
+    # ModelRegistry 会自动根据模型特征选择合适的实现（完全无感知）
+    # 从 profile 中提取参数（如果存在）
+    model_kwargs = {}
+    if profile_arg and isinstance(profile_arg, dict):
+        if "temperature" in profile_arg:
+            model_kwargs["temperature"] = profile_arg["temperature"]
+        if "max_tokens" in profile_arg:
+            model_kwargs["max_tokens"] = profile_arg["max_tokens"]
+        if "max_completion_tokens" in profile_arg:
+            model_kwargs["max_completion_tokens"] = profile_arg["max_completion_tokens"]
+    
+    # 使用统一的创建接口，ModelRegistry 会自动选择合适的实现
+    model = create_chat_model(
+        model=settings.SILICONFLOW_CHAT_MODEL,
         base_url=settings.SILICONFLOW_BASE_URL,
         api_key=settings.SILICONFLOW_API_KEY,
-        profile=profile_arg,
+        **model_kwargs,
     )
+    
+    # 如果 profile 存在，尝试设置到模型上（某些实现可能需要）
+    if profile_arg and hasattr(model, "profile"):
+        try:
+            model.profile = profile_arg
+        except Exception:  # noqa: BLE001
+            pass  # 某些实现可能不支持 profile 属性
 
     # 打印最终生效的 profile
     try:

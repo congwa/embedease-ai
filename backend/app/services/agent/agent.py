@@ -52,6 +52,7 @@ class AgentService:
     _agent: CompiledStateGraph | None = None
     _checkpointer: AsyncSqliteSaver | None = None
     _conn: aiosqlite.Connection | None = None
+    _checkpoint_path: str | None = None
 
     def __new__(cls) -> "AgentService":
         """单例模式"""
@@ -61,21 +62,74 @@ class AgentService:
 
     async def _get_checkpointer(self) -> AsyncSqliteSaver:
         """获取 checkpointer"""
-        if self._checkpointer is None:
-            settings.ensure_data_dir()
-            logger.debug("创建 SQLite checkpointer", path=settings.CHECKPOINT_DB_PATH)
-            self._conn = await aiosqlite.connect(settings.CHECKPOINT_DB_PATH)
-            self._checkpointer = AsyncSqliteSaver(self._conn)
+        # 如果 checkpointer 已存在且连接有效，直接返回
+        if self._checkpointer is not None and self._conn is not None:
+            # 检查连接是否仍然有效
+            try:
+                # 尝试执行一个简单的查询来验证连接
+                await self._conn.execute("SELECT 1")
+                return self._checkpointer
+            except Exception:
+                # 连接已失效，需要重新创建
+                logger.warning("检测到连接失效，重新创建 checkpointer")
+                self._checkpointer = None
+                if self._conn:
+                    try:
+                        await self._conn.close()
+                    except Exception:
+                        pass
+                self._conn = None
+        
+        # 创建新的 checkpointer
+        settings.ensure_data_dir()
+        self._checkpoint_path = settings.CHECKPOINT_DB_PATH
+        logger.debug("创建 SQLite checkpointer", path=self._checkpoint_path)
+        
+        self._conn = await aiosqlite.connect(
+            self._checkpoint_path,
+            isolation_level=None,  # 自动提交模式，避免连接问题
+        )
+        
+        # 添加 is_alive 方法以兼容 AsyncSqliteSaver 的检查
+        # AsyncSqliteSaver.setup() 会调用 conn.is_alive() 来检查连接状态
+        # aiosqlite.Connection 默认没有这个方法，我们需要手动添加
+        try:
+            if not hasattr(self._conn, "is_alive"):
+                # 创建一个简单的方法来检查连接是否有效
+                # 对于 aiosqlite.Connection，连接对象存在就表示有效
+                # 如果连接无效，后续操作会抛出异常
+                # 注意：当绑定为方法时，第一个参数是连接对象本身
+                def is_alive(conn) -> bool:  # noqa: ARG001
+                    """检查连接是否仍然有效"""
+                    return True  # aiosqlite 连接对象存在即表示有效
+                
+                # 将 is_alive 设置为方法
+                import types
+                bound_method = types.MethodType(is_alive, self._conn)
+                setattr(self._conn, "is_alive", bound_method)
+        except (AttributeError, TypeError) as e:
+            # 如果无法设置方法（某些连接对象可能不允许），记录警告但继续
+            logger.debug("无法设置 is_alive 方法", error=str(e))
+        
+        self._checkpointer = AsyncSqliteSaver(self._conn)
+        # 初始化数据库表（必需）
+        await self._checkpointer.setup()
+        logger.debug("SQLite checkpointer 初始化完成")
+        
         return self._checkpointer
 
     async def close(self) -> None:
         """关闭连接"""
         if self._conn:
-            await self._conn.close()
-            self._conn = None
-            self._checkpointer = None
-            self._agent = None
-            logger.info("Agent 连接已关闭")
+            try:
+                await self._conn.close()
+            except Exception as e:
+                logger.warning("关闭连接时出错", error=str(e))
+            finally:
+                self._conn = None
+                self._checkpointer = None
+                self._agent = None
+                logger.info("Agent 连接已关闭")
 
     async def get_agent(self) -> CompiledStateGraph:
         """获取 Agent 实例"""
@@ -130,6 +184,7 @@ class AgentService:
         )
         
         full_content = ""
+        reasoning_content = ""  # 累积推理内容
         products_data = None
         chunk_count = 0
         tool_calls = []
@@ -155,6 +210,7 @@ class AgentService:
                 config=agent_config,
                 version="v2",
             ):
+                print(f"on_chat_model_stream event: {event}")
                 event_type = event.get("event")
                 event_name = event.get("name", "")
                 
@@ -168,15 +224,32 @@ class AgentService:
                 
                 # 处理模型流式输出
                 if event_type == "on_chat_model_stream":
+                    
                     chunk = event.get("data", {}).get("chunk")
-                    if chunk and hasattr(chunk, "content") and chunk.content:
-                        content = chunk.content
-                        full_content += content
-                        chunk_count += 1
-                        yield {
-                            "type": "text",
-                            "content": content,
-                        }
+                    if chunk:
+                        # 处理推理内容（如果存在）
+                        chunk_reasoning = None
+                        if hasattr(chunk, "additional_kwargs") and chunk.additional_kwargs:
+                            chunk_reasoning = chunk.additional_kwargs.get("reasoning_content")
+                        
+                        # 累积推理内容
+                        if chunk_reasoning:
+                            reasoning_content += chunk_reasoning
+                            yield {
+                                "type": "reasoning",
+                                "content": chunk_reasoning,
+                            }
+                        
+                        # 处理普通文本内容
+                        if hasattr(chunk, "content") and chunk.content:
+                            content = chunk.content
+                            full_content += content
+                            chunk_count += 1
+                            
+                            yield {
+                                "type": "text",
+                                "content": content,
+                            }
                 
                 # 处理工具调用开始
                 elif event_type == "on_tool_start":
@@ -277,6 +350,8 @@ class AgentService:
                 stats={
                     "total_chunks": chunk_count,
                     "response_length": len(full_content),
+                    "reasoning_length": len(reasoning_content),
+                    "has_reasoning": len(reasoning_content) > 0,
                     "tool_calls_count": len(tool_calls),
                     "has_products": products_data is not None,
                 },
@@ -286,6 +361,7 @@ class AgentService:
             done_event = {
                 "type": "done",
                 "content": full_content,
+                "reasoning": reasoning_content if reasoning_content else None,
                 "products": products_data,
             }
             
@@ -294,6 +370,8 @@ class AgentService:
                 output_data={
                     "content_preview": full_content[:200] + "..." if len(full_content) > 200 else full_content,
                     "content_length": len(full_content),
+                    "reasoning_length": len(reasoning_content),
+                    "has_reasoning": len(reasoning_content) > 0,
                     "product_count": len(products_data) if isinstance(products_data, list) else (1 if products_data else 0),
                     "tool_calls": tool_calls,
                 },
