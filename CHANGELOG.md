@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-12-16
+
+### 🚀 架构重构：SSE事件系统职责分离
+
+#### ✨ 核心改进 (Core Improvements)
+
+- **统一流式事件协议**: 新增 `StreamEvent` envelope，支持版本化扩展
+- **职责分离架构**: Agent业务逻辑、事件编排、SSE传输完全解耦
+- **Context事件注入**: 工具和中间件可实时emit事件，实现多源事件合流
+- **类型安全提升**: 事件类型枚举化，减少魔法字符串，提高可维护性
+
+#### 🔧 技术实现 (Technical Changes)
+
+- **新增模块**:
+  - `backend/app/schemas/events.py`: 事件类型枚举与payload类型定义
+  - `backend/app/schemas/stream.py`: 统一流式事件协议
+  - `backend/app/services/streaming/`: SSE编解码与Context注入
+  - `backend/app/services/chat_stream.py`: 聊天流编排核心
+
+- **重构模块**:
+  - `backend/app/services/agent/`: 输出domain events而非SSE格式
+  - `backend/app/routers/chat.py`: 简化路由层职责
+  - `frontend/types/chat.ts`: 协议类型升级，支持判别联合
+  - `frontend/hooks/use-chat.ts`: 适配新事件渲染逻辑
+
+#### 📡 事件协议升级 (Event Protocol)
+
+- **新增事件类型**:
+  - `meta.start`: 流开始，提供message_id对齐
+  - `assistant.delta`: 文本增量
+  - `assistant.reasoning.delta`: 推理内容增量
+  - `assistant.products`: 商品数据
+  - `assistant.final`: 最终完整状态
+  - `tool.start/end`: 工具执行状态
+  - `llm.call.start/end`: LLM调用状态
+
+- **协议特性**:
+  - 统一envelope: `v/id/seq/ts/conversation_id/message_id/type/payload`
+  - 版本化支持: `v`字段预留协议升级空间
+  - 类型安全: 前端TypeScript判别联合自动推导payload结构
+
+#### 🏗️ 架构优势 (Architecture Benefits)
+
+- **可扩展性**: 新增事件类型只需在枚举中添加，无需改动传输层
+- **职责清晰**: Agent专注业务，编排层专注聚合，传输层专注SSE
+- **实时性**: 工具执行状态可实时推送到前端，提升用户体验
+- **一致性**: 前端显示与后端存储使用相同message_id
+
+#### ⚠️ 破坏性变更 (Breaking Changes)
+
+- 事件协议升级，前端需同步更新类型定义
+- 部分内部API签名调整（向后兼容）
+
+---
+
 ## [1.0.0] - 2025-12-12
 
 ### 🎉 初始版本发布
