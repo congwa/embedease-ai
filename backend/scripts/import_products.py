@@ -24,16 +24,16 @@ from app.utils.text import split_text
 async def import_products(json_path: str) -> None:
     """导入商品数据"""
     print(f"[import] 开始导入商品数据: {json_path}")
-    
+
     # 读取 JSON 文件
     with open(json_path, encoding="utf-8") as f:
         products_data = json.load(f)
-    
+
     print(f"[import] 读取到 {len(products_data)} 个商品")
-    
+
     # 初始化数据库
     await init_db()
-    
+
     # 保存到 SQLite
     async with get_db_context() as session:
         product_service = ProductService(session)
@@ -41,33 +41,33 @@ async def import_products(json_path: str) -> None:
             product = ProductCreate(**product_data)
             await product_service.create_or_update_product(product)
         print(f"[import] 已保存 {len(products_data)} 个商品到数据库")
-    
+
     # 创建 Qdrant 向量索引
     await create_vector_index(products_data)
-    
+
     print("[import] 导入完成!")
 
 
 async def create_vector_index(products_data: list[dict]) -> None:
     """创建 Qdrant 向量索引"""
     print("[import] 开始创建向量索引...")
-    
+
     # 初始化嵌入模型
     embeddings = get_embeddings()
-    
+
     # 连接 Qdrant
     client = QdrantClient(
         host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT,
     )
-    
+
     # 检查集合是否存在，如果存在则删除重建
     collection_name = settings.QDRANT_COLLECTION
     collections = client.get_collections().collections
     if any(c.name == collection_name for c in collections):
         print(f"[import] 删除现有集合: {collection_name}")
         client.delete_collection(collection_name)
-    
+
     # 创建集合
     print(f"[import] 创建集合: {collection_name}")
     print(f"[import] 向量维度: {settings.SILICONFLOW_EMBEDDING_DIMENSION}")
@@ -78,7 +78,7 @@ async def create_vector_index(products_data: list[dict]) -> None:
             distance=Distance.COSINE,
         ),
     )
-    
+
     # 准备文档
     documents: list[Document] = []
     for product in products_data:
@@ -110,7 +110,7 @@ async def create_vector_index(products_data: list[dict]) -> None:
                     documents.append(doc)
             else:
                 text_parts.append(f"描述: {description}")
-        
+
         # 添加主文档（摘要）
         main_doc = Document(
             page_content="\n".join(text_parts),
@@ -124,23 +124,23 @@ async def create_vector_index(products_data: list[dict]) -> None:
             },
         )
         documents.append(main_doc)
-    
+
     print(f"[import] 准备了 {len(documents)} 个文档")
-    
+
     # 创建向量存储并添加文档
     vector_store = QdrantVectorStore(
         client=client,
         collection_name=collection_name,
         embedding=embeddings,
     )
-    
+
     # 批量添加文档
     batch_size = 10
     for i in range(0, len(documents), batch_size):
         batch = documents[i : i + batch_size]
         await asyncio.to_thread(vector_store.add_documents, batch)
         print(f"[import] 已添加 {min(i + batch_size, len(documents))}/{len(documents)} 个文档")
-    
+
     print(f"[import] 向量索引创建完成，共 {len(documents)} 个向量")
 
 
@@ -151,7 +151,7 @@ def main():
         json_path = Path(__file__).parent.parent / "data" / "products.json"
     else:
         json_path = Path(sys.argv[1])
-    
+
     if not json_path.exists():
         print(f"[error] 文件不存在: {json_path}")
         print("[info] 请创建商品数据文件，格式如下:")
@@ -169,7 +169,7 @@ def main():
 ]
 """)
         sys.exit(1)
-    
+
     asyncio.run(import_products(str(json_path)))
 
 

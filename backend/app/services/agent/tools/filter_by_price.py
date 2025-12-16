@@ -76,7 +76,7 @@ class FilterByPriceInput(BaseModel):
 def filter_by_price(
     min_price: float | None = None,
     max_price: float | None = None,
-    runtime: ToolRuntime | None = None
+    runtime: ToolRuntime | None = None,
 ) -> str:
     """按价格区间过滤商品。
 
@@ -190,11 +190,14 @@ def filter_by_price(
 
         if not results:
             logger.warning("未找到符合价格条件的商品")
-            return json.dumps({
-                "products": [],
-                "filter_criteria": {"min_price": min_price, "max_price": max_price},
-                "message": "未找到符合价格条件的商品"
-            }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "products": [],
+                    "filter_criteria": {"min_price": min_price, "max_price": max_price},
+                    "message": "未找到符合价格条件的商品",
+                },
+                ensure_ascii=False,
+            )
 
         result_json = json.dumps(results, ensure_ascii=False, indent=2)
         logger.info(
@@ -210,4 +213,3 @@ def filter_by_price(
     except Exception as e:
         logger.exception("价格过滤失败", error=str(e))
         return json.dumps({"error": f"价格过滤失败: {e}"}, ensure_ascii=False)
-

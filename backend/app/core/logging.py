@@ -131,6 +131,7 @@ def format_detailed(record: dict) -> str:
     file_obj = record.get("file")
     try:
         from pathlib import Path
+
         file_path_str = getattr(file_obj, "path", str(file_obj or ""))
         # 尝试获取相对于项目根目录的路径
         project_root = Path(__file__).parent.parent.parent  # 回到项目根目录
@@ -138,7 +139,7 @@ def format_detailed(record: dict) -> str:
     except (ValueError, AttributeError, Exception):
         # 如果获取失败，回退到文件名
         file = getattr(file_obj, "name", str(file_obj or ""))
-    
+
     line = record.get("line", "")
     function = record.get("function", "")
 
@@ -193,13 +194,14 @@ def format_json(record: dict) -> str:
     file_path = None
     try:
         from pathlib import Path
+
         file_path_str = getattr(file_obj, "path", None)
         if file_path_str:
             project_root = Path(__file__).parent.parent.parent
             file_path = str(Path(file_path_str).relative_to(project_root))
     except (ValueError, AttributeError, Exception):
         file_path = getattr(file_obj, "name", None)
-    
+
     log_entry = {
         "timestamp": record["time"].isoformat(),
         "level": record["level"].name,
@@ -299,10 +301,10 @@ class Logger:
         if log_file:
             log_path = Path(log_file)
             log_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             rotation = getattr(settings, "LOG_FILE_ROTATION", "10 MB")
             retention = getattr(settings, "LOG_FILE_RETENTION", "7 days")
-            
+
             # 文件日志使用 JSON 格式（方便解析）
             loguru_logger.add(
                 str(log_path),
@@ -320,7 +322,7 @@ class Logger:
 
         # 标记为已配置（必须在记录日志之前设置，避免递归）
         self._configured = True
-        
+
         # 记录配置完成信息
         if log_file_configured:
             loguru_logger.bind(module="logging").info(
@@ -363,21 +365,15 @@ class Logger:
             message,
         )
 
-    def debug(
-        self, message: str, *, module: str = "app", _depth: int = 0, **extra: Any
-    ) -> None:
+    def debug(self, message: str, *, module: str = "app", _depth: int = 0, **extra: Any) -> None:
         """调试日志"""
         self._log("debug", message, module=module, _depth=_depth, **extra)
 
-    def info(
-        self, message: str, *, module: str = "app", _depth: int = 0, **extra: Any
-    ) -> None:
+    def info(self, message: str, *, module: str = "app", _depth: int = 0, **extra: Any) -> None:
         """信息日志"""
         self._log("info", message, module=module, _depth=_depth, **extra)
 
-    def warning(
-        self, message: str, *, module: str = "app", _depth: int = 0, **extra: Any
-    ) -> None:
+    def warning(self, message: str, *, module: str = "app", _depth: int = 0, **extra: Any) -> None:
         """警告日志"""
         self._log("warning", message, module=module, _depth=_depth, **extra)
 

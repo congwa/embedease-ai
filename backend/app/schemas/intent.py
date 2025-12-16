@@ -46,4 +46,3 @@ INTENT_TO_TOOLS = {
     IntentType.GREETING: [],  # 不需要工具
     IntentType.UNKNOWN: ["search_products"],  # 默认使用搜索
 }
-

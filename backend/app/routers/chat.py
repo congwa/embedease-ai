@@ -29,7 +29,7 @@ async def chat(
     """流式聊天接口
 
     使用 SSE (Server-Sent Events) 返回流式响应。
-    
+
     支持客户端主动中断：
     - 客户端可以通过关闭连接来中断对话生成
     - 后端会检测断开并立即停止 Agent 执行
@@ -42,7 +42,7 @@ async def chat(
     - error: 错误 {"type": "error", "payload": {"message": "..."}}
     """
     conversation_service = ConversationService(db)
-    
+
     # 保存用户消息
     user_message = await conversation_service.add_message(
         conversation_id=request_data.conversation_id,
@@ -78,7 +78,7 @@ async def chat(
                         assistant_message_id=assistant_message_id,
                     )
                     break
-                
+
                 yield encode_sse(event)
         except asyncio.CancelledError:
             logger.info(
@@ -90,10 +90,7 @@ async def chat(
             return
         except Exception as e:
             logger.error("生成过程出错", error=str(e), exc_info=True)
-            yield encode_sse({
-                "type": "error",
-                "payload": {"message": str(e)}
-            })
+            yield encode_sse({"type": "error", "payload": {"message": str(e)}})
 
     return StreamingResponse(
         event_generator(),

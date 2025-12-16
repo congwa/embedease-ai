@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AlertCircle, ArrowUp, Square, X } from "lucide-react";
 import {
   ChatContainerContent,
@@ -40,15 +40,9 @@ export function ChatContent({
   onAbortStream,
 }: ChatContentProps) {
   const [prompt, setPrompt] = useState("");
-  const [showError, setShowError] = useState(true);
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  // 当错误改变时，重新显示错误提示
-  useEffect(() => {
-    if (error) {
-      setShowError(true);
-    }
-  }, [error]);
+  const isErrorVisible = Boolean(error) && dismissedError !== error;
 
   // 修改：处理发送或停止
   const handleButtonClick = () => {
@@ -109,12 +103,20 @@ export function ChatContent({
               </div>
             )}
 
-            {messages.map((message) => {
+            {messages.map((message, messageIndex) => {
               const isAssistant = message.role === "assistant";
+              const messageKey = message.id || `${message.role}-${messageIndex}`;
+
+              if (!message.id) {
+                console.log("[chat] message.id 缺失，已使用 fallback key", {
+                  messageIndex,
+                  role: message.role,
+                });
+              }
 
               return (
                 <Message
-                  key={message.id}
+                  key={messageKey}
                   className={cn(
                     "mx-auto flex w-full max-w-3xl flex-col gap-2 px-6",
                     isAssistant ? "items-start" : "items-end"
@@ -132,9 +134,19 @@ export function ChatContent({
                       {/* 商品卡片 */}
                       {message.products && message.products.length > 0 && (
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {message.products.map((product) => (
-                            <ProductCard key={product.id} product={product} />
-                          ))}
+                          {message.products.map((product, productIndex) => {
+                            const productId =
+                              typeof product.id === "string" && product.id ? product.id : null;
+                            const productKey = productId ?? `${messageKey}-product-${productIndex}`;
+                            if (!productId) {
+                              console.log("[chat] product.id 缺失，已使用 fallback key", {
+                                messageId: message.id,
+                                messageIndex,
+                                productIndex,
+                              });
+                            }
+                            return <ProductCard key={productKey} product={product} />;
+                          })}
                         </div>
                       )}
                     </div>
@@ -158,12 +170,12 @@ export function ChatContent({
       <div className="z-10 shrink-0 bg-white px-3 pb-3 dark:bg-zinc-900 md:px-5 md:pb-5">
         <div className="mx-auto max-w-3xl">
           {/* 错误提示 */}
-          {error && showError && (
+          {error && isErrorVisible && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span className="flex-1">{error}</span>
               <button
-                onClick={() => setShowError(false)}
+                onClick={() => setDismissedError(error)}
                 className="shrink-0 rounded p-1 hover:bg-red-100 dark:hover:bg-red-900/40"
                 title="关闭错误提示"
                 aria-label="关闭错误提示"

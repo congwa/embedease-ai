@@ -4,6 +4,7 @@ LangChain + SiliconFlow 硅基流动集成示例
 """
 
 from langchain_openai import ChatOpenAI
+
 # from langchain.chat_models import init_chat_model
 from langchain.agents import create_agent
 from langchain.tools import tool
@@ -20,7 +21,7 @@ def get_weather(city: str) -> str:
         "广州": "阴天，温度26°C，湿度70%",
         "杭州": "小雨，温度20°C，湿度75%",
         "sf": "Sunny in San Francisco, 72°F",  # 兼容英文查询
-        "san francisco": "Sunny in San Francisco, 72°F"
+        "san francisco": "Sunny in San Francisco, 72°F",
     }
     return weather_data.get(city.lower(), f"{city}的天气信息：晴天，温度20-25°C")
 
@@ -44,7 +45,7 @@ def search_info(query: str) -> str:
         "人工智能": "人工智能（AI）是计算机科学的一个分支，致力于创建能够模拟人类智能的机器。",
         "机器学习": "机器学习是AI的一个子集，通过算法让计算机从数据中学习并做出预测。",
         "深度学习": "深度学习使用神经网络模拟人脑处理信息的方式。",
-        "硅基流动": "硅基流动是一家提供AI模型API服务的云平台。"
+        "硅基流动": "硅基流动是一家提供AI模型API服务的云平台。",
     }
 
     for key, value in search_results.items():
@@ -67,7 +68,7 @@ def main():
         openai_api_base="https://api.siliconflow.cn/v1",  # SiliconFlow 基础URL
         temperature=0.7,
         max_tokens=1500,
-        verbose=True
+        verbose=True,
     )
 
     print("🤖 初始化 SiliconFlow 模型完成")
@@ -94,14 +95,17 @@ def main():
             print(f"chunk: {chunk}")  # 调试输出
 
             # LangChain AIMessageChunk 处理
-            if hasattr(chunk, 'content') and chunk.content:
+            if hasattr(chunk, "content") and chunk.content:
                 content_part = chunk.content
                 print(content_part, end="", flush=True)
                 full_response += content_part
 
             # 处理推理内容（如果有）
-            if hasattr(chunk, 'additional_kwargs') and 'reasoning_content' in chunk.additional_kwargs:
-                reasoning_part = chunk.additional_kwargs['reasoning_content']
+            if (
+                hasattr(chunk, "additional_kwargs")
+                and "reasoning_content" in chunk.additional_kwargs
+            ):
+                reasoning_part = chunk.additional_kwargs["reasoning_content"]
                 print(f"\n🧠 推理过程: {reasoning_part}", end="", flush=True)
                 reasoning_content += reasoning_part
 
@@ -139,7 +143,7 @@ def main():
         "计算 15 + 27 等于多少？",
         "什么是人工智能？",
         "请帮我查询杭州的天气",
-        "计算 (2 + 3) * 4 的结果"
+        "计算 (2 + 3) * 4 的结果",
     ]
 
     print("🧪 开始测试智能代理功能...")
@@ -163,14 +167,17 @@ def main():
                 print(f"chunk: {chunk}")  # 调试输出
 
                 # LangChain AIMessageChunk 处理
-                if hasattr(chunk, 'content') and chunk.content:
+                if hasattr(chunk, "content") and chunk.content:
                     content_part = chunk.content
                     print(content_part, end="", flush=True)
                     full_response += content_part
 
                 # 处理推理内容（如果有）
-                if hasattr(chunk, 'additional_kwargs') and 'reasoning_content' in chunk.additional_kwargs:
-                    reasoning_part = chunk.additional_kwargs['reasoning_content']
+                if (
+                    hasattr(chunk, "additional_kwargs")
+                    and "reasoning_content" in chunk.additional_kwargs
+                ):
+                    reasoning_part = chunk.additional_kwargs["reasoning_content"]
                     print(f"\n🧠 推理过程: {reasoning_part}", end="", flush=True)
                     reasoning_content += reasoning_part
 

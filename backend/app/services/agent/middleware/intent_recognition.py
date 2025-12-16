@@ -121,9 +121,7 @@ class IntentRecognitionMiddleware(AgentMiddleware):
 
         # 过滤工具
         filtered_tools = [
-            tool
-            for tool in tools
-            if getattr(tool, "name", str(tool)) in required_tool_names
+            tool for tool in tools if getattr(tool, "name", str(tool)) in required_tool_names
         ]
 
         logger.debug(
@@ -199,9 +197,7 @@ class IntentRecognitionMiddleware(AgentMiddleware):
         intent_context = self._build_intent_context(intent, confidence)
 
         # 修改系统提示词
-        original_prompt = (
-            request.system_message.content if request.system_message else ""
-        )
+        original_prompt = request.system_message.content if request.system_message else ""
         enhanced_prompt = f"{original_prompt}\n{intent_context}"
 
         new_system_message = SystemMessage(content=enhanced_prompt)
@@ -254,9 +250,7 @@ class IntentRecognitionMiddleware(AgentMiddleware):
         intent_context = self._build_intent_context(intent, confidence)
 
         # 修改系统提示词
-        original_prompt = (
-            request.system_message.content if request.system_message else ""
-        )
+        original_prompt = request.system_message.content if request.system_message else ""
         enhanced_prompt = f"{original_prompt}\n{intent_context}"
 
         new_system_message = SystemMessage(content=enhanced_prompt)
@@ -274,4 +268,3 @@ class IntentRecognitionMiddleware(AgentMiddleware):
         )
 
         return await handler(modified_request)
-

@@ -237,4 +237,3 @@ def get_model_profile(
     )
 
     return final_profile
-

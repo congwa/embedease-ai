@@ -37,7 +37,7 @@ class StreamEvent(BaseModel):
     conversation_id: str = Field(..., description="会话 ID")
     message_id: str | None = Field(None, description="助手消息 ID（用于前端对齐/落库）")
 
-    type: str = Field(..., description="事件类型（命名空间：meta.* / assistant.* / tool.* / error）")
+    type: str = Field(
+        ..., description="事件类型（命名空间：meta.* / assistant.* / tool.* / error）"
+    )
     payload: Any = Field(default_factory=dict, description="事件载荷（按 type 变化）")
-
-

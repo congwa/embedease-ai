@@ -27,14 +27,46 @@ def extract_keywords(query: str) -> list[str]:
     # 简单的关键词提取（可以使用更复杂的NLP方法）
     # 移除常见的停用词
     stopwords = {
-        "的", "了", "在", "是", "我", "有", "和", "就", "不", "人",
-        "都", "一", "一个", "上", "也", "很", "到", "说", "要", "去",
-        "你", "会", "着", "没有", "看", "好", "自己", "这", "怎么",
-        "帮我", "给我", "想要", "需要", "请", "吗", "呢"
+        "的",
+        "了",
+        "在",
+        "是",
+        "我",
+        "有",
+        "和",
+        "就",
+        "不",
+        "人",
+        "都",
+        "一",
+        "一个",
+        "上",
+        "也",
+        "很",
+        "到",
+        "说",
+        "要",
+        "去",
+        "你",
+        "会",
+        "着",
+        "没有",
+        "看",
+        "好",
+        "自己",
+        "这",
+        "怎么",
+        "帮我",
+        "给我",
+        "想要",
+        "需要",
+        "请",
+        "吗",
+        "呢",
     }
 
     # 分词（简单的基于空格和标点符号）
-    words = re.findall(r'[\u4e00-\u9fa5a-zA-Z0-9]+', query)
+    words = re.findall(r"[\u4e00-\u9fa5a-zA-Z0-9]+", query)
     keywords = [w for w in words if w not in stopwords and len(w) > 1]
 
     logger.debug("提取关键词", query=query, keywords=keywords)
@@ -42,9 +74,7 @@ def extract_keywords(query: str) -> list[str]:
 
 
 def filter_by_keywords(
-    docs: list[Document],
-    keywords: list[str],
-    min_match: int = 1
+    docs: list[Document], keywords: list[str], min_match: int = 1
 ) -> list[Document]:
     """根据关键词过滤文档
 
@@ -76,7 +106,7 @@ def filter_by_keywords(
                 f"关键词匹配",
                 product_id=doc.metadata.get("product_id"),
                 match_count=match_count,
-                keywords_matched=[kw for kw in keywords if kw.lower() in combined_text]
+                keywords_matched=[kw for kw in keywords if kw.lower() in combined_text],
             )
 
     logger.info(f"关键词过滤完成", original_count=len(docs), filtered_count=len(filtered))
@@ -84,9 +114,7 @@ def filter_by_keywords(
 
 
 async def rerank_by_relevance(
-    docs: list[Document],
-    query: str,
-    keywords: list[str]
+    docs: list[Document], query: str, keywords: list[str]
 ) -> list[Document]:
     """基于相关性重排序文档
 
@@ -112,7 +140,7 @@ async def rerank_by_relevance(
                 product_name = doc.metadata.get("product_name", "")
                 category = doc.metadata.get("category", "")
                 content = doc.page_content
-                
+
                 # 组合关键信息
                 text = f"{product_name} | {category} | {content}"
                 doc_texts.append(text)
@@ -165,9 +193,9 @@ async def rerank_by_relevance(
             category_matches = sum(1 for kw in keywords if kw.lower() in category)
 
             keyword_score = (
-                keyword_matches * 0.3 +
-                name_matches * 0.5 +  # 商品名称匹配权重更高
-                category_matches * 0.2
+                keyword_matches * 0.3
+                + name_matches * 0.5  # 商品名称匹配权重更高
+                + category_matches * 0.2
             ) / max(len(keywords), 1)
 
             score += keyword_score * 0.4
@@ -201,17 +229,16 @@ async def rerank_by_relevance(
 
     logger.info(
         "本地打分重排序完成",
-        top_scores=[(doc.metadata.get("product_id"), round(score, 3)) for doc, score in scored_docs[:5]]
+        top_scores=[
+            (doc.metadata.get("product_id"), round(score, 3)) for doc, score in scored_docs[:5]
+        ],
     )
 
     return [doc for doc, _ in scored_docs]
 
 
 async def enhanced_search(
-    query: str,
-    k: int = 5,
-    enable_keyword_filter: bool = True,
-    enable_rerank: bool = True
+    query: str, k: int = 5, enable_keyword_filter: bool = True, enable_rerank: bool = True
 ) -> list[Document]:
     """增强的商品搜索
 
@@ -283,4 +310,3 @@ def get_enhanced_retriever(k: int = 5) -> VectorStoreRetriever:
     # 注意：这里返回的是标准检索器，实际增强逻辑在 enhanced_search 函数中
     # 如果需要在工具中使用增强检索，应该直接调用 enhanced_search 函数
     return get_retriever(k=k)
-

@@ -32,4 +32,3 @@ class ComparisonResult(BaseModel):
     winner: str | None = Field(default=None, description="最佳选择的商品ID")
     summary: str = Field(description="对比总结")
     key_differences: dict[str, list[str]] = Field(description="关键差异点")
-

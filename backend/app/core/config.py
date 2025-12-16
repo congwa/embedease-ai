@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     SILICONFLOW_CHAT_MODEL: str  # 聊天模型 ID（必填，如 moonshotai/Kimi-K2-Instruct）
     SILICONFLOW_EMBEDDING_MODEL: str  # 嵌入模型 ID（必填，如 BAAI/bge-m3）
     SILICONFLOW_EMBEDDING_DIMENSION: int  # 嵌入维度（必填，如 4096）
-    
+
     # Rerank 配置
     SILICONFLOW_RERANK_ENABLED: bool  # 是否启用 Rerank 重排序
     SILICONFLOW_RERANK_MODEL: str  # Rerank 模型 ID

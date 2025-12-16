@@ -45,10 +45,10 @@ async def get_conversation(
     """获取会话详情（包含消息）"""
     service = ConversationService(db)
     conversation = await service.get_conversation_with_messages(conversation_id)
-    
+
     if conversation is None:
         raise HTTPException(status_code=404, detail="会话不存在")
-    
+
     # 转换消息格式
     messages = [
         MessageResponse(
@@ -60,7 +60,7 @@ async def get_conversation(
         )
         for msg in conversation.messages
     ]
-    
+
     return ConversationWithMessages(
         id=conversation.id,
         user_id=conversation.user_id,
@@ -79,8 +79,8 @@ async def delete_conversation(
     """删除会话"""
     service = ConversationService(db)
     success = await service.delete_conversation(conversation_id)
-    
+
     if not success:
         raise HTTPException(status_code=404, detail="会话不存在")
-    
+
     return {"success": True}

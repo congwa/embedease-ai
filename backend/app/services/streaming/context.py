@@ -23,11 +23,11 @@ class DomainEmitter(Protocol):
 
 class ChatContext:
     """Graph run scoped context（通过 astream_events 的 context 参数注入）。
-    
+
     使用简单的类而非 Pydantic BaseModel，避免 JsonSchema 生成问题。
     LangChain 会将此对象注入到 ToolRuntime.context 中。
     """
-    
+
     def __init__(
         self,
         conversation_id: str,
@@ -39,12 +39,10 @@ class ChatContext:
         self.user_id = user_id
         self.assistant_message_id = assistant_message_id
         self.emitter = emitter
-    
+
     def __repr__(self) -> str:
         return (
             f"ChatContext(conversation_id={self.conversation_id!r}, "
             f"user_id={self.user_id!r}, "
             f"assistant_message_id={self.assistant_message_id!r})"
         )
-
-

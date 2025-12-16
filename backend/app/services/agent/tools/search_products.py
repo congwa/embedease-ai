@@ -122,10 +122,14 @@ async def search_products(query: str, runtime: ToolRuntime | None = None) -> str
                 {
                     "product_id": d.metadata.get("product_id"),
                     "product_name": d.metadata.get("product_name"),
-                    "content_preview": d.page_content[:100] + "..." if len(d.page_content) > 100 else d.page_content,
+                    "content_preview": d.page_content[:100] + "..."
+                    if len(d.page_content) > 100
+                    else d.page_content,
                 }
                 for d in docs[:3]  # 只显示前 3 个
-            ] if docs else [],
+            ]
+            if docs
+            else [],
         )
 
         if not docs:
@@ -171,7 +175,11 @@ async def search_products(query: str, runtime: ToolRuntime | None = None) -> str
 
         # 步骤 4: 返回结果
         result_json = json.dumps(results, ensure_ascii=False, indent=2)
-        if runtime and getattr(runtime, "context", None) and getattr(runtime.context, "emitter", None):
+        if (
+            runtime
+            and getattr(runtime, "context", None)
+            and getattr(runtime.context, "emitter", None)
+        ):
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
@@ -185,8 +193,7 @@ async def search_products(query: str, runtime: ToolRuntime | None = None) -> str
             output_data={
                 "result_count": len(results),
                 "products": [
-                    {"id": p["id"], "name": p["name"], "price": p["price"]}
-                    for p in results
+                    {"id": p["id"], "name": p["name"], "price": p["price"]} for p in results
                 ],
                 "json_length": len(result_json),
             },
@@ -194,7 +201,11 @@ async def search_products(query: str, runtime: ToolRuntime | None = None) -> str
         return result_json
 
     except Exception as e:
-        if runtime and getattr(runtime, "context", None) and getattr(runtime.context, "emitter", None):
+        if (
+            runtime
+            and getattr(runtime, "context", None)
+            and getattr(runtime.context, "emitter", None)
+        ):
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
@@ -204,4 +215,3 @@ async def search_products(query: str, runtime: ToolRuntime | None = None) -> str
             )
         logger.exception("搜索商品失败", query=query, error=str(e))
         return json.dumps({"error": f"搜索失败: {e}", "query": query}, ensure_ascii=False)
-

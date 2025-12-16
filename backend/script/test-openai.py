@@ -18,8 +18,8 @@ def main():
         # 初始化 SiliconFlow OpenAI 客户端
         print("🔧 初始化 SiliconFlow 客户端...")
         client = OpenAI(
-            api_key='sk-jxkuiiukbesibqapqognjxgxodhjnjzjzcfpkmgnowsdlrqx',  # SiliconFlow API Key
-            base_url="https://api.siliconflow.cn/v1"  # SiliconFlow 基础URL
+            api_key="sk-jxkuiiukbesibqapqognjxgxodhjnjzjzcfpkmgnowsdlrqx",  # SiliconFlow API Key
+            base_url="https://api.siliconflow.cn/v1",  # SiliconFlow 基础URL
         )
         print("✅ 客户端初始化完成")
 
@@ -31,13 +31,12 @@ def main():
         response = client.chat.completions.create(
             model="moonshotai/Kimi-K2-Thinking",  # SiliconFlow 支持的推理模型
             messages=[
-                {'role': 'user',
-                 'content': "推理模型会给市场带来哪些新的机会？请详细分析。"}
+                {"role": "user", "content": "推理模型会给市场带来哪些新的机会？请详细分析。"}
             ],
             stream=True,  # 启用流式输出
             max_tokens=2000,  # 设置最大token数
             temperature=0.7,  # 设置温度参数（控制创造性）
-            top_p=0.9  # 设置top-p参数
+            top_p=0.9,  # 设置top-p参数
         )
 
         print("\n💬 AI 回复：", end="", flush=True)
@@ -51,7 +50,10 @@ def main():
                 continue
             print(f"chunk: {chunk}")
             # 输出推理内容（如果有）
-            if hasattr(chunk.choices[0].delta, 'reasoning_content') and chunk.choices[0].delta.reasoning_content:
+            if (
+                hasattr(chunk.choices[0].delta, "reasoning_content")
+                and chunk.choices[0].delta.reasoning_content
+            ):
                 reasoning_part = chunk.choices[0].delta.reasoning_content
                 print(f"\n🧠 推理过程: {reasoning_part}", end="", flush=True)
                 reasoning_content += reasoning_part

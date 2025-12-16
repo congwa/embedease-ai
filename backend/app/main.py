@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期管理"""
     # 启动时配置日志（确保最先执行）
     logger.configure()
-    
+
     logger.info("启动应用...", module="app")
     settings.ensure_data_dir()
 
@@ -71,9 +71,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_db()
     logger.info("应用启动完成", module="app", host=settings.API_HOST, port=settings.API_PORT)
-    
+
     yield
-    
+
     logger.info("正在关闭应用...", module="app")
     await agent_service.close()
     logger.info("应用已关闭", module="app")

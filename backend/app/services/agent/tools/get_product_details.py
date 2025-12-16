@@ -125,4 +125,3 @@ def get_product_details(product_id: str, runtime: ToolRuntime | None = None) -> 
     except Exception as e:
         logger.exception("获取商品详情失败", product_id=product_id, error=str(e))
         return json.dumps({"error": f"获取详情失败: {e}"}, ensure_ascii=False)
-

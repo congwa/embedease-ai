@@ -17,9 +17,7 @@ class ProductRepository(BaseRepository[Product]):
 
     async def get_by_category(self, category: str) -> list[Product]:
         """根据分类获取商品"""
-        result = await self.session.execute(
-            select(Product).where(Product.category == category)
-        )
+        result = await self.session.execute(select(Product).where(Product.category == category))
         return list(result.scalars().all())
 
     async def create_product(

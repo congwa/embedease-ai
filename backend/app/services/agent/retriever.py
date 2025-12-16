@@ -36,7 +36,7 @@ def get_vector_store() -> QdrantVectorStore:
     """获取向量存储"""
     client = get_qdrant_client()
     embeddings = get_embeddings()
-    
+
     logger.info(
         "│ 初始化向量存储",
         vector_store={

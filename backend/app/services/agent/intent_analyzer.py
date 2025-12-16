@@ -162,9 +162,7 @@ class IntentAnalyzerService:
 
         try:
             # 调用意图识别 Agent
-            result = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": user_message}]}
-            )
+            result = await agent.ainvoke({"messages": [{"role": "user", "content": user_message}]})
 
             # 提取结构化响应
             intent_analysis = result.get("structured_response")
@@ -199,4 +197,3 @@ class IntentAnalyzerService:
 
 # 全局单例
 intent_analyzer_service = IntentAnalyzerService()
-

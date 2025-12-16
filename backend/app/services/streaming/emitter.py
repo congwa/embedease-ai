@@ -33,5 +33,3 @@ class QueueDomainEmitter:
                 pass
 
         self.loop.call_soon_threadsafe(_put)
-
-

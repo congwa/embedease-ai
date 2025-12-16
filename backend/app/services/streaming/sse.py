@@ -47,5 +47,3 @@ def encode_sse(event: StreamEvent) -> str:
     # FastAPI/Starlette 会按字符串直接写出，这里保证每条事件以空行分隔
     data = event.model_dump()
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-

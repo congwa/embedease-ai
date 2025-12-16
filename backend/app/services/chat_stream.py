@@ -166,5 +166,3 @@ class ChatStreamOrchestrator:
                 type=StreamEventType.ERROR.value,
                 payload={"message": str(e)},
             )
-
-

@@ -202,4 +202,3 @@ async def rerank_documents(
     except Exception as e:
         logger.error("Rerank 失败，回退到原始顺序", error=str(e), exc_info=True)
         return [(i, 1.0) for i in range(len(documents))]
-

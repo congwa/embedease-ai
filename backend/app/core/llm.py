@@ -59,7 +59,7 @@ def get_chat_model() -> BaseChatModel:
             model_kwargs["max_tokens"] = profile_arg["max_tokens"]
         if "max_completion_tokens" in profile_arg:
             model_kwargs["max_completion_tokens"] = profile_arg["max_completion_tokens"]
-    
+
     # 使用统一的创建接口，ModelRegistry 会自动选择合适的实现
     model = create_chat_model(
         model=settings.SILICONFLOW_CHAT_MODEL,
@@ -67,7 +67,7 @@ def get_chat_model() -> BaseChatModel:
         api_key=settings.SILICONFLOW_API_KEY,
         **model_kwargs,
     )
-    
+
     # 如果 profile 存在，尝试设置到模型上（某些实现可能需要）
     if profile_arg and hasattr(model, "profile"):
         try:
@@ -81,9 +81,15 @@ def get_chat_model() -> BaseChatModel:
         logger.info(
             "模型初始化完成",
             model=settings.SILICONFLOW_CHAT_MODEL,
-            structured_output=(actual_profile or {}).get("structured_output") if isinstance(actual_profile, dict) else None,
-            reasoning_output=(actual_profile or {}).get("reasoning_output") if isinstance(actual_profile, dict) else None,
-            tool_calling=(actual_profile or {}).get("tool_calling") if isinstance(actual_profile, dict) else None,
+            structured_output=(actual_profile or {}).get("structured_output")
+            if isinstance(actual_profile, dict)
+            else None,
+            reasoning_output=(actual_profile or {}).get("reasoning_output")
+            if isinstance(actual_profile, dict)
+            else None,
+            tool_calling=(actual_profile or {}).get("tool_calling")
+            if isinstance(actual_profile, dict)
+            else None,
             final_profile=actual_profile,
         )
     except Exception as e:  # noqa: BLE001
@@ -97,9 +103,15 @@ def get_chat_model() -> BaseChatModel:
         logger.info(
             "模型初始化完成",
             model=settings.SILICONFLOW_CHAT_MODEL,
-            structured_output=(actual_profile or {}).get("structured_output") if isinstance(actual_profile, dict) else None,
-            reasoning_output=(actual_profile or {}).get("reasoning_output") if isinstance(actual_profile, dict) else None,
-            tool_calling=(actual_profile or {}).get("tool_calling") if isinstance(actual_profile, dict) else None,
+            structured_output=(actual_profile or {}).get("structured_output")
+            if isinstance(actual_profile, dict)
+            else None,
+            reasoning_output=(actual_profile or {}).get("reasoning_output")
+            if isinstance(actual_profile, dict)
+            else None,
+            tool_calling=(actual_profile or {}).get("tool_calling")
+            if isinstance(actual_profile, dict)
+            else None,
             final_profile=actual_profile,
         )
     except Exception as e:  # noqa: BLE001

@@ -134,7 +134,7 @@ def compare_products(product_ids: list[str], runtime: ToolRuntime | None = None)
             logger.warning("至少需要2个商品才能比较", provided=len(product_ids))
             return json.dumps(
                 {"error": "至少需要2个商品才能进行比较", "provided_count": len(product_ids)},
-                ensure_ascii=False
+                ensure_ascii=False,
             )
 
         # 获取所有商品的详细信息
@@ -166,7 +166,7 @@ def compare_products(product_ids: list[str], runtime: ToolRuntime | None = None)
             logger.warning("找到的商品不足2个", found=len(products))
             return json.dumps(
                 {"error": "找到的商品不足2个，无法进行对比", "found_count": len(products)},
-                ensure_ascii=False
+                ensure_ascii=False,
             )
 
         # 构建比较结果
@@ -181,7 +181,7 @@ def compare_products(product_ids: list[str], runtime: ToolRuntime | None = None)
                 },
                 "categories": list({p["category"] for p in products if p.get("category")}),
                 "product_count": len(products),
-            }
+            },
         }
 
         result_json = json.dumps(comparison, ensure_ascii=False, indent=2)
@@ -195,4 +195,3 @@ def compare_products(product_ids: list[str], runtime: ToolRuntime | None = None)
     except Exception as e:
         logger.exception("比较商品失败", product_ids=product_ids, error=str(e))
         return json.dumps({"error": f"比较失败: {e}"}, ensure_ascii=False)
-

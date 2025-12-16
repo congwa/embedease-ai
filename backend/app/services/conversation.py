@@ -28,9 +28,7 @@ class ConversationService:
         """获取用户的所有会话"""
         return await self.conversation_repo.get_by_user_id(user_id)
 
-    async def get_conversation_with_messages(
-        self, conversation_id: str
-    ) -> Conversation | None:
+    async def get_conversation_with_messages(self, conversation_id: str) -> Conversation | None:
         """获取会话及其消息"""
         return await self.conversation_repo.get_with_messages(conversation_id)
 
@@ -38,7 +36,7 @@ class ConversationService:
         """创建新会话"""
         # 确保用户存在
         await self.user_repo.get_or_create(user_id)
-        
+
         conversation_id = str(uuid.uuid4())
         return await self.conversation_repo.create_conversation(
             conversation_id=conversation_id,
@@ -72,7 +70,7 @@ class ConversationService:
             content=content,
             products=products,
         )
-        
+
         # 如果是用户的第一条消息，更新会话标题
         if role == "user":
             conversation = await self.conversation_repo.get_by_id(conversation_id)
@@ -80,5 +78,5 @@ class ConversationService:
                 # 使用消息的前 50 个字符作为标题
                 title = content[:50] + ("..." if len(content) > 50 else "")
                 await self.conversation_repo.update_title(conversation_id, title)
-        
+
         return message

@@ -19,6 +19,6 @@ def split_text(text: str) -> list[str]:
     """分割长文本"""
     if not text or len(text) <= settings.CHUNK_SIZE:
         return [text] if text else []
-    
+
     splitter = get_text_splitter()
     return splitter.split_text(text)

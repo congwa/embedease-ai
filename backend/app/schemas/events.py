@@ -58,17 +58,17 @@ class ToolEndPayload(TypedDict):
 
 class LlmCallStartPayload(TypedDict):
     message_count: int
+    llm_call_id: NotRequired[str]
 
 
 class LlmCallEndPayload(TypedDict):
     elapsed_ms: int
     message_count: NotRequired[int]
     error: NotRequired[str]
+    llm_call_id: NotRequired[str]
 
 
 class ErrorPayload(TypedDict):
     message: str
     code: NotRequired[str]
     detail: NotRequired[Any]
-
-
