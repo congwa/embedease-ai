@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-12-16
+## [0.1.2] - 2025-12-16
+
+### 🔧 技术改进 (Technical Improvements)
+
+- **版本管理脚本优化**: 修复 `version.sh` 脚本语法问题，替换为更稳定的 Python 版本管理脚本 `update_version.py`
+- **构建系统改进**: 优化版本自动更新流程，提高发布效率
+
+## [0.1.1] - 2025-12-16
 
 ### 🚀 架构重构：SSE事件系统职责分离
 
@@ -60,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2025-12-12
+## [0.1.0] - 2025-12-12
 
 ### 🎉 初始版本发布
 
