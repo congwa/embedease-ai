@@ -34,26 +34,81 @@ def _summarize_tool_calls(tool_calls: Any) -> dict[str, Any] | None:
     if isinstance(tool_calls, list):
         items: list[dict[str, Any]] = []
         for tc in tool_calls[:10]:
+            item: dict[str, Any] = {}
+            
+            # 处理字典格式的 tool_call
             if isinstance(tc, dict):
+                item["id"] = str(tc.get("id")) if tc.get("id") is not None else None
+                item["name"] = str(tc.get("name")) if tc.get("name") is not None else None
                 args = tc.get("args")
-                items.append(
-                    {
-                        "id": tc.get("id"),
-                        "name": tc.get("name"),
-                        "args_keys": sorted(list(args.keys()))[:20] if isinstance(args, dict) else None,
-                    }
-                )
+                if isinstance(args, dict):
+                    item["args_keys"] = sorted(list(args.keys()))[:20]
+                    # 添加 args 值的预览（截断长值，确保都是基本类型）
+                    args_preview: dict[str, Any] = {}
+                    for k, v in list(args.items())[:10]:
+                        k_str = str(k)
+                        if isinstance(v, str):
+                            args_preview[k_str] = v[:100] + "..." if len(v) > 100 else v
+                        elif isinstance(v, (int, float, bool)) or v is None:
+                            args_preview[k_str] = v
+                        elif isinstance(v, (list, tuple)):
+                            args_preview[k_str] = f"[{len(v)} items]"
+                        elif isinstance(v, dict):
+                            args_preview[k_str] = f"{{dict with {len(v)} keys}}"
+                        else:
+                            args_preview[k_str] = str(type(v).__name__)
+                    item["args_preview"] = args_preview
+                else:
+                    item["args_keys"] = None
+                    item["args_preview"] = None
+            # 处理 LangChain ToolCall 对象
+            elif hasattr(tc, "id") or hasattr(tc, "name"):
+                tc_id = getattr(tc, "id", None)
+                tc_name = getattr(tc, "name", None)
+                item["id"] = str(tc_id) if tc_id is not None else None
+                item["name"] = str(tc_name) if tc_name is not None else None
+                args = getattr(tc, "args", None)
+                if isinstance(args, dict):
+                    item["args_keys"] = sorted(list(args.keys()))[:20]
+                    # 添加 args 值的预览（截断长值，确保都是基本类型）
+                    args_preview: dict[str, Any] = {}
+                    for k, v in list(args.items())[:10]:
+                        k_str = str(k)
+                        if isinstance(v, str):
+                            args_preview[k_str] = v[:100] + "..." if len(v) > 100 else v
+                        elif isinstance(v, (int, float, bool)) or v is None:
+                            args_preview[k_str] = v
+                        elif isinstance(v, (list, tuple)):
+                            args_preview[k_str] = f"[{len(v)} items]"
+                        elif isinstance(v, dict):
+                            args_preview[k_str] = f"{{dict with {len(v)} keys}}"
+                        else:
+                            args_preview[k_str] = str(type(v).__name__)
+                    item["args_preview"] = args_preview
+                else:
+                    item["args_keys"] = None
+                    item["args_preview"] = None
+            # 兜底：记录类型信息
             else:
-                items.append({"type": type(tc).__name__})
+                item["type"] = str(type(tc).__name__)
+                # 尝试转换为字符串获取更多信息
+                try:
+                    tc_str = str(tc)
+                    item["repr"] = tc_str[:200] + "..." if len(tc_str) > 200 else tc_str
+                except Exception:
+                    item["repr"] = None
+            
+            items.append(item)
 
-        return {
+        result = {
             "count": len(tool_calls),
             "items": items,
             "truncated": len(tool_calls) > 10,
         }
+        return result
 
     # 兜底：只给类型信息
-    return {"type": type(tool_calls).__name__}
+    return {"type": str(type(tool_calls).__name__)}
 
 
 def _summarize_usage_metadata(usage: Any) -> dict[str, Any] | None:
@@ -89,6 +144,50 @@ def _summarize_additional_kwargs(kwargs: Any) -> dict[str, Any] | None:
     }
 
 
+def _ensure_serializable(obj: Any, *, _max_depth: int = 10) -> Any:
+    """确保对象可以被日志系统安全序列化，避免深层嵌套被截断。
+    
+    将嵌套结构转换为基本类型（str, int, float, bool, None, list, dict），
+    确保日志系统能够正确显示内容。
+    
+    Args:
+        obj: 要序列化的对象
+        _max_depth: 最大递归深度，防止无限递归
+    """
+    if _max_depth <= 0:
+        return "..."
+    
+    if obj is None or isinstance(obj, (str, int, float, bool)):
+        return obj
+    
+    if isinstance(obj, dict):
+        # 对 tool_calls 字段进行特殊处理，确保 items 列表内容完整显示
+        if "tool_calls" in obj:
+            tool_calls = obj["tool_calls"]
+            if isinstance(tool_calls, dict) and "items" in tool_calls:
+                items = tool_calls["items"]
+                if isinstance(items, list):
+                    # 确保 items 列表中的每个元素都是完全序列化的
+                    tool_calls["items"] = [
+                        _ensure_serializable(item, _max_depth=_max_depth - 1)
+                        for item in items
+                    ]
+        
+        return {
+            str(k): _ensure_serializable(v, _max_depth=_max_depth - 1)
+            for k, v in obj.items()
+        }
+    
+    if isinstance(obj, (list, tuple)):
+        return [
+            _ensure_serializable(v, _max_depth=_max_depth - 1)
+            for v in obj
+        ]
+    
+    # 其他类型转换为字符串
+    return str(obj)
+
+
 def _serialize_message(msg: BaseMessage) -> dict[str, Any]:
     """序列化消息用于日志"""
     content = getattr(msg, "content", None)
@@ -98,11 +197,16 @@ def _serialize_message(msg: BaseMessage) -> dict[str, Any]:
     if isinstance(additional, dict):
         rc = additional.get("reasoning_content")
         reasoning_text = rc if isinstance(rc, str) else str(rc) if rc is not None else ""
+    
+    # 序列化 tool_calls，确保它是完全可序列化的结构
+    tool_calls_summary = _summarize_tool_calls(getattr(msg, "tool_calls", None))
+    tool_calls_serialized = _ensure_serializable(tool_calls_summary) if tool_calls_summary else None
+    
     return {
         "type": type(msg).__name__,
         "content": _truncate_text(getattr(msg, "content", None), limit=1200),
         "content_length": len(content_text) if content_text else 0,
-        "tool_calls": _summarize_tool_calls(getattr(msg, "tool_calls", None)),
+        "tool_calls": tool_calls_serialized,
         # LangChain 常见字段：只保留摘要
         "usage": _summarize_usage_metadata(getattr(msg, "usage_metadata", None)),
         "response": _summarize_response_metadata(getattr(msg, "response_metadata", None)),
@@ -218,7 +322,11 @@ class LoggingMiddleware(AgentMiddleware):
                 "elapsed_ms": elapsed_ms,
             }
 
-            logger.info("LLM 调用完成", llm_response=response_data)
+            # 在传递给日志系统之前，完全序列化 response_data，确保所有嵌套结构都是基本类型
+            # 这样可以避免日志系统的 _safe_for_logging 因为嵌套层级过深而截断内容
+            response_data_serialized = _ensure_serializable(response_data)
+
+            logger.info("LLM 调用完成", llm_response=response_data_serialized)
             return response
 
         except Exception as e:

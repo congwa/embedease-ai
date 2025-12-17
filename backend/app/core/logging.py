@@ -62,12 +62,25 @@ def _safe_for_logging(value: Any, *, _level: int = 0) -> Any:
 
     # 常见容器
     if isinstance(value, dict):
-        if _level >= 4:
+        # 对 tool_calls 字段进行特殊处理，确保 items 列表内容完整显示
+        # tool_calls 结构：{"count": int, "items": list, "truncated": bool}
+        if "tool_calls" in value and isinstance(value.get("tool_calls"), dict):
+            tool_calls = value["tool_calls"]
+            if "items" in tool_calls and isinstance(tool_calls["items"], list):
+                # 对 items 列表进行特殊处理：保持当前层级，不增加嵌套深度
+                # 这样可以确保 items 的内容能够完整显示，即使嵌套层级较深
+                items = tool_calls["items"]
+                tool_calls["items"] = [
+                    _safe_for_logging(item, _level=_level)  # 保持当前层级
+                    for item in items
+                ]
+        
+        if _level >= 8:  # 增加嵌套层级限制从 4 到 8，给 tool_calls.items 更多空间
             return "{...}"
         return {str(k): _safe_for_logging(v, _level=_level + 1) for k, v in value.items()}
 
     if isinstance(value, (list, tuple, set)):
-        if _level >= 4:
+        if _level >= 8:  # 增加嵌套层级限制从 4 到 8
             return ["..."]
         return [_safe_for_logging(v, _level=_level + 1) for v in value]
 
