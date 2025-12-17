@@ -5,7 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 ## [0.1.4] - 2025-12-17
+
+### 🔧 日志与序列化优化 (Logging & Serialization Improvements)
+
+#### ✨ 核心改进 (Core Improvements)
+
+- **ChatContext 重构**: 将 `ChatContext` 从 `@dataclass` 重构为 Pydantic `BaseModel`，解决 Pydantic 序列化警告
+- **日志记录增强**: 优化工具调用日志记录，确保 `tool_calls.items` 完整显示，避免深层嵌套被截断
+- **工具函数签名优化**: 使用 `Annotated` 类型注解改进工具函数参数，提升代码清晰度和类型安全
+
+#### 🔧 技术实现 (Technical Changes)
+
+- **ChatContext 重构** (`backend/app/services/streaming/context.py`):
+  - 从 `@dataclass(frozen=True, slots=True)` 改为 Pydantic `BaseModel`
+  - 使用 `Field(exclude=True, repr=False)` 排除 `emitter` 字段的序列化
+  - 配置 `ConfigDict` 支持 `arbitrary_types_allowed=True` 和 `frozen=True`
+  - 解决 LangChain 内部序列化 `ModelRequest`/`ToolRuntime` 时的 Pydantic 警告
+
+- **日志记录优化** (`backend/app/core/logging.py`, `backend/app/services/agent/middleware/logging.py`):
+  - 移除 `ChatContext` 的特殊处理逻辑，直接使用 Pydantic 的 `model_dump()` 方法
+  - 增强 `_summarize_tool_calls` 函数，添加 `args_preview` 显示参数预览
+  - 新增 `_ensure_serializable` 函数，确保对象完全序列化为基本类型
+  - 调整 `_safe_for_logging` 函数，增加深度限制并特殊处理 `tool_calls.items`
+  - 在日志记录前完全序列化 `response_data`，避免嵌套结构被截断
+
+- **工具函数改进** (`backend/app/services/agent/tools/`):
+  - 所有工具函数使用 `Annotated` 类型注解替代简单类型
+  - 简化工具启动和结束事件的记录逻辑
+  - 删除不必要的输入模式类，精简代码库
+  - 增强错误处理和日志记录
+
+#### 🐛 Bug 修复 (Bug Fixes)
+
+- 修复 `tool_calls.items` 在日志中显示为 `['...']` 的问题
+- 修复 Pydantic 序列化警告：`PydanticSerializationUnexpectedValue(Expected 'none' - serialized value may not be as expected [field_name='context'])`
+
+#### 📝 代码质量 (Code Quality)
+
+- 改进类型注解，提升代码可读性和 IDE 支持
+- 统一日志记录格式，确保关键信息完整显示
+- 优化序列化逻辑，避免深层嵌套导致的日志截断
+
+---
 
 ## [0.1.3] - 2025-12-17
 
