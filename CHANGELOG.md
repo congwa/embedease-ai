@@ -5,12 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-12-17
+
+### 🔄 多 LLM 提供商支持 (Multi-Provider Support)
+
+#### ✨ 核心改进 (Core Improvements)
+
+- **多提供商架构**: 重构配置系统，支持 OpenAI、Anthropic、DeepSeek、SiliconFlow 等多个 LLM 提供商
+- **统一配置接口**: 使用通用的 `LLM_*` 配置变量替代平台特定的 `SILICONFLOW_*` 变量
+- **灵活混合配置**: 支持为 LLM、Embeddings、Rerank 使用不同的提供商，优化成本和性能
+- **自动迁移工具**: 提供 `migrate_env.py` 脚本，自动迁移旧配置到新格式
+
+#### 🔧 技术实现 (Technical Changes)
+
+- **配置层重构** (`backend/app/core/config.py`):
+  - 新增 `LLM_PROVIDER`、`LLM_API_KEY`、`LLM_BASE_URL`、`LLM_CHAT_MODEL`
+  - 新增 `EMBEDDING_PROVIDER`、`RERANK_PROVIDER` 支持独立配置
+  - 添加 `effective_*` 属性方法，自动回退到主配置
+  
+- **Chat Models 重构** (`backend/app/core/chat_models/`):
+  - 重命名 `providers/siliconflow.py` → `providers/reasoning_content.py`
+  - 按推理字段类型分类而非平台名称
+  - 更新注册机制，支持多平台自动匹配
+
+- **核心模块更新**:
+  - `backend/app/core/llm.py`: 支持多提供商初始化
+  - `backend/app/core/rerank.py`: 通用化 Rerank 客户端
+  - `backend/app/core/models_dev.py`: 支持动态 provider_id
+
+#### 📝 配置变更 (Configuration Changes)
+
+**旧配置格式**:
+```bash
+SILICONFLOW_API_KEY=sk-xxx
+SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
+SILICONFLOW_CHAT_MODEL=moonshotai/Kimi-K2-Instruct
+```
+
+**新配置格式**:
+```bash
+LLM_PROVIDER=siliconflow
+LLM_API_KEY=sk-xxx
+LLM_BASE_URL=https://api.siliconflow.cn/v1
+LLM_CHAT_MODEL=moonshotai/Kimi-K2-Instruct
+```
+
+#### 🛠️ 迁移指南 (Migration Guide)
+
+1. **自动迁移** (推荐):
+   ```bash
+   cd backend
+   python migrate_env.py
+   ```
+
+2. **手动迁移**:
+   - 将所有 `SILICONFLOW_*` 变量重命名为对应的通用变量
+   - 添加 `LLM_PROVIDER=siliconflow`
+   - 参考 `backend/.env.example` 查看完整配置
+
+#### 📚 文档更新 (Documentation)
+
+- 更新 `README.md` 添加多提供商配置说明和示例
+- 更新 `backend/app/core/chat_models/README.md` 反映新架构
+- 创建 `backend/.env.example` 提供配置模板
+
+#### ⚠️ 破坏性变更 (Breaking Changes)
+
+- 所有 `SILICONFLOW_*` 环境变量已废弃，需要迁移到新的通用变量
+- 旧配置文件不兼容，必须使用迁移脚本或手动更新
+
+#### 🎯 优势 (Benefits)
+
+- **灵活性**: 轻松切换不同 LLM 提供商
+- **成本优化**: 为不同功能选择性价比最高的提供商
+- **可扩展性**: 添加新提供商只需最小改动
+- **供应商独立**: 不被单一供应商锁定
+
+---
+
 ## [0.1.3] - 2025-12-16
 
 ### 🚀 检索与推荐能力增强 (Retrieval Improvements)
 
 - **增强检索链路**: 新增混合检索策略（向量检索 + 关键词过滤 + 相关性重排序）
-- **Rerank 重排序**: 对接硅基流动 `/rerank`，失败自动回退本地打分；新增配置项 `SILICONFLOW_RERANK_*`
+- **Rerank 重排序**: 对接 Rerank API，失败自动回退本地打分；新增配置项 `RERANK_*`
 
 ### 🧠 意图识别与工具选择 (Intent & Tooling)
 

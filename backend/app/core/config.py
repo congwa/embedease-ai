@@ -17,31 +17,44 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # 硅基流动配置（必填，无默认值 - 必须在 .env 中配置）
-    SILICONFLOW_API_KEY: str  # API Key（必填）
-    SILICONFLOW_BASE_URL: str  # API Base URL（必填，如 https://api.siliconflow.cn/v1）
-    SILICONFLOW_CHAT_MODEL: str  # 聊天模型 ID（必填，如 moonshotai/Kimi-K2-Instruct）
-    SILICONFLOW_EMBEDDING_MODEL: str  # 嵌入模型 ID（必填，如 BAAI/bge-m3）
-    SILICONFLOW_EMBEDDING_DIMENSION: int  # 嵌入维度（必填，如 4096）
+    # ========== LLM 提供商配置 ==========
+    # 主要提供商设置
+    LLM_PROVIDER: str = "siliconflow"  # 提供商: openai, openrouter, siliconflow 等
+    LLM_API_KEY: str  # API Key（必填）
+    LLM_BASE_URL: str  # API Base URL（必填）
+    LLM_CHAT_MODEL: str  # 聊天模型 ID（必填）
 
-    # Rerank 配置
-    SILICONFLOW_RERANK_ENABLED: bool  # 是否启用 Rerank 重排序
-    SILICONFLOW_RERANK_MODEL: str  # Rerank 模型 ID
-    SILICONFLOW_RERANK_TOP_N: int = 5  # 返回前 N 个结果
-    SILICONFLOW_RERANK_INSTRUCTION: str = "根据查询对商品进行相关性排序"  # Rerank 指令
-    # 通过 .env 提供 JSON，手动指定第三方/国产模型能力（会覆盖 models.dev 的配置）
+    # ========== Embeddings 配置 ==========
+    # Embeddings 提供商设置（可以与 LLM 不同）
+    EMBEDDING_PROVIDER: str = "siliconflow"  # Embedding 提供商
+    EMBEDDING_API_KEY: str | None = None  # 如为空则使用 LLM_API_KEY
+    EMBEDDING_BASE_URL: str | None = None  # 如为空则使用 LLM_BASE_URL
+    EMBEDDING_MODEL: str  # 嵌入模型 ID（必填）
+    EMBEDDING_DIMENSION: int  # 嵌入维度（必填）
+
+    # ========== Rerank 配置 ==========
+    RERANK_ENABLED: bool = False  # 是否启用 Rerank 重排序
+    RERANK_PROVIDER: str | None = None  # Rerank 提供商（可选，默认使用 LLM_PROVIDER）
+    RERANK_API_KEY: str | None = None  # 如为空则使用 LLM_API_KEY
+    RERANK_BASE_URL: str | None = None  # 如为空则使用 LLM_BASE_URL
+    RERANK_MODEL: str | None = None  # Rerank 模型 ID
+    RERANK_TOP_N: int = 5  # 返回前 N 个结果
+    RERANK_INSTRUCTION: str = "根据查询对商品进行相关性排序"  # Rerank 指令
+
+    # ========== 模型能力配置 ==========
+    # 通过 .env 提供 JSON，手动指定模型能力（会覆盖 models.dev 的配置）
     # 示例：
-    # SILICONFLOW_MODEL_PROFILES_JSON='{
+    # MODEL_PROFILES_JSON='{
     #   "moonshotai/Kimi-K2-Thinking": {"reasoning_output": true, "tool_calling": true, "structured_output": true}
     # }'
-    SILICONFLOW_MODEL_PROFILES_JSON: str = ""
+    MODEL_PROFILES_JSON: str = ""
 
     # models.dev 配置（开源模型能力数据库）
     # 启动时会自动拉取 https://models.dev/api.json 获取模型能力配置
-    # 合并规则：models.dev 作为基础，SILICONFLOW_MODEL_PROFILES_JSON 作为强覆盖（env 优先）
+    # 合并规则：models.dev 作为基础，MODEL_PROFILES_JSON 作为强覆盖（env 优先）
     MODELS_DEV_ENABLED: bool = True  # 是否启用 models.dev 自动拉取
     MODELS_DEV_API_URL: str = "https://models.dev/api.json"  # API URL
-    MODELS_DEV_PROVIDER_ID: str = "siliconflow"  # provider ID（对应 api.json 中的顶层 key）
+    MODELS_DEV_PROVIDER_ID: str | None = None  # provider ID（对应 api.json 中的顶层 key，默认使用 LLM_PROVIDER）
     MODELS_DEV_TIMEOUT_SECONDS: float = 10.0  # 请求超时时间
     MODELS_DEV_CACHE_TTL_SECONDS: float = 86400.0  # 缓存 TTL（秒），0 表示每次都拉取
 
@@ -70,6 +83,10 @@ class Settings(BaseSettings):
     LOG_FILE_ROTATION: str = "10 MB"  # 日志文件轮转大小
     LOG_FILE_RETENTION: str = "7 days"  # 日志文件保留时间
 
+    # ========== 响应清洗配置 ==========
+    RESPONSE_SANITIZATION_ENABLED: bool = True  # 是否启用响应清洗（检测并替换异常 function call 格式）
+    RESPONSE_SANITIZATION_CUSTOM_MESSAGE: str | None = None  # 自定义降级消息（可选，留空使用默认消息）
+
     @property
     def database_url(self) -> str:
         """SQLite 数据库 URL"""
@@ -86,9 +103,39 @@ class Settings(BaseSettings):
         Path(self.CHECKPOINT_DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
     @property
-    def siliconflow_model_profiles(self) -> dict[str, dict[str, Any]]:
-        """解析 .env 中的模型 profile JSON 配置。"""
-        raw = (self.SILICONFLOW_MODEL_PROFILES_JSON or "").strip()
+    def effective_embedding_api_key(self) -> str:
+        """获取有效的 Embedding API Key"""
+        return self.EMBEDDING_API_KEY or self.LLM_API_KEY
+
+    @property
+    def effective_embedding_base_url(self) -> str:
+        """获取有效的 Embedding Base URL"""
+        return self.EMBEDDING_BASE_URL or self.LLM_BASE_URL
+
+    @property
+    def effective_rerank_api_key(self) -> str:
+        """获取有效的 Rerank API Key"""
+        return self.RERANK_API_KEY or self.LLM_API_KEY
+
+    @property
+    def effective_rerank_base_url(self) -> str:
+        """获取有效的 Rerank Base URL"""
+        return self.RERANK_BASE_URL or self.LLM_BASE_URL
+
+    @property
+    def effective_rerank_provider(self) -> str:
+        """获取有效的 Rerank 提供商"""
+        return self.RERANK_PROVIDER or self.LLM_PROVIDER
+
+    @property
+    def effective_models_dev_provider_id(self) -> str:
+        """获取有效的 models.dev provider ID"""
+        return self.MODELS_DEV_PROVIDER_ID or self.LLM_PROVIDER
+
+    @property
+    def model_profiles(self) -> dict[str, dict[str, Any]]:
+        """解析 .env 中的模型 profile JSON 配置"""
+        raw = (self.MODEL_PROFILES_JSON or "").strip()
         if not raw:
             return {}
         try:

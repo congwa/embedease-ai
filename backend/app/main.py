@@ -16,30 +16,32 @@ from app.services.agent.agent import agent_service
 
 def _init_model_profiles() -> None:
     """启动时初始化模型配置（拉取 models.dev 并打印）"""
-    model_name = settings.SILICONFLOW_CHAT_MODEL
+    model_name = settings.LLM_CHAT_MODEL
 
     if settings.MODELS_DEV_ENABLED:
         logger.info(
             "正在从 models.dev 获取模型配置...",
             module="app",
+            provider=settings.LLM_PROVIDER,
             model=model_name,
-            provider=settings.MODELS_DEV_PROVIDER_ID,
+            provider_id=settings.effective_models_dev_provider_id,
             api_url=settings.MODELS_DEV_API_URL,
         )
         profile = get_model_profile(
             model_name=model_name,
             api_url=settings.MODELS_DEV_API_URL,
-            provider_id=settings.MODELS_DEV_PROVIDER_ID,
+            provider_id=settings.effective_models_dev_provider_id,
             timeout_seconds=settings.MODELS_DEV_TIMEOUT_SECONDS,
             cache_ttl_seconds=settings.MODELS_DEV_CACHE_TTL_SECONDS,
-            env_profiles=settings.siliconflow_model_profiles,
+            env_profiles=settings.model_profiles,
         )
     else:
         model_key = model_name.strip().lower()
-        profile = settings.siliconflow_model_profiles.get(model_key, {})
+        profile = settings.model_profiles.get(model_key, {})
         logger.info(
             "models.dev 已禁用，使用 .env 配置",
             module="app",
+            provider=settings.LLM_PROVIDER,
             model=model_name,
         )
 
@@ -47,6 +49,7 @@ def _init_model_profiles() -> None:
     logger.info(
         "模型配置已加载",
         module="app",
+        provider=settings.LLM_PROVIDER,
         model=model_name,
         profile=profile,
         reasoning_output=profile.get("reasoning_output"),

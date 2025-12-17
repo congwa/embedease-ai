@@ -41,8 +41,8 @@ def get_vector_store() -> QdrantVectorStore:
         "│ 初始化向量存储",
         vector_store={
             "collection": settings.QDRANT_COLLECTION,
-            "embedding_model": settings.SILICONFLOW_EMBEDDING_MODEL,
-            "embedding_dimension": settings.SILICONFLOW_EMBEDDING_DIMENSION,
+            "embedding_model": settings.EMBEDDING_MODEL,
+            "embedding_dimension": settings.EMBEDDING_DIMENSION,
         },
     )
     store = QdrantVectorStore(

@@ -132,7 +132,7 @@ async def rerank_by_relevance(
         return docs
 
     # 优先使用 Rerank API
-    if settings.SILICONFLOW_RERANK_ENABLED:
+    if settings.RERANK_ENABLED:
         try:
             # 准备文档文本（组合商品名称和描述以获得更好的排序效果）
             doc_texts = []

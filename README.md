@@ -10,7 +10,7 @@
 - **LangGraph** - 状态图管理
 - **SQLite** - 数据库
 - **Qdrant** - 向量数据库
-- **硅基流动** - LLM + Embedding API
+- **多 LLM 提供商支持** - OpenAI、Anthropic、DeepSeek、SiliconFlow 等
 
 ### 前端
 - **Next.js 15** - React 框架
@@ -37,7 +37,8 @@ uv sync
 
 # 配置环境变量
 cp .env.example .env
-# 编辑 .env，填入你的硅基流动 API Key
+# 编辑 .env，填入你的 LLM 提供商 API Key
+# 支持 OpenAI、Anthropic、DeepSeek、SiliconFlow 等
 
 # 导入商品数据
 uv run python scripts/import_products.py
@@ -65,6 +66,82 @@ pnpm dev
 
 打开浏览器访问 http://localhost:3000
 
+## LLM 提供商配置
+
+本项目支持多个 LLM 提供商，你可以根据需求选择：
+
+### 支持的提供商
+
+- **OpenAI** - GPT-4、GPT-3.5 等
+- **Anthropic** - Claude 系列
+- **DeepSeek** - 国产大模型
+- **SiliconFlow（硅基流动）** - 多模型聚合平台
+- **其他** - 任何兼容 OpenAI API 格式的提供商
+
+### 配置示例
+
+#### 使用 SiliconFlow（默认）
+```bash
+LLM_PROVIDER=siliconflow
+LLM_API_KEY=sk-xxx
+LLM_BASE_URL=https://api.siliconflow.cn/v1
+LLM_CHAT_MODEL=moonshotai/Kimi-K2-Instruct
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-8B
+EMBEDDING_DIMENSION=4096
+```
+
+#### 使用 OpenAI
+```bash
+LLM_PROVIDER=openai
+LLM_API_KEY=sk-xxx
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_CHAT_MODEL=gpt-4
+EMBEDDING_MODEL=text-embedding-3-large
+EMBEDDING_DIMENSION=3072
+```
+
+#### 使用 DeepSeek
+```bash
+LLM_PROVIDER=deepseek
+LLM_API_KEY=sk-xxx
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_CHAT_MODEL=deepseek-chat
+EMBEDDING_MODEL=deepseek-embedding
+EMBEDDING_DIMENSION=1536
+```
+
+#### 混合配置（推荐）
+你可以为不同功能使用不同的提供商以优化成本：
+
+```bash
+# 主 LLM 使用 OpenAI（质量优先）
+LLM_PROVIDER=openai
+LLM_API_KEY=sk-openai-xxx
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_CHAT_MODEL=gpt-4
+
+# Embeddings 使用 SiliconFlow（成本优先）
+EMBEDDING_PROVIDER=siliconflow
+EMBEDDING_API_KEY=sk-siliconflow-xxx
+EMBEDDING_BASE_URL=https://api.siliconflow.cn/v1
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-8B
+EMBEDDING_DIMENSION=4096
+```
+
+### 迁移现有配置
+
+如果你之前使用的是 `SILICONFLOW_*` 配置格式，可以使用迁移脚本：
+
+```bash
+cd backend
+python migrate_env.py
+```
+
+脚本会自动：
+1. 备份原配置文件
+2. 将旧变量名转换为新格式
+3. 添加新的配置项
+
 ## 功能
 
 - ✅ 匿名用户（UUID 自动生成）
@@ -82,7 +159,7 @@ pnpm dev
 │   Frontend      │    │     Backend     │    │   External      │
 │   (Next.js)     │◄──►│    (FastAPI)    │◄──►│   Services      │
 │                 │    │                 │    │                 │
-│ • Chat UI       │    │ • Agent Service │    │ • SiliconFlow   │
+│ • Chat UI       │    │ • Agent Service │    │ • LLM Providers │
 │ • Conversation  │    │ • Vector Search │    │ • Qdrant        │
 │ • Product Cards │    │ • SQLite        │    │ • Embeddings    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
@@ -155,7 +232,7 @@ agent = create_agent(
 #### 向量检索
 ```python
 # 商品嵌入和检索
-embeddings = get_embeddings()  # BAAI/bge-m3 (4096维)
+embeddings = get_embeddings()  # Qwen/Qwen3-Embedding-8B (4096维)
 vector_store = QdrantVectorStore(
     client=qdrant_client,
     collection_name="products",

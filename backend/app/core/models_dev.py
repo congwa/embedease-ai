@@ -1,9 +1,9 @@
-"""models.dev API 集成
+"""models.dev API 集成 - 支持多提供商
 
 在应用启动时拉取 https://models.dev/api.json，
 将模型能力数据转换为 LangChain profile 格式，并与 .env 手动配置合并。
 
-数据结构（以 siliconflow 为例）：
+数据结构示例：
 {
   "siliconflow": {
     "models": {
@@ -16,6 +16,9 @@
         "modalities": {"input": ["text"], "output": ["text"]}
       }
     }
+  },
+  "openai": {
+    "models": { ... }
   }
 }
 
@@ -91,11 +94,11 @@ def fetch_models_dev_profiles(
     provider_id: str,
     timeout_seconds: float = 10.0,
 ) -> dict[str, dict[str, Any]]:
-    """从 models.dev API 拉取指定 provider 的模型 profiles。
+    """从 models.dev API 拉取指定 provider 的模型 profiles
 
     Args:
         api_url: API URL，默认 https://models.dev/api.json
-        provider_id: provider ID，如 "siliconflow"
+        provider_id: provider ID，如 "siliconflow", "openai", "anthropic"
         timeout_seconds: 请求超时时间
 
     Returns:
@@ -160,7 +163,7 @@ def fetch_models_dev_profiles(
             continue
 
         profile = _convert_model_data_to_profile(model_data)
-        # 用 name 字段作为 key，并转小写（与 SILICONFLOW_CHAT_MODEL 匹配时统一小写）
+        # 用 name 字段作为 key，并转小写（与 LLM_CHAT_MODEL 匹配时统一小写）
         profiles[model_name.strip().lower()] = profile
 
     logger.info(
@@ -176,19 +179,19 @@ def get_model_profile(
     model_name: str,
     *,
     api_url: str = "https://models.dev/api.json",
-    provider_id: str = "siliconflow",
+    provider_id: str = "openai",
     timeout_seconds: float = 10.0,
     cache_ttl_seconds: float = 86400.0,
     env_profiles: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """获取指定模型的最终 profile（models.dev + .env 合并）。
+    """获取指定模型的最终 profile（models.dev + .env 合并）
 
-    合并规则：models.dev 作为基础，env_profiles 作为强覆盖（env 优先）。
+    合并规则：models.dev 作为基础，env_profiles 作为强覆盖（env 优先）
 
     Args:
         model_name: 模型名称，如 "moonshotai/Kimi-K2-Instruct"
         api_url: models.dev API URL
-        provider_id: provider ID
+        provider_id: provider ID（如 "siliconflow", "openai", "anthropic"）
         timeout_seconds: 请求超时
         cache_ttl_seconds: 缓存 TTL（秒），0 表示不缓存
         env_profiles: 从 .env 解析的 profiles（会覆盖 models.dev）

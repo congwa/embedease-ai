@@ -23,6 +23,7 @@ from app.services.agent.tools import (
 )
 from app.services.agent.middleware.logging import LoggingMiddleware
 from app.services.agent.middleware.intent_recognition import IntentRecognitionMiddleware
+from app.services.agent.middleware.response_sanitization import ResponseSanitizationMiddleware
 from app.services.agent.middleware.sse_events import SSEMiddleware
 from app.services.streaming.context import ChatContext
 from app.schemas.events import StreamEventType
@@ -189,9 +190,17 @@ class AgentService:
 
             # 准备中间件列表
             # 中间件职责拆分：
+            # - ResponseSanitizationMiddleware：检测并清洗异常响应格式（最先处理响应）
             # - SSEMiddleware：只负责 llm.call.start/end 事件推送（前端可用于 Debug/性能）
             # - LoggingMiddleware：只负责 logger 记录（不发送任何 SSE 事件）
-            middlewares = [SSEMiddleware(), LoggingMiddleware()]
+            middlewares = [
+                ResponseSanitizationMiddleware(
+                    enabled=settings.RESPONSE_SANITIZATION_ENABLED,
+                    custom_fallback_message=settings.RESPONSE_SANITIZATION_CUSTOM_MESSAGE,
+                ),
+                SSEMiddleware(),
+                LoggingMiddleware(),
+            ]
 
             # 可选：添加意图识别中间件（放在最前面，优先执行）
             if use_intent_recognition:
@@ -466,7 +475,7 @@ class AgentService:
                             {"delta": delta},
                         )
 
-                    # 推理增量（SiliconFlowReasoningChatModel 会写入 additional_kwargs.reasoning_content）
+                    # 推理增量（推理模型会写入 additional_kwargs.reasoning_content）
                     rk = (
                         (getattr(msg, "additional_kwargs", None) or {}).get("reasoning_content")
                         or ""

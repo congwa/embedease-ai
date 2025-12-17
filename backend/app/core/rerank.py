@@ -1,4 +1,4 @@
-"""硅基流动 Rerank API 客户端"""
+"""Rerank API 客户端 - 支持多提供商"""
 
 import asyncio
 from typing import Any
@@ -22,7 +22,7 @@ class RerankDocument(BaseModel):
 class RerankResultItem(BaseModel):
     """Rerank 结果项"""
 
-    # return_documents=false 时，硅基流动返回的 results 里不会包含 document 字段
+    # return_documents=false 时，返回的 results 里不会包含 document 字段
     document: RerankDocument | None = Field(default=None, description="文档内容（可选）")
     index: int = Field(description="原始索引")
     relevance_score: float = Field(description="相关性分数")
@@ -37,13 +37,17 @@ class RerankResponse(BaseModel):
 
 
 class RerankClient:
-    """硅基流动 Rerank API 客户端"""
+    """Rerank API 客户端
+
+    支持所有兼容标准 Rerank API 格式的提供商
+    """
 
     def __init__(
         self,
         api_key: str | None = None,
         base_url: str | None = None,
         model: str | None = None,
+        provider: str | None = None,
         timeout: float = 30.0,
     ) -> None:
         """初始化 Rerank 客户端
@@ -52,16 +56,19 @@ class RerankClient:
             api_key: API Key，默认从配置读取
             base_url: API Base URL，默认从配置读取
             model: Rerank 模型，默认从配置读取
+            provider: 提供商名称（可选）
             timeout: 请求超时时间（秒）
         """
-        self.api_key = api_key or settings.SILICONFLOW_API_KEY
-        self.base_url = (base_url or settings.SILICONFLOW_BASE_URL).rstrip("/")
-        self.model = model or settings.SILICONFLOW_RERANK_MODEL
+        self.api_key = api_key or settings.effective_rerank_api_key
+        self.base_url = (base_url or settings.effective_rerank_base_url or "").rstrip("/")
+        self.model = model or settings.RERANK_MODEL
+        self.provider = provider or settings.effective_rerank_provider
         self.timeout = timeout
         self.rerank_url = f"{self.base_url}/rerank"
 
         logger.info(
             "RerankClient 初始化",
+            provider=self.provider,
             base_url=self.base_url,
             model=self.model,
             timeout=timeout,
@@ -96,8 +103,8 @@ class RerankClient:
             msg = "documents 不能为空"
             raise ValueError(msg)
 
-        top_n = top_n or settings.SILICONFLOW_RERANK_TOP_N
-        instruction = instruction or settings.SILICONFLOW_RERANK_INSTRUCTION
+        top_n = top_n or settings.RERANK_TOP_N
+        instruction = instruction or settings.RERANK_INSTRUCTION
 
         payload = {
             "model": self.model,
@@ -185,7 +192,7 @@ async def rerank_documents(
     Returns:
         重排序结果，格式为 [(原始索引, 相关性分数), ...]
     """
-    if not settings.SILICONFLOW_RERANK_ENABLED:
+    if not settings.RERANK_ENABLED:
         logger.warning("Rerank 功能已禁用，返回原始顺序")
         return [(i, 1.0) for i in range(len(documents))]
 

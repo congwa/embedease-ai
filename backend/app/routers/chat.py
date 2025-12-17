@@ -78,10 +78,10 @@ async def chat(
                         assistant_message_id=assistant_message_id,
                     )
                     break
-                logger.debug(
-                    "发送SSE事件",
-                    event=event,
-                )
+                # logger.debug(
+                #     "发送SSE事件",
+                #     event=event,
+                # )
                 yield encode_sse(event)
         except asyncio.CancelledError:
             logger.info(

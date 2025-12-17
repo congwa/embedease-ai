@@ -44,7 +44,11 @@ async def import_products(json_path: str) -> None:
 
     # 创建 Qdrant 向量索引
     await create_vector_index(products_data)
-
+    
+    # 关闭数据库连接
+    from app.core.database import engine
+    await engine.dispose()
+    
     print("[import] 导入完成!")
 
 
@@ -61,87 +65,97 @@ async def create_vector_index(products_data: list[dict]) -> None:
         port=settings.QDRANT_PORT,
     )
 
-    # 检查集合是否存在，如果存在则删除重建
-    collection_name = settings.QDRANT_COLLECTION
-    collections = client.get_collections().collections
-    if any(c.name == collection_name for c in collections):
-        print(f"[import] 删除现有集合: {collection_name}")
-        client.delete_collection(collection_name)
+    try:
+        # 检查集合是否存在，如果存在则删除重建
+        collection_name = settings.QDRANT_COLLECTION
+        collections = client.get_collections().collections
+        if any(c.name == collection_name for c in collections):
+            print(f"[import] 删除现有集合: {collection_name}")
+            client.delete_collection(collection_name)
+            # 等待删除操作完成
+            await asyncio.sleep(0.5)
 
-    # 创建集合
-    print(f"[import] 创建集合: {collection_name}")
-    print(f"[import] 向量维度: {settings.SILICONFLOW_EMBEDDING_DIMENSION}")
-    client.create_collection(
-        collection_name=collection_name,
-        vectors_config=VectorParams(
-            size=settings.SILICONFLOW_EMBEDDING_DIMENSION,
-            distance=Distance.COSINE,
-        ),
-    )
-
-    # 准备文档
-    documents: list[Document] = []
-    for product in products_data:
-        # 组合商品信息作为嵌入文本
-        text_parts = [
-            f"商品名称: {product['name']}",
-        ]
-        if product.get("summary"):
-            text_parts.append(f"核心卖点: {product['summary']}")
-        if product.get("category"):
-            text_parts.append(f"分类: {product['category']}")
-        if product.get("description"):
-            # 如果描述太长，进行分块
-            description = product["description"]
-            if len(description) > settings.CHUNK_SIZE:
-                chunks = split_text(description)
-                for i, chunk in enumerate(chunks):
-                    doc = Document(
-                        page_content=f"{text_parts[0]}\n{chunk}",
-                        metadata={
-                            "product_id": product["id"],
-                            "product_name": product["name"],
-                            "price": product.get("price"),
-                            "category": product.get("category"),
-                            "url": product.get("url"),
-                            "chunk_index": i + 1,  # 1 表示第一个分块
-                        },
-                    )
-                    documents.append(doc)
-            else:
-                text_parts.append(f"描述: {description}")
-
-        # 添加主文档（摘要）
-        main_doc = Document(
-            page_content="\n".join(text_parts),
-            metadata={
-                "product_id": product["id"],
-                "product_name": product["name"],
-                "price": product.get("price"),
-                "category": product.get("category"),
-                "url": product.get("url"),
-                "chunk_index": 0,  # 0 表示摘要
-            },
+        # 创建集合
+        print(f"[import] 创建集合: {collection_name}")
+        print(f"[import] 向量维度: {settings.EMBEDDING_DIMENSION}")
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+                size=settings.EMBEDDING_DIMENSION,
+                distance=Distance.COSINE,
+            ),
         )
-        documents.append(main_doc)
 
-    print(f"[import] 准备了 {len(documents)} 个文档")
+        # 准备文档
+        documents: list[Document] = []
+        for product in products_data:
+            # 组合商品信息作为嵌入文本
+            text_parts = [
+                f"商品名称: {product['name']}",
+            ]
+            if product.get("summary"):
+                text_parts.append(f"核心卖点: {product['summary']}")
+            if product.get("category"):
+                text_parts.append(f"分类: {product['category']}")
+            if product.get("description"):
+                # 如果描述太长，进行分块
+                description = product["description"]
+                if len(description) > settings.CHUNK_SIZE:
+                    chunks = split_text(description)
+                    for i, chunk in enumerate(chunks):
+                        doc = Document(
+                            page_content=f"{text_parts[0]}\n{chunk}",
+                            metadata={
+                                "product_id": product["id"],
+                                "product_name": product["name"],
+                                "price": product.get("price"),
+                                "category": product.get("category"),
+                                "url": product.get("url"),
+                                "chunk_index": i + 1,  # 1 表示第一个分块
+                            },
+                        )
+                        documents.append(doc)
+                else:
+                    text_parts.append(f"描述: {description}")
 
-    # 创建向量存储并添加文档
-    vector_store = QdrantVectorStore(
-        client=client,
-        collection_name=collection_name,
-        embedding=embeddings,
-    )
+            # 添加主文档（摘要）
+            main_doc = Document(
+                page_content="\n".join(text_parts),
+                metadata={
+                    "product_id": product["id"],
+                    "product_name": product["name"],
+                    "price": product.get("price"),
+                    "category": product.get("category"),
+                    "url": product.get("url"),
+                    "chunk_index": 0,  # 0 表示摘要
+                },
+            )
+            documents.append(main_doc)
 
-    # 批量添加文档
-    batch_size = 10
-    for i in range(0, len(documents), batch_size):
-        batch = documents[i : i + batch_size]
-        await asyncio.to_thread(vector_store.add_documents, batch)
-        print(f"[import] 已添加 {min(i + batch_size, len(documents))}/{len(documents)} 个文档")
+        print(f"[import] 准备了 {len(documents)} 个文档")
 
-    print(f"[import] 向量索引创建完成，共 {len(documents)} 个向量")
+        # 创建向量存储并添加文档
+        vector_store = QdrantVectorStore(
+            client=client,
+            collection_name=collection_name,
+            embedding=embeddings,
+        )
+
+        # 批量添加文档
+        batch_size = 10
+        for i in range(0, len(documents), batch_size):
+            batch = documents[i : i + batch_size]
+            await asyncio.to_thread(vector_store.add_documents, batch)
+            print(f"[import] 已添加 {min(i + batch_size, len(documents))}/{len(documents)} 个文档")
+
+        print(f"[import] 向量索引创建完成，共 {len(documents)} 个向量")
+    
+    finally:
+        # 关闭 Qdrant 客户端连接
+        try:
+            client.close()
+        except Exception:
+            pass  # 静默忽略关闭错误
 
 
 def main():
@@ -170,7 +184,20 @@ def main():
 """)
         sys.exit(1)
 
-    asyncio.run(import_products(str(json_path)))
+    # 使用 asyncio.run() 运行主任务，它会自动清理事件循环
+    try:
+        asyncio.run(import_products(str(json_path)))
+        print("[import] 程序正常退出")
+        sys.exit(0)  # 显式退出，确保所有资源被释放
+    except KeyboardInterrupt:
+        print("\n[import] 导入已取消")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n[error] 导入失败: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+  
 
 
 if __name__ == "__main__":

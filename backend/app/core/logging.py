@@ -158,18 +158,22 @@ def format_detailed(record: dict) -> str:
     location = f"<cyan>{file}:{line}</cyan> in <blue>{function}</blue>"
     module_tag = f"<magenta>[{module}]</magenta>"
 
-    # 额外上下文（转义大括号避免被 loguru 解析）
+    # 额外上下文（转义特殊字符避免被 loguru 解析）
     context_keys = [k for k in extra if k not in ("module",)]
     context = ""
     if context_keys:
         ctx_parts = []
         for k in context_keys:
-            # 转义大括号，避免被 loguru 解析为格式化占位符
-            value_repr = repr(extra[k]).replace("{", "{{").replace("}", "}}")
+            # 转义大括号和尖括号，避免被 loguru 解析
+            # {} 会被解析为格式化占位符，<> 会被解析为颜色标记
+            value_repr = repr(extra[k]).replace("{", "{{").replace("}", "}}").replace("<", "\\<").replace(">", "\\>")
             ctx_parts.append(f"{k}={value_repr}")
         context = f" <dim>| {', '.join(ctx_parts)}</dim>"
 
-    result = f"{header} {module_tag} {location}{context}\n    → {message}\n"
+    # 转义消息内容中的特殊字符
+    safe_message = message.replace("<", "\\<").replace(">", "\\>")
+    
+    result = f"{header} {module_tag} {location}{context}\n    → {safe_message}\n"
 
     # 异常信息
     if record.get("exception"):
