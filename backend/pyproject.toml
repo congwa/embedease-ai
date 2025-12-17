@@ -1,6 +1,6 @@
 [project]
 name = "embed-ai-agent"
-version = "0.1.4"
+version = "0.1.5"
 description = "商品推荐 Agent - 基于 LangChain v1.1"
 requires-python = ">=3.13"
 
