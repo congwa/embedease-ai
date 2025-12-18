@@ -8,15 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.4] - 2025-12-17
 
-### 🔧 日志与序列化优化 (Logging & Serialization Improvements)
+### 2025-12-18 12:35 (UTC+08:00)
 
-#### ✨ 核心改进 (Core Improvements)
+#### 🧠 推理内容与流式兼容 (Reasoning & Streaming Compatibility)
+
+##### ✨ 核心改进 (Core Improvements)
+
+- **推理内容统一归一化**: 同时兼容 LangChain OpenAI 的两条 streaming 路径（Chat Completions vs Responses API），统一将推理内容写入 `AIMessageChunk.additional_kwargs["reasoning_content"]`
+- **向后兼容增强**: 兼容 LangChain v0 compat 格式（`additional_kwargs["reasoning"]` 为 dict），自动提取并转换为 `reasoning_content` 字符串
+
+##### 🔧 技术实现 (Technical Changes)
+
+- **推理内容归一化中枢** (`backend/app/core/chat_models/base.py`):
+  - 覆盖 `_convert_chunk_to_generation_chunk`：对 Chat Completions streaming 的 raw dict chunk 注入 `reasoning_content`
+  - 覆盖 `_stream_responses` / `_astream_responses`：对 Responses API streaming 的产物做后处理注入，避免路径 B 绕过注入点
+  - 提供可选覆盖钩子 `_extract_reasoning_content`：允许平台特定提取逻辑扩展，但默认同时支持 `reasoning` / `reasoning_content`
+  - 补充特别详细的数据结构说明：解释两条路径的原始/中间/最终结构与前因后果，降低维护成本
+
+- **去冗余且保留兼容** (`backend/app/core/chat_models/providers/*.py`):
+  - `OpenAIReasoningChatModel` 与 `ReasoningContentChatModel` 保留类名与导入路径，但提取逻辑统一委托给基类默认实现，减少重复代码
+
+##### 🧩 SSE 事件职责拆分与清晰化 (SSE Middleware Responsibility)
+
+- **职责拆分**: `LoggingMiddleware` 仅负责 logger 记录，不再发送 `llm.call.start/end` SSE 事件；对应 SSE 事件由 `SSEMiddleware` 统一负责
+- **文件命名澄清**: 将 LLM 调用级别 SSE 中间件实现明确为 `llm_call_sse.py`，并更新引用与文档（删除旧 `sse_events.py`）
+
+##### ✅ 测试 (Tests)
+
+- 新增并恢复单测：
+  - `tests/test_reasoning_content_injection.py`: 覆盖 Chat Completions（`reasoning`/`reasoning_content`）、Responses content blocks、v0 compat dict 解析与不覆写行为
+  - `tests/test_llm_call_sse_middleware.py`: 覆盖 SSEMiddleware 成功/异常路径的 start/end 事件
+  - 更新 `tests/test_llm_logging_middleware.py`: 断言 LoggingMiddleware 不 emit SSE 事件
+
+### 2025-12-17 18:00 (UTC+08:00)
+
+#### 🔧 日志与序列化优化 (Logging & Serialization Improvements)
+
+##### ✨ 核心改进 (Core Improvements)
 
 - **ChatContext 重构**: 将 `ChatContext` 从 `@dataclass` 重构为 Pydantic `BaseModel`，解决 Pydantic 序列化警告
 - **日志记录增强**: 优化工具调用日志记录，确保 `tool_calls.items` 完整显示，避免深层嵌套被截断
 - **工具函数签名优化**: 使用 `Annotated` 类型注解改进工具函数参数，提升代码清晰度和类型安全
 
-#### 🔧 技术实现 (Technical Changes)
+##### 🔧 技术实现 (Technical Changes)
 
 - **ChatContext 重构** (`backend/app/services/streaming/context.py`):
   - 从 `@dataclass(frozen=True, slots=True)` 改为 Pydantic `BaseModel`
@@ -37,12 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 删除不必要的输入模式类，精简代码库
   - 增强错误处理和日志记录
 
-#### 🐛 Bug 修复 (Bug Fixes)
+##### 🐛 Bug 修复 (Bug Fixes)
 
 - 修复 `tool_calls.items` 在日志中显示为 `['...']` 的问题
 - 修复 Pydantic 序列化警告：`PydanticSerializationUnexpectedValue(Expected 'none' - serialized value may not be as expected [field_name='context'])`
 
-#### 📝 代码质量 (Code Quality)
+##### 📝 代码质量 (Code Quality)
 
 - 改进类型注解，提升代码可读性和 IDE 支持
 - 统一日志记录格式，确保关键信息完整显示

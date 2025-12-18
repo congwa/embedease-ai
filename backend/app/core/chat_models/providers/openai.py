@@ -20,31 +20,4 @@ class OpenAIReasoningChatModel(BaseReasoningChatModel):
     """
 
     def _extract_reasoning_content(self, chunk: dict) -> str | None:
-        """从响应中提取推理内容（使用 reasoning 字段）
-        
-        Args:
-            chunk: API 响应的 chunk 数据
-            
-        Returns:
-            推理内容字符串，如果没有则返回 None
-        """
-        if not isinstance(chunk, dict):
-            return None
-
-        # 1. 尝试从 choices[0].delta.reasoning 提取
-        choices = chunk.get("choices", [])
-        if choices and len(choices) > 0:
-            delta = choices[0].get("delta", {}) if isinstance(choices[0], dict) else {}
-            if isinstance(delta, dict):
-                reasoning = delta.get("reasoning")
-                if reasoning:
-                    # logger.debug("从 delta.reasoning 提取推理内容")
-                    return reasoning
-
-        # 2. 尝试从 chunk 根层提取
-        reasoning = chunk.get("reasoning")
-        if reasoning:
-            # logger.debug("从 chunk 根层提取 reasoning")
-            return reasoning
-
-        return None
+        return super()._extract_reasoning_content(chunk)

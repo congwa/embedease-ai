@@ -8,7 +8,7 @@ from langchain.agents.middleware.types import ModelRequest, ModelResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.runtime import Runtime
 
-from app.services.agent.middleware.logging import LoggingMiddleware
+from app.services.agent.middleware.llm_call_sse import SSEMiddleware
 from app.services.streaming.context import ChatContext
 
 
@@ -30,7 +30,7 @@ class _DummyModel:
 
 
 @pytest.mark.anyio
-async def test_llm_logging_middleware_emits_start_end_with_same_call_id() -> None:
+async def test_sse_middleware_emits_start_end_on_success() -> None:
     emitter = _DummyEmitter()
     chat_context = ChatContext(
         conversation_id="c1",
@@ -52,15 +52,27 @@ async def test_llm_logging_middleware_emits_start_end_with_same_call_id() -> Non
     async def handler(_: ModelRequest) -> ModelResponse:
         return ModelResponse(result=[AIMessage(content="ok")], structured_response=None)
 
-    middleware = LoggingMiddleware()
+    middleware = SSEMiddleware()
     resp = await middleware.awrap_model_call(request, handler)
 
     assert isinstance(resp, ModelResponse)
-    assert emitter.events == []
+    assert len(emitter.events) == 2
+    assert emitter.events[0]["type"] == "llm.call.start"
+    assert emitter.events[1]["type"] == "llm.call.end"
+
+    start_payload = emitter.events[0]["payload"]
+    end_payload = emitter.events[1]["payload"]
+    assert isinstance(start_payload, dict)
+    assert isinstance(end_payload, dict)
+
+    assert start_payload.get("llm_call_id")
+    assert start_payload["llm_call_id"] == end_payload.get("llm_call_id")
+    assert start_payload.get("message_count") == 2
+    assert end_payload.get("elapsed_ms") is not None
 
 
 @pytest.mark.anyio
-async def test_llm_logging_middleware_emits_end_on_error() -> None:
+async def test_sse_middleware_emits_end_on_error() -> None:
     emitter = _DummyEmitter()
     chat_context = ChatContext(
         conversation_id="c1",
@@ -82,8 +94,11 @@ async def test_llm_logging_middleware_emits_end_on_error() -> None:
     async def handler(_: ModelRequest) -> ModelResponse:
         raise RuntimeError("boom")
 
-    middleware = LoggingMiddleware()
+    middleware = SSEMiddleware()
     with pytest.raises(RuntimeError, match="boom"):
         await middleware.awrap_model_call(request, handler)
 
-    assert emitter.events == []
+    assert len(emitter.events) == 2
+    assert emitter.events[0]["type"] == "llm.call.start"
+    assert emitter.events[1]["type"] == "llm.call.end"
+    assert emitter.events[1]["payload"].get("error") == "boom"

@@ -1,7 +1,10 @@
 """日志中间件
 
 负责记录每次 LLM 调用的完整输入输出。
-这是最外层的中间件，包裹所有其他中间件。
+
+注意：LLM 调用级别的 SSE 事件（`llm.call.start` / `llm.call.end`）由
+`app.services.agent.middleware.llm_call_sse.SSEMiddleware` 负责发送；本中间件只做 logger
+记录，不发送任何 SSE 事件。
 """
 
 import time
@@ -271,6 +274,8 @@ class LoggingMiddleware(AgentMiddleware):
     - 输出消息
     - 结构化响应
     - 调用耗时
+
+    LLM 调用级别 SSE 事件发送不在这里处理，参见 `SSEMiddleware`。
     """
 
     async def awrap_model_call(

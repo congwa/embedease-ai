@@ -65,7 +65,7 @@ agent = await agent_service.get_agent(use_intent_recognition=True)
 
 ### 4. SSEMiddleware (服务器推送事件)
 
-**文件**: `sse_events.py`
+**文件**: `llm_call_sse.py`
 
 **功能**: 发送 `llm.call.start` 和 `llm.call.end` 事件，用于前端实时显示。
 

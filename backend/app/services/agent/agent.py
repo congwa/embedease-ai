@@ -24,7 +24,7 @@ from app.services.agent.tools import (
 from app.services.agent.middleware.logging import LoggingMiddleware
 from app.services.agent.middleware.intent_recognition import IntentRecognitionMiddleware
 from app.services.agent.middleware.response_sanitization import ResponseSanitizationMiddleware
-from app.services.agent.middleware.sse_events import SSEMiddleware
+from app.services.agent.middleware.llm_call_sse import SSEMiddleware
 from app.services.streaming.context import ChatContext
 from app.schemas.events import StreamEventType
 from app.schemas.recommendation import RecommendationResult

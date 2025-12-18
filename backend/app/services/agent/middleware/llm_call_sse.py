@@ -1,8 +1,10 @@
-"""SSE 事件中间件（LLM 调用级别）。
+"""LLM 调用级别 SSE 事件中间件。
 
 职责：
 - 只负责把 LLM 调用开始/结束信号推送到前端（SSE）
 - 不负责 logger 记录（logger 留给 LoggingMiddleware）
+
+注意：历史文件名为 `sse_events.py`，为了兼容保留了同名模块作为转发入口。
 """
 
 from __future__ import annotations
@@ -123,5 +125,3 @@ class SSEMiddleware(AgentMiddleware):
                     },
                 )
             raise
-
-
