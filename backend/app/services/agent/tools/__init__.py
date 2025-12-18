@@ -8,12 +8,14 @@ from app.services.agent.tools.search_products import search_products
 from app.services.agent.tools.get_product_details import get_product_details
 from app.services.agent.tools.compare_products import compare_products
 from app.services.agent.tools.filter_by_price import filter_by_price
+from app.services.agent.tools.guide_user import guide_user
 
 __all__ = [
     "search_products",
     "get_product_details",
     "compare_products",
     "filter_by_price",
+    "guide_user",
 ]
 
 # 配置：是否使用增强检索策略

@@ -135,6 +135,16 @@ async def search_products(
                 "│ [2] 未找到匹配商品",
                 query=query,
             )
+            runtime.context.emitter.emit(
+                StreamEventType.TOOL_END.value,
+                {
+                    "name": "search_products",
+                    "status": "empty",
+                    "output_preview": [],
+                    "count": 0,
+                    "message": "未找到匹配的商品",
+                },
+            )
             logger.info("└── 工具: search_products 结束 (无结果) ──┘")
             return json.dumps({"error": "未找到匹配的商品", "query": query}, ensure_ascii=False)
 
@@ -178,6 +188,7 @@ async def search_products(
             StreamEventType.TOOL_END.value,
             {
                 "name": "search_products",
+                "status": "success",
                 "output_preview": results[:3],
                 "count": len(results),
             },
@@ -199,6 +210,8 @@ async def search_products(
             StreamEventType.TOOL_END.value,
             {
                 "name": "search_products",
+                "status": "error",
+                "count": 0,
                 "error": str(e),
             },
         )

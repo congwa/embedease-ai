@@ -91,4 +91,5 @@ RESPONSE_*.md
 *_IMPLEMENTATION.md
 *_*.md
 
-docs
+backend/docs
+frontend/docs

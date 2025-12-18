@@ -4,6 +4,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.config import settings
+
+ChatMode = Literal["natural", "free", "strict"]
+
 
 class ChatRequest(BaseModel):
     """聊天请求"""
@@ -11,6 +15,20 @@ class ChatRequest(BaseModel):
     user_id: str = Field(..., description="用户 ID")
     conversation_id: str = Field(..., description="会话 ID")
     message: str = Field(..., min_length=1, description="用户消息")
+    mode: ChatMode | None = Field(
+        default=None,
+        description="聊天模式：natural（商品推荐）、free（自由聊天）、strict（严格模式）",
+    )
+
+    @property
+    def effective_mode(self) -> ChatMode:
+        """获取有效的聊天模式（优先使用请求中的 mode，否则使用配置默认值）"""
+        if self.mode is not None:
+            return self.mode
+        cfg_mode = settings.CHAT_MODE
+        if cfg_mode in ("natural", "free", "strict"):
+            return cfg_mode  # type: ignore[return-value]
+        return "natural"
 
 
 class ChatEvent(BaseModel):

@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     RESPONSE_SANITIZATION_ENABLED: bool = True  # 是否启用响应清洗（检测并替换异常 function call 格式）
     RESPONSE_SANITIZATION_CUSTOM_MESSAGE: str | None = None  # 自定义降级消息（可选，留空使用默认消息）
 
+    # ========== 聊天模式配置 ==========
+    # natural: 商品推荐助手模式（默认），专注商品推荐，非商品问题引导回商品
+    # free: 自由聊天模式，可聊任何话题，工具可用但不强制
+    # strict: 严格模式，必须基于工具输出或历史对话回答，否则返回受控失败
+    CHAT_MODE: str = "natural"
+
     @property
     def database_url(self) -> str:
         """SQLite 数据库 URL"""

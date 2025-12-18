@@ -128,6 +128,16 @@ def compare_products(
         # 验证输入
         if len(product_ids) < 2:
             logger.warning("至少需要2个商品才能比较", provided=len(product_ids))
+            runtime.context.emitter.emit(
+                StreamEventType.TOOL_END.value,
+                {
+                    "name": "compare_products",
+                    "status": "error",
+                    "count": 0,
+                    "output_preview": [],
+                    "error": "至少需要2个商品才能进行比较",
+                },
+            )
             return json.dumps(
                 {"error": "至少需要2个商品才能进行比较", "provided_count": len(product_ids)},
                 ensure_ascii=False,
@@ -159,7 +169,10 @@ def compare_products(
                 StreamEventType.TOOL_END.value,
                 {
                     "name": "compare_products",
-                    "error": "未找到要比较的商品",
+                    "status": "empty",
+                    "count": 0,
+                    "output_preview": [],
+                    "message": "未找到要比较的商品",
                 },
             )
             logger.warning("未找到任何要比较的商品")
@@ -170,6 +183,9 @@ def compare_products(
                 StreamEventType.TOOL_END.value,
                 {
                     "name": "compare_products",
+                    "status": "error",
+                    "count": 0,
+                    "output_preview": products[:2],
                     "error": "找到的商品不足2个，无法进行对比",
                 },
             )
@@ -198,6 +214,7 @@ def compare_products(
             StreamEventType.TOOL_END.value,
             {
                 "name": "compare_products",
+                "status": "success",
                 "output_preview": comparison["products"][:3],
                 "count": len(products),
             },
@@ -215,6 +232,9 @@ def compare_products(
             StreamEventType.TOOL_END.value,
             {
                 "name": "compare_products",
+                "status": "error",
+                "count": 0,
+                "output_preview": [],
                 "error": str(e),
             },
         )

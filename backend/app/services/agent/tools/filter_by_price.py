@@ -187,6 +187,7 @@ def filter_by_price(
                 StreamEventType.TOOL_END.value,
                 {
                     "name": "filter_by_price",
+                    "status": "empty",
                     "output_preview": [],
                     "count": 0,
                 },
@@ -205,6 +206,7 @@ def filter_by_price(
             StreamEventType.TOOL_END.value,
             {
                 "name": "filter_by_price",
+                "status": "success",
                 "output_preview": results[:3],
                 "count": len(results),
             },
@@ -225,6 +227,8 @@ def filter_by_price(
             StreamEventType.TOOL_END.value,
             {
                 "name": "filter_by_price",
+                "status": "error",
+                "count": 0,
                 "error": str(e),
             },
         )

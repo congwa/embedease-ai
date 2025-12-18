@@ -66,6 +66,7 @@ async def chat(
             user_message=request_data.message,
             user_message_id=user_message.id,
             assistant_message_id=assistant_message_id,
+            mode=request_data.effective_mode,
         )
 
         try:

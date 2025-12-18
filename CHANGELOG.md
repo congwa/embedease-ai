@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.4] - 2025-12-17
 
+### 2025-12-18 16:59 (UTC+08:00)
+
+#### 🧭 新增聊天模式 natural/free/strict (Chat Modes)
+
+- **配置驱动默认模式** (`backend/app/core/config.py`, `backend/.env.example`):
+  - 新增 `CHAT_MODE` 配置项（`natural` / `free` / `strict`），用于控制默认聊天模式
+  - `.env.example` 增加 `CHAT_MODE=natural` 示例与说明
+
+- **请求级别覆盖默认模式** (`backend/app/schemas/chat.py`):
+  - `ChatRequest` 新增 `mode` 字段（可选），支持按请求切换模式
+  - 增加 `effective_mode`：请求优先，否则回退到 `settings.CHAT_MODE`
+
+- **模式透传到运行时上下文** (`backend/app/services/streaming/context.py`, `backend/app/services/chat_stream.py`, `backend/app/routers/chat.py`):
+  - `ChatContext` 新增 `mode` 字段，使 middleware/tools 可读取当前模式
+  - `ChatStreamOrchestrator` 接收 `mode` 并注入到 `ChatContext`
+
+- **Agent 按模式选择 Prompt/Middleware** (`backend/app/services/agent/agent.py`):
+  - 新增三份 system prompt：`NATURAL_SYSTEM_PROMPT` / `FREE_SYSTEM_PROMPT` / `STRICT_SYSTEM_PROMPT`
+  - Agent 实例按 mode 缓存（同一进程内不同模式互不影响）
+  - `free` 模式禁用意图识别工具过滤（避免强制引导回商品话题）
+
+- **strict 模式强约束与受控失败** (`backend/app/services/agent/middleware/strict_mode.py`, `backend/app/services/chat_stream.py`):
+  - 新增 `StrictModeMiddleware`：strict 模式下若模型未发起工具调用则替换为“受控失败”提示
+  - Orchestrator 增加 strict 兜底：若全程未出现 `tool.end`，落库前用受控失败消息替换内容（最终保险）
+
 ### 2025-12-18 16:22 (UTC+08:00)
 
 #### 🐛 修复 products 污染导致空卡片 (Fix Empty ProductCard Rendering)

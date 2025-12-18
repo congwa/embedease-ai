@@ -18,6 +18,21 @@ from app.schemas.intent import INTENT_TO_TOOLS, IntentType
 logger = get_logger("middleware.intent_recognition")
 
 
+def _get_mode_from_request(request: ModelRequest) -> str:
+    """从 ModelRequest.runtime.context 获取当前聊天模式。"""
+    runtime = getattr(request, "runtime", None)
+    chat_context = getattr(runtime, "context", None) if runtime is not None else None
+    mode = getattr(chat_context, "mode", None)
+    return mode if isinstance(mode, str) else "natural"
+
+
+def _get_tool_by_name(tools: list, name: str):
+    for t in tools:
+        if getattr(t, "name", None) == name:
+            return t
+    return None
+
+
 class IntentRecognitionMiddleware(AgentMiddleware):
     """意图识别中间件
 
@@ -169,6 +184,8 @@ class IntentRecognitionMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest], ModelResponse],
     ) -> ModelResponse:
         """在模型调用时识别意图并调整工具"""
+        mode = _get_mode_from_request(request)
+
         # 获取最后一条用户消息
         last_human_message = None
         for msg in reversed(request.messages):
@@ -193,8 +210,27 @@ class IntentRecognitionMiddleware(AgentMiddleware):
         # 根据意图过滤工具
         filtered_tools = self._filter_tools_by_intent(request.tools, intent)
 
+        # strict 模式：保证 guide_user 永远可用，且绝不返回空工具列表
+        if mode == "strict":
+            guide_user_tool = _get_tool_by_name(request.tools, "guide_user")
+            if guide_user_tool is not None:
+                if intent in (IntentType.GREETING, IntentType.QUESTION):
+                    filtered_tools = [guide_user_tool]
+                else:
+                    if not filtered_tools:
+                        filtered_tools = [guide_user_tool]
+                    elif guide_user_tool not in filtered_tools:
+                        filtered_tools = [*filtered_tools, guide_user_tool]
+
         # 构建意图上下文
         intent_context = self._build_intent_context(intent, confidence)
+
+        if mode == "strict":
+            intent_context = (
+                f"{intent_context}\n"
+                "\n## 严格模式补充约束\n"
+                "- 如果信息不足以进行检索/推荐，请优先调用 **guide_user** 工具生成澄清问题（不要直接回答）。\n"
+            )
 
         # 修改系统提示词
         original_prompt = request.system_message.content if request.system_message else ""
@@ -222,6 +258,8 @@ class IntentRecognitionMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest], Awaitable[ModelResponse]],
     ) -> ModelResponse:
         """异步版本：在模型调用时识别意图并调整工具"""
+        mode = _get_mode_from_request(request)
+
         # 获取最后一条用户消息
         last_human_message = None
         for msg in reversed(request.messages):
@@ -246,8 +284,27 @@ class IntentRecognitionMiddleware(AgentMiddleware):
         # 根据意图过滤工具
         filtered_tools = self._filter_tools_by_intent(request.tools, intent)
 
+        # strict 模式：保证 guide_user 永远可用，且绝不返回空工具列表
+        if mode == "strict":
+            guide_user_tool = _get_tool_by_name(request.tools, "guide_user")
+            if guide_user_tool is not None:
+                if intent in (IntentType.GREETING, IntentType.QUESTION):
+                    filtered_tools = [guide_user_tool]
+                else:
+                    if not filtered_tools:
+                        filtered_tools = [guide_user_tool]
+                    elif guide_user_tool not in filtered_tools:
+                        filtered_tools = [*filtered_tools, guide_user_tool]
+
         # 构建意图上下文
         intent_context = self._build_intent_context(intent, confidence)
+
+        if mode == "strict":
+            intent_context = (
+                f"{intent_context}\n"
+                "\n## 严格模式补充约束\n"
+                "- 如果信息不足以进行检索/推荐，请优先调用 **guide_user** 工具生成澄清问题（不要直接回答）。\n"
+            )
 
         # 修改系统提示词
         original_prompt = request.system_message.content if request.system_message else ""

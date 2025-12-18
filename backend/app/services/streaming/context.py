@@ -33,6 +33,7 @@ class ChatContext(BaseModel):
     conversation_id: str
     user_id: str
     assistant_message_id: str
+    mode: str = "natural"  # 聊天模式：natural / free / strict
     emitter: Any = Field(exclude=True, repr=False)  # 排除序列化，避免把 emitter/loop/queue 带进日志
 
     model_config = ConfigDict(

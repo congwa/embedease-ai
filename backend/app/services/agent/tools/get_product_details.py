@@ -94,6 +94,16 @@ def get_product_details(
 
         if not docs:
             logger.warning("未找到指定商品", product_id=product_id)
+            runtime.context.emitter.emit(
+                StreamEventType.TOOL_END.value,
+                {
+                    "name": "get_product_details",
+                    "status": "empty",
+                    "count": 0,
+                    "output_preview": {},
+                    "message": f"未找到商品 {product_id}",
+                },
+            )
             return json.dumps({"error": f"未找到商品 {product_id}"}, ensure_ascii=False)
 
         # 查找匹配的商品
@@ -112,6 +122,7 @@ def get_product_details(
                     StreamEventType.TOOL_END.value,
                     {
                         "name": "get_product_details",
+                        "status": "success",
                         "output_preview": product_detail,
                         "count": 1,
                     },
@@ -124,6 +135,16 @@ def get_product_details(
                 return result_json
 
         logger.warning("在结果中未找到匹配的商品", product_id=product_id)
+        runtime.context.emitter.emit(
+            StreamEventType.TOOL_END.value,
+            {
+                "name": "get_product_details",
+                "status": "empty",
+                "count": 0,
+                "output_preview": {},
+                "message": f"未找到商品 {product_id}",
+            },
+        )
         return json.dumps({"error": f"未找到商品 {product_id}"}, ensure_ascii=False)
 
     except Exception as e:
@@ -131,6 +152,8 @@ def get_product_details(
             StreamEventType.TOOL_END.value,
             {
                 "name": "get_product_details",
+                "status": "error",
+                "count": 0,
                 "error": str(e),
             },
         )
