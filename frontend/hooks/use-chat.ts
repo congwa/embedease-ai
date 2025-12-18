@@ -4,7 +4,91 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "@/types/conversation";
 import type { Product } from "@/types/product";
 import { getConversation, streamChat, type StreamChatController } from "@/lib/api";
-import type { ChatEvent } from "@/types/chat";
+import type { ChatEvent, ToolStartPayload, ToolEndPayload, LlmCallStartPayload, LlmCallEndPayload } from "@/types/chat";
+
+/** 工具名称中文映射（<=10字） */
+const TOOL_LABEL_MAP: Record<string, string> = {
+  search_products: "商品搜索",
+  get_product_details: "商品详情",
+  filter_by_price: "价格筛选",
+  compare_products: "商品对比",
+};
+
+function getToolLabel(name: string): string {
+  return TOOL_LABEL_MAP[name] || name.slice(0, 10);
+}
+
+/** 状态类型定义 */
+export type LlmStatus = "running" | "success" | "error";
+export type ToolStatus = "running" | "success" | "error";
+
+/** 轨迹步骤（用于 TracePanel 展示） */
+export type TraceStep =
+  | {
+      id: string;
+      kind: "llm";
+      status: LlmStatus;
+      startedAt: number;
+      endedAt?: number;
+      elapsedMs?: number;
+      error?: string;
+      messageCount?: number;
+    }
+  | {
+      id: string;
+      kind: "tool";
+      name: string;
+      label: string;
+      status: ToolStatus;
+      startedAt: number;
+      endedAt?: number;
+      elapsedMs?: number;
+      count?: number;
+      error?: string;
+    }
+  | {
+      id: string;
+      kind: "products";
+      count: number;
+      ts: number;
+    }
+  | {
+      id: string;
+      kind: "error";
+      message: string;
+      ts: number;
+    };
+
+/** 工具摘要（用于标题右侧 badge） */
+export interface ToolsSummary {
+  runningCount: number;
+  last?: {
+    name: string;
+    label: string;
+    status: ToolStatus;
+    elapsedMs?: number;
+    count?: number;
+    error?: string;
+  };
+}
+
+/** LLM 摘要（用于标题右侧 badge，永久展示） */
+export interface LlmSummary {
+  status: LlmStatus;
+  elapsedMs?: number;
+  error?: string;
+  messageCount?: number;
+}
+
+/** 消息 timeline item */
+export interface MessageItem {
+  type: "message";
+  id: string;
+  message: ChatMessage;
+}
+
+/** 时间轴 item（仅保留消息，不再插入 tool/llm） */
+export type TimelineItem = MessageItem;
 
 export interface ChatMessage {
   id: string;
@@ -29,6 +113,15 @@ export interface ChatMessage {
   }>;
   products?: Product[];
   isStreaming?: boolean;
+  
+  /** LLM 调用状态（永久展示在推理标题右侧） */
+  llm?: LlmSummary;
+  /** 工具摘要（展示在推理标题右侧） */
+  toolsSummary?: ToolsSummary;
+  /** 运行轨迹（展示在 TracePanel 中） */
+  trace?: TraceStep[];
+  /** UI 状态 */
+  ui?: { isTraceOpen?: boolean };
 }
 
 export function useChat(
@@ -37,18 +130,22 @@ export function useChat(
   onTitleUpdate?: (title: string) => void
 ) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false); // 标记正在发送消息
   const [error, setError] = useState<string | null>(null);
   
-  // 新增：保存当前流的控制器
+  // 保存当前流的控制器
   const streamControllerRef = useRef<StreamChatController | null>(null);
+  // 工具调用栈（按 messageId 维度隔离，用于配对 tool.start/tool.end）
+  const inFlightToolStackRef = useRef<Record<string, Record<string, string[]>>>({});
 
   // 加载会话消息
   const loadMessages = useCallback(async () => {
     if (!conversationId) {
       setMessages([]);
+      setTimeline([]);
       return;
     }
 
@@ -78,6 +175,13 @@ export function useChat(
         products: msg.products ? JSON.parse(msg.products) : undefined,
       }));
       setMessages(chatMessages);
+      // 历史消息转为 timeline（不含工具调用，因为历史不保存工具状态）
+      const timelineItems: TimelineItem[] = chatMessages.map((msg) => ({
+        type: "message" as const,
+        id: msg.id,
+        message: msg,
+      }));
+      setTimeline(timelineItems);
       console.log("[chat] 加载了", chatMessages.length, "条消息");
     } catch (error) {
       console.error("[chat] 加载消息失败:", error);
@@ -87,7 +191,7 @@ export function useChat(
     }
   }, [conversationId, isSending]);
 
-  // 新增：中断当前对话
+  // 中断当前对话
   const abortStream = useCallback(() => {
     if (streamControllerRef.current) {
       console.log("[chat] 用户中断对话");
@@ -100,6 +204,17 @@ export function useChat(
           !(index === prev.length - 1 && msg.role === "assistant" && msg.isStreaming)
         )
       );
+      // 同步清理 timeline：移除正在流式的 assistant 消息
+      setTimeline((prev) =>
+        prev.filter((item) => {
+          if (item.message.role === "assistant" && item.message.isStreaming) {
+            return false;
+          }
+          return true;
+        })
+      );
+      // 清理工具调用栈
+      inFlightToolStackRef.current = {};
       
       setIsStreaming(false);
       setIsSending(false);
@@ -119,6 +234,9 @@ export function useChat(
       setIsSending(true); // 标记开始发送
       setIsStreaming(true);
 
+      // 重置工具调用栈
+      inFlightToolStackRef.current = {};
+
       // 添加用户消息
       const userMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -128,6 +246,11 @@ export function useChat(
       setMessages((prev) => {
         return [...prev, userMessage];
       });
+      // 同步到 timeline
+      setTimeline((prev) => [
+        ...prev,
+        { type: "message", id: userMessage.id, message: userMessage },
+      ]);
 
       // 添加空的助手消息（用于流式显示）
       let assistantMessageId = crypto.randomUUID();
@@ -137,10 +260,21 @@ export function useChat(
         content: "",
         segments: [],
         isStreaming: true,
+        llm: undefined,
+        toolsSummary: { runningCount: 0 },
+        trace: [],
+        ui: { isTraceOpen: false },
       };
+      // 初始化该消息的工具调用栈
+      inFlightToolStackRef.current[assistantMessageId] = {};
       setMessages((prev) => {
         return [...prev, assistantMessage];
       });
+      // 同步到 timeline
+      setTimeline((prev) => [
+        ...prev,
+        { type: "message", id: assistantMessageId, message: assistantMessage },
+      ]);
 
       let fullContent = "";
       let fullReasoning = "";
@@ -154,40 +288,57 @@ export function useChat(
       ) => {
         // 关键：捕获当前 assistantMessageId，避免 setState updater 延迟执行时读取到被后续事件改写后的 id
         const targetId = assistantMessageId;
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.id !== targetId) return msg;
-            const prevSegments = Array.isArray(msg.segments) ? msg.segments : [];
-            const segments = [...prevSegments];
-            const last = segments.length > 0 ? segments[segments.length - 1] : undefined;
 
-            if (last && last.kind === kind) {
-              segments[segments.length - 1] = { ...last, text: last.text + delta };
-            } else {
-              // 进入新段：如果上一个是推理段，自动折叠它（但不移除）
-              if (last && last.kind === "reasoning") {
-                segments[segments.length - 1] = { ...last, isOpen: false };
-              }
-              segments.push({
-                id: crypto.randomUUID(),
-                kind,
-                text: delta,
-                isOpen: kind === "reasoning",
-              });
+        // 复用同一套逻辑计算新 message
+        const patchMessage = (msg: ChatMessage): ChatMessage => {
+          const prevSegments = Array.isArray(msg.segments) ? msg.segments : [];
+          const segments = [...prevSegments];
+          const last = segments.length > 0 ? segments[segments.length - 1] : undefined;
 
-              console.log("[chat] segment switch", {
-                from: last?.kind ?? null,
-                to: kind,
-                assistantMessageId,
-                segmentsCount: segments.length,
-              });
+          if (last && last.kind === kind) {
+            segments[segments.length - 1] = { ...last, text: last.text + delta };
+          } else {
+            // 进入新段：如果上一个是推理段，自动折叠它（但不移除）
+            if (last && last.kind === "reasoning") {
+              segments[segments.length - 1] = { ...last, isOpen: false };
             }
+            segments.push({
+              id: crypto.randomUUID(),
+              kind,
+              text: delta,
+              isOpen: kind === "reasoning",
+            });
 
+            console.log("[chat] segment switch", {
+              from: last?.kind ?? null,
+              to: kind,
+              assistantMessageId,
+              segmentsCount: segments.length,
+            });
+          }
+
+          return {
+            ...msg,
+            content: nextContent,
+            reasoning: nextReasoning || undefined,
+            segments,
+            isStreaming: true,
+          };
+        };
+
+        // 更新 messages
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === targetId ? patchMessage(msg) : msg))
+        );
+
+        // 同步更新 timeline，否则 ChatContent 看不到流式增量
+        setTimeline((prev) =>
+          prev.map((item) => {
+            if (item.type !== "message") return item;
+            if (item.id !== targetId) return item;
             return {
-              ...msg,
-              content: nextContent,
-              reasoning: nextReasoning || undefined,
-              segments,
+              ...item,
+              message: patchMessage(item.message),
             };
           })
         );
@@ -222,9 +373,226 @@ export function useChat(
               setMessages((prev) =>
                 prev.map((msg) => (msg.id === clientId ? { ...msg, id: serverId } : msg))
               );
+              // 同步更新 timeline 中的 message id
+              setTimeline((prev) =>
+                prev.map((item) =>
+                  item.type === "message" && item.id === clientId
+                    ? { ...item, id: serverId, message: { ...item.message, id: serverId } }
+                    : item
+                )
+              );
               assistantMessageId = serverId;
               console.log("[chat] assistant_message_id remap", { clientId, serverId });
             }
+            continue;
+          }
+          
+          // 处理 LLM 调用开始事件：更新 message.llm + message.trace，插入空 reasoning segment
+          if (event.type === "llm.call.start") {
+            const payload = event.payload as LlmCallStartPayload;
+            const llmCallId = crypto.randomUUID();
+            const now = Date.now();
+            const targetId = assistantMessageId;
+            
+            // 更新 message.llm 和 trace，同时插入空 reasoning segment 确保推理标题立刻出现
+            const patchLlmStart = (msg: ChatMessage): ChatMessage => {
+              const trace = [...(msg.trace || [])];
+              trace.push({
+                id: llmCallId,
+                kind: "llm" as const,
+                status: "running" as const,
+                startedAt: now,
+                messageCount: payload?.message_count,
+              });
+              
+              // 如果没有 reasoning segment，插入一个空的确保推理标题出现
+              const segments = [...(msg.segments || [])];
+              const hasReasoning = segments.some(s => s.kind === "reasoning");
+              if (!hasReasoning) {
+                segments.push({
+                  id: crypto.randomUUID(),
+                  kind: "reasoning" as const,
+                  text: "",
+                  isOpen: true,
+                });
+              }
+              
+              return {
+                ...msg,
+                llm: { status: "running" as const, messageCount: payload?.message_count },
+                trace,
+                segments,
+                isStreaming: true,
+              };
+            };
+            
+            setMessages((prev) => prev.map((msg) => msg.id === targetId ? patchLlmStart(msg) : msg));
+            setTimeline((prev) => prev.map((item) => 
+              item.id === targetId ? { ...item, message: patchLlmStart(item.message) } : item
+            ));
+            console.log("[chat] llm.call.start", { llmCallId, messageCount: payload?.message_count });
+            continue;
+          }
+          
+          // 处理 LLM 调用结束事件：更新 message.llm 状态和 trace
+          if (event.type === "llm.call.end") {
+            const payload = event.payload as LlmCallEndPayload;
+            const hasError = !!payload?.error;
+            const now = Date.now();
+            const targetId = assistantMessageId;
+            
+            const patchLlmEnd = (msg: ChatMessage): ChatMessage => {
+              // 更新 trace 中最后一个 running 的 llm step
+              const trace = [...(msg.trace || [])];
+              for (let i = trace.length - 1; i >= 0; i--) {
+                const step = trace[i];
+                if (step.kind === "llm" && step.status === "running") {
+                  trace[i] = {
+                    ...step,
+                    status: hasError ? "error" as const : "success" as const,
+                    endedAt: now,
+                    elapsedMs: payload?.elapsed_ms ?? (now - step.startedAt),
+                    error: payload?.error,
+                  };
+                  break;
+                }
+              }
+              
+              return {
+                ...msg,
+                llm: {
+                  status: hasError ? "error" as const : "success" as const,
+                  elapsedMs: payload?.elapsed_ms,
+                  error: payload?.error,
+                  messageCount: msg.llm?.messageCount,
+                },
+                trace,
+              };
+            };
+            
+            setMessages((prev) => prev.map((msg) => msg.id === targetId ? patchLlmEnd(msg) : msg));
+            setTimeline((prev) => prev.map((item) =>
+              item.id === targetId ? { ...item, message: patchLlmEnd(item.message) } : item
+            ));
+            console.log("[chat] llm.call.end", { hasError, elapsedMs: payload?.elapsed_ms });
+            continue;
+          }
+          
+          // 处理工具开始事件：更新 message.toolsSummary + message.trace
+          if (event.type === "tool.start") {
+            const payload = event.payload as ToolStartPayload;
+            const toolName = payload?.name || "unknown";
+            const toolCallId = crypto.randomUUID();
+            const toolLabel = getToolLabel(toolName);
+            const now = Date.now();
+            const targetId = assistantMessageId;
+            
+            // 记录到按 messageId 隔离的调用栈
+            const msgStack = inFlightToolStackRef.current[targetId] || {};
+            if (!msgStack[toolName]) {
+              msgStack[toolName] = [];
+            }
+            msgStack[toolName].push(toolCallId);
+            inFlightToolStackRef.current[targetId] = msgStack;
+            
+            const patchToolStart = (msg: ChatMessage): ChatMessage => {
+              const trace = [...(msg.trace || [])];
+              trace.push({
+                id: toolCallId,
+                kind: "tool" as const,
+                name: toolName,
+                label: toolLabel,
+                status: "running" as const,
+                startedAt: now,
+              });
+              
+              const toolsSummary = { ...(msg.toolsSummary || { runningCount: 0 }) };
+              toolsSummary.runningCount = (toolsSummary.runningCount || 0) + 1;
+              toolsSummary.last = { name: toolName, label: toolLabel, status: "running" as const };
+              
+              return { ...msg, trace, toolsSummary };
+            };
+            
+            setMessages((prev) => prev.map((msg) => msg.id === targetId ? patchToolStart(msg) : msg));
+            setTimeline((prev) => prev.map((item) =>
+              item.id === targetId ? { ...item, message: patchToolStart(item.message) } : item
+            ));
+            console.log("[chat] tool.start", { toolName, toolLabel, toolCallId });
+            continue;
+          }
+          
+          // 处理工具结束事件：更新 message.toolsSummary + message.trace
+          if (event.type === "tool.end") {
+            const payload = event.payload as ToolEndPayload;
+            const toolName = payload?.name || "unknown";
+            const toolLabel = getToolLabel(toolName);
+            const hasError = !!payload?.error;
+            const now = Date.now();
+            const targetId = assistantMessageId;
+            
+            // 从按 messageId 隔离的调用栈取出 toolCallId（LIFO）
+            const msgStack = inFlightToolStackRef.current[targetId] || {};
+            const stack = msgStack[toolName] || [];
+            const toolCallId = stack.pop();
+            
+            const patchToolEnd = (msg: ChatMessage): ChatMessage => {
+              const trace = [...(msg.trace || [])];
+              
+              if (toolCallId) {
+                // 找到 trace 中对应的 tool step 并更新
+                for (let i = trace.length - 1; i >= 0; i--) {
+                  const step = trace[i];
+                  if (step.kind === "tool" && step.id === toolCallId) {
+                    const elapsedMs = now - step.startedAt;
+                    trace[i] = {
+                      ...step,
+                      status: hasError ? "error" as const : "success" as const,
+                      endedAt: now,
+                      elapsedMs,
+                      count: payload?.count,
+                      error: payload?.error,
+                    };
+                    break;
+                  }
+                }
+              } else {
+                // 没有匹配的 start，补一条完成的 step
+                trace.push({
+                  id: crypto.randomUUID(),
+                  kind: "tool" as const,
+                  name: toolName,
+                  label: toolLabel,
+                  status: hasError ? "error" as const : "success" as const,
+                  startedAt: now,
+                  endedAt: now,
+                  elapsedMs: 0,
+                  count: payload?.count,
+                  error: payload?.error,
+                });
+              }
+              
+              const toolsSummary = { ...(msg.toolsSummary || { runningCount: 0 }) };
+              toolsSummary.runningCount = Math.max(0, (toolsSummary.runningCount || 0) - 1);
+              
+              // 找到刚才更新的 step 获取 elapsedMs
+              const updatedStep = trace.find(s => s.kind === "tool" && s.id === toolCallId);
+              toolsSummary.last = {
+                name: toolName,
+                label: toolLabel,
+                status: hasError ? "error" as const : "success" as const,
+                elapsedMs: updatedStep && updatedStep.kind === "tool" ? updatedStep.elapsedMs : 0,
+                count: payload?.count,
+                error: payload?.error,
+              };
+              
+              return { ...msg, trace, toolsSummary };
+            };
+            
+            setMessages((prev) => prev.map((msg) => msg.id === targetId ? patchToolEnd(msg) : msg));
+            setTimeline((prev) => prev.map((item) =>
+              item.id === targetId ? { ...item, message: patchToolEnd(item.message) } : item
+            ));
+            console.log("[chat] tool.end", { toolName, toolCallId, hasError, count: payload?.count });
             continue;
           }
           
@@ -246,7 +614,25 @@ export function useChat(
             const payload = event.payload as Extract<ChatEvent["payload"], { items: Product[] }>;
             if (payload?.items) {
               products = payload.items;
-              applyAssistantUpdate((msg) => ({ ...msg, products }));
+              const targetId = assistantMessageId;
+              const now = Date.now();
+              
+              // 更新 products 并添加 trace 记录
+              const patchProducts = (msg: ChatMessage): ChatMessage => {
+                const trace = [...(msg.trace || [])];
+                trace.push({
+                  id: crypto.randomUUID(),
+                  kind: "products" as const,
+                  count: payload.items.length,
+                  ts: now,
+                });
+                return { ...msg, products, trace };
+              };
+              
+              setMessages((prev) => prev.map((msg) => msg.id === targetId ? patchProducts(msg) : msg));
+              setTimeline((prev) => prev.map((item) =>
+                item.id === targetId ? { ...item, message: patchProducts(item.message) } : item
+              ));
             }
           } else if (event.type === "assistant.final") {
             const payload = event.payload as Extract<ChatEvent["payload"], { content: string; reasoning?: string | null; products?: Product[] | null }>;
@@ -283,6 +669,25 @@ export function useChat(
 
             applyAssistantUpdate((msg) => ({ ...msg, content: fullContent, reasoning: fullReasoning || undefined, products, isStreaming: false }));
             
+            // 同步更新 timeline 中的 assistant message
+            const targetId = assistantMessageId;
+            setTimeline((prev) =>
+              prev.map((item) =>
+                item.type === "message" && item.id === targetId
+                  ? {
+                      ...item,
+                      message: {
+                        ...item.message,
+                        content: fullContent,
+                        reasoning: fullReasoning || undefined,
+                        products,
+                        isStreaming: false,
+                      },
+                    }
+                  : item
+              )
+            );
+            
             // 更新会话标题（使用用户第一条消息）
             if (messages.length === 0 && onTitleUpdate) {
               const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
@@ -297,9 +702,13 @@ export function useChat(
         // 如果不是用户主动中断，才显示错误
         if (error instanceof Error && error.name !== 'AbortError') {
           setError(error.message);
-          setMessages((prev) => prev.filter((msg) => msg.id !== assistantMessageId));
+          const targetId = assistantMessageId;
+          setMessages((prev) => prev.filter((msg) => msg.id !== targetId));
+          // 同步清理 timeline：移除出错的 assistant 消息
+          setTimeline((prev) => prev.filter((item) => item.id !== targetId));
         }
       } finally {
+        inFlightToolStackRef.current = {};
         streamControllerRef.current = null;
         setIsSending(false); // 发送完成
         setIsStreaming(false);
@@ -311,6 +720,7 @@ export function useChat(
   // 清空消息
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setTimeline([]);
     setError(null);
   }, []);
 
@@ -321,12 +731,13 @@ export function useChat(
 
   return {
     messages,
+    timeline,
     isLoading,
     isStreaming,
     error,
     sendMessage,
     clearMessages,
     refreshMessages: loadMessages,
-    abortStream, // 新增：暴露中断方法
+    abortStream,
   };
 }

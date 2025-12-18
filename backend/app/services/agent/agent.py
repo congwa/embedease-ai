@@ -76,6 +76,31 @@ SYSTEM_PROMPT = """你是一个专业的商品推荐助手，具备强大的商�
 """
 
 
+def _normalize_products_payload(payload: Any) -> list[dict[str, Any]] | None:
+    if payload is None:
+        return None
+
+    candidate: Any = payload
+    if isinstance(candidate, dict) and "products" in candidate and isinstance(candidate.get("products"), list):
+        candidate = candidate.get("products")
+
+    if not isinstance(candidate, list):
+        return None
+
+    normalized: list[dict[str, Any]] = []
+    for item in candidate:
+        if not isinstance(item, dict):
+            continue
+        raw_id = item.get("id")
+        if raw_id is None:
+            continue
+        normalized_item = dict(item)
+        normalized_item["id"] = str(raw_id)
+        normalized.append(normalized_item)
+
+    return normalized or None
+
+
 class AgentService:
     """Agent 服务 - 管理 LangChain Agent 的生命周期"""
 
@@ -343,13 +368,14 @@ class AgentService:
                         else:
                             continue
 
+                        normalized_products = _normalize_products_payload(products_data)
+                        if normalized_products is None:
+                            continue
+
+                        products_data = normalized_products
                         await emitter.aemit(
                             StreamEventType.ASSISTANT_PRODUCTS.value,
-                            {
-                                "items": products_data
-                                if isinstance(products_data, list)
-                                else [products_data]
-                            },
+                            {"items": normalized_products},
                         )
                     except Exception:
                         continue

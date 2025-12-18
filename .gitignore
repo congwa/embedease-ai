@@ -77,7 +77,8 @@ YOUR_MEMORY_FILE_PATH
 prompt.md
 prompt-*.md
 
-backend/data
+backend/data/*
+!backend/data/*.json
 
 __pycache__
 
@@ -89,3 +90,5 @@ README_*.md
 RESPONSE_*.md
 *_IMPLEMENTATION.md
 *_*.md
+
+docs

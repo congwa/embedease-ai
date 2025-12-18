@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AlertCircle, ArrowUp, Square, X } from "lucide-react";
+import { AlertCircle, ArrowUp, Square, X, Loader2, Check, XCircle, ListTree, Package } from "lucide-react";
 import {
   ChatContainerContent,
   ChatContainerRoot,
@@ -21,24 +21,175 @@ import {
   PromptInputTextarea,
 } from "@/components/prompt-kit/prompt-input";
 import { ScrollButton } from "@/components/prompt-kit/scroll-button";
+import {
+  Steps,
+  StepsContent,
+  StepsItem,
+} from "@/components/prompt-kit/steps";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import type { ChatMessage } from "@/hooks/use-chat";
+import type { ChatMessage, TimelineItem, TraceStep } from "@/hooks/use-chat";
 import { ProductCard } from "./ProductCard";
 
 interface ChatContentProps {
   title: string;
-  messages: ChatMessage[];
+  timeline: TimelineItem[];
   isStreaming: boolean;
   error: string | null;
   onSendMessage: (content: string) => void;
   onAbortStream: () => void;
 }
 
+/** LLM 状态 Badge（永久显示在推理标题右侧） */
+function LlmBadge({ message }: { message: ChatMessage }) {
+  const llm = message.llm;
+  if (!llm) return null;
+  
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium transition-all",
+        llm.status === "running" && "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
+        llm.status === "success" && "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400",
+        llm.status === "error" && "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+      )}
+    >
+      {llm.status === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
+      {llm.status === "success" && <Check className="h-3 w-3" />}
+      {llm.status === "error" && <XCircle className="h-3 w-3" />}
+      <span>
+        {llm.status === "running" && "模型思考中…"}
+        {llm.status === "success" && `思考完成${llm.elapsedMs ? ` · ${llm.elapsedMs}ms` : ""}`}
+        {llm.status === "error" && "思考失败"}
+      </span>
+    </span>
+  );
+}
+
+/** 工具摘要 Badge（显示在推理标题右侧） */
+function ToolsBadge({ message }: { message: ChatMessage }) {
+  const summary = message.toolsSummary;
+  if (!summary) return null;
+  
+  const { runningCount, last } = summary;
+  
+  // 有正在运行的工具
+  if (runningCount > 0) {
+    const text = runningCount === 1 && last?.label 
+      ? `${last.label}中…` 
+      : `${runningCount} 个工具执行中…`;
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        <span>{text}</span>
+      </span>
+    );
+  }
+  
+  // 显示最后一个工具的完成摘要
+  if (last && last.status !== "running") {
+    const isError = last.status === "error";
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
+          isError
+            ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+            : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+        )}
+      >
+        {isError ? <XCircle className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+        <span>
+          {isError
+            ? `${last.label}失败`
+            : `${last.label}完成${last.count !== undefined ? ` · ${last.count}项` : ""}${last.elapsedMs ? ` · ${last.elapsedMs}ms` : ""}`}
+        </span>
+      </span>
+    );
+  }
+  
+  return null;
+}
+
+/** 运行轨迹面板（可折叠，显示所有 trace steps） */
+function TracePanel({ message, isOpen, onToggle }: { message: ChatMessage; isOpen: boolean; onToggle: () => void }) {
+  const trace = message.trace || [];
+  
+  if (trace.length === 0) return null;
+  
+  const renderTraceStep = (step: TraceStep, index: number) => {
+    if (step.kind === "llm") {
+      const icon = step.status === "running" 
+        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+        : step.status === "success"
+          ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+          : <XCircle className="h-3.5 w-3.5 text-red-500" />;
+      const text = step.status === "running"
+        ? "LLM 调用中…"
+        : step.status === "success"
+          ? `LLM 调用完成${step.elapsedMs ? ` · ${step.elapsedMs}ms` : ""}`
+          : `LLM 调用失败${step.error ? `: ${step.error}` : ""}`;
+      return (
+        <StepsItem key={step.id} className="flex items-center gap-2">
+          {icon}
+          <span>{text}</span>
+        </StepsItem>
+      );
+    }
+    
+    if (step.kind === "tool") {
+      const icon = step.status === "running"
+        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500" />
+        : step.status === "success"
+          ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+          : <XCircle className="h-3.5 w-3.5 text-red-500" />;
+      const text = step.status === "running"
+        ? `${step.label}…`
+        : step.status === "success"
+          ? `${step.label}完成${step.count !== undefined ? ` · ${step.count}项` : ""}${step.elapsedMs ? ` · ${step.elapsedMs}ms` : ""}`
+          : `${step.label}失败${step.error ? `: ${step.error}` : ""}`;
+      return (
+        <StepsItem key={step.id} className="flex items-center gap-2">
+          {icon}
+          <span>{text}</span>
+        </StepsItem>
+      );
+    }
+    
+    if (step.kind === "products") {
+      return (
+        <StepsItem key={step.id} className="flex items-center gap-2">
+          <Package className="h-3.5 w-3.5 text-orange-500" />
+          <span>返回商品：{step.count} 项</span>
+        </StepsItem>
+      );
+    }
+    
+    if (step.kind === "error") {
+      return (
+        <StepsItem key={step.id} className="flex items-center gap-2 text-red-500">
+          <XCircle className="h-3.5 w-3.5" />
+          <span>{step.message}</span>
+        </StepsItem>
+      );
+    }
+    
+    return null;
+  };
+  
+  return (
+    <Steps open={isOpen} onOpenChange={onToggle} defaultOpen={false}>
+      <StepsContent>
+        {trace.map((step, index) => renderTraceStep(step, index))}
+      </StepsContent>
+    </Steps>
+  );
+}
+
 export function ChatContent({
   title,
-  messages,
+  timeline,
   isStreaming,
   error,
   onSendMessage,
@@ -49,6 +200,7 @@ export function ChatContent({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const isErrorVisible = Boolean(error) && dismissedError !== error;
   const [reasoningOpenMap, setReasoningOpenMap] = useState<Record<string, boolean>>({});
+  const [traceOpenMap, setTraceOpenMap] = useState<Record<string, boolean>>({});
 
   // 修改：处理发送或停止
   const handleButtonClick = () => {
@@ -77,7 +229,7 @@ export function ChatContent({
       <div ref={chatContainerRef} className="relative flex-1 overflow-y-auto">
         <ChatContainerRoot className="h-full">
           <ChatContainerContent className="space-y-0 px-5 py-12">
-            {messages.length === 0 && (
+            {timeline.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/10">
                   <span className="text-2xl">🛒</span>
@@ -109,9 +261,11 @@ export function ChatContent({
               </div>
             )}
 
-            {messages.map((message, messageIndex) => {
+            {timeline.map((item, itemIndex) => {
+              // 消息 item（timeline 现在只有消息类型）
+              const message = item.message;
               const isAssistant = message.role === "assistant";
-              const messageKey = message.id || `${message.role}-${messageIndex}`;
+              const messageKey = message.id || `${message.role}-${itemIndex}`;
               const segments: Array<{
                 id: string;
                 kind: "reasoning" | "content";
@@ -121,7 +275,6 @@ export function ChatContent({
                 Array.isArray(message.segments) && message.segments.length > 0
                   ? message.segments
                   : (() => {
-                      // fallback：老数据/非流式情况下只存了 content/reasoning
                       const out: Array<{
                         id: string;
                         kind: "reasoning" | "content";
@@ -145,8 +298,8 @@ export function ChatContent({
                     })();
 
               if (!message.id) {
-                console.log("[chat] message.id 缺失，已使用 fallback key", {
-                  messageIndex,
+                console.log("[chat] message.id \u7f3a\u5931\uff0c\u5df2\u4f7f\u7528 fallback key", {
+                  itemIndex,
                   role: message.role,
                 });
               }
@@ -161,34 +314,63 @@ export function ChatContent({
                 >
                   {isAssistant ? (
                     <div className="flex w-full flex-col gap-3">
-                      {segments.length === 0 ? (
-                        <MessageContent
-                          className="prose flex-1 rounded-lg bg-transparent p-0 text-zinc-900 dark:text-zinc-100"
-                        >
-                          {message.isStreaming ? "思考中..." : ""}
-                        </MessageContent>
-                      ) : (
-                        <div className="flex w-full flex-col gap-3">
-                          {(() => {
-                            const contentChars = segments
-                              .filter((s) => s.kind === "content")
-                              .reduce((acc, s) => acc + (s.text?.length ?? 0), 0);
-                            const reasoningChars = segments
-                              .filter((s) => s.kind === "reasoning")
-                              .reduce((acc, s) => acc + (s.text?.length ?? 0), 0);
-
-                            // 经验规则：
-                            // - 大多数“推理模型”会先输出推理，再输出正文
-                            // - 但部分 provider 可能把大段正文塞进 reasoning_content（导致 content 很短）
-                            // 为了避免“正文被折叠隐藏”，当 content 很短而 reasoning 很长时，默认展开推理段
-                            const hasMeaningfulContent = contentChars >= 80;
-                            const preferShowReasoning =
-                              reasoningChars > 0 && contentChars < 40 && reasoningChars > contentChars * 2;
-
-                            const reasoningCount = segments.filter((s) => s.kind === "reasoning").length;
-                            let reasoningIndex = 0;
-                            return segments.map((seg) => {
-                              if (seg.kind === "reasoning") {
+                      {/* 推理块渲染：标题右侧显示轨迹入口 + LLM badge + 工具摘要 badge */}
+                      {(() => {
+                        const hasReasoningSegment = segments.some(s => s.kind === "reasoning");
+                        const showReasoningBlock = hasReasoningSegment || message.llm;
+                        const traceCount = message.trace?.length || 0;
+                        const isTraceOpen = traceOpenMap[message.id] ?? false;
+                        
+                        const contentChars = segments
+                          .filter((s) => s.kind === "content")
+                          .reduce((acc, s) => acc + (s.text?.length ?? 0), 0);
+                        const reasoningChars = segments
+                          .filter((s) => s.kind === "reasoning")
+                          .reduce((acc, s) => acc + (s.text?.length ?? 0), 0);
+                        const hasMeaningfulContent = contentChars >= 80;
+                        const preferShowReasoning =
+                          reasoningChars > 0 && contentChars < 40 && reasoningChars > contentChars * 2;
+                        const reasoningCount = segments.filter((s) => s.kind === "reasoning").length;
+                        
+                        return (
+                          <div className="flex w-full flex-col gap-3">
+                            {/* 推理块（如果有 reasoning segment 或 llm 状态） */}
+                            {showReasoningBlock && (() => {
+                              let reasoningIndex = 0;
+                              const reasoningSegments = segments.filter(s => s.kind === "reasoning");
+                              
+                              // 如果没有 reasoning segment 但有 llm 状态，显示一个空的推理块
+                              if (reasoningSegments.length === 0 && message.llm) {
+                                return (
+                                  <div key="llm-status-block">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-muted-foreground">推理过程</span>
+                                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                        {traceCount > 0 && (
+                                          <button
+                                            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
+                                            onClick={() => setTraceOpenMap(prev => ({ ...prev, [message.id]: !isTraceOpen }))}
+                                          >
+                                            <ListTree className="h-3 w-3" />
+                                            <span>轨迹({traceCount})</span>
+                                          </button>
+                                        )}
+                                        <LlmBadge message={message} />
+                                        <ToolsBadge message={message} />
+                                      </div>
+                                    </div>
+                                    {isTraceOpen && (
+                                      <TracePanel
+                                        message={message}
+                                        isOpen={isTraceOpen}
+                                        onToggle={() => setTraceOpenMap(prev => ({ ...prev, [message.id]: !isTraceOpen }))}
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              }
+                              
+                              return reasoningSegments.map((seg) => {
                                 reasoningIndex += 1;
                                 const defaultOpen = preferShowReasoning
                                   ? true
@@ -196,6 +378,8 @@ export function ChatContent({
                                     ? (seg.isOpen ?? false)
                                     : true;
                                 const open = reasoningOpenMap[seg.id] ?? defaultOpen;
+                                const isFirstReasoning = reasoningIndex === 1;
+                                
                                 return (
                                   <Reasoning
                                     key={seg.id}
@@ -208,17 +392,48 @@ export function ChatContent({
                                       }))
                                     }
                                   >
-                                    <ReasoningTrigger>
-                                      推理过程{reasoningCount > 1 ? ` ${reasoningIndex}` : ""}
-                                    </ReasoningTrigger>
+                                    {/* 标题行：左侧折叠按钮 + 右侧状态 badges */}
+                                    <div className="flex items-center justify-between">
+                                      <ReasoningTrigger>
+                                        推理过程{reasoningCount > 1 ? ` ${reasoningIndex}` : ""}
+                                      </ReasoningTrigger>
+                                      {/* 只在第一个推理块上显示状态 badges */}
+                                      {isFirstReasoning && (
+                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                          {traceCount > 0 && (
+                                            <button
+                                              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
+                                              onClick={() => setTraceOpenMap(prev => ({ ...prev, [message.id]: !isTraceOpen }))}
+                                            >
+                                              <ListTree className="h-3 w-3" />
+                                              <span>轨迹({traceCount})</span>
+                                            </button>
+                                          )}
+                                          <LlmBadge message={message} />
+                                          <ToolsBadge message={message} />
+                                        </div>
+                                      )}
+                                    </div>
                                     <ReasoningContent className="mt-2" markdown>
                                       {seg.text}
                                     </ReasoningContent>
+                                    {/* TracePanel 放在第一个推理块下面 */}
+                                    {isFirstReasoning && isTraceOpen && (
+                                      <TracePanel
+                                        message={message}
+                                        isOpen={isTraceOpen}
+                                        onToggle={() => setTraceOpenMap(prev => ({ ...prev, [message.id]: !isTraceOpen }))}
+                                      />
+                                    )}
                                   </Reasoning>
                                 );
-                              }
-
-                              return (
+                              });
+                            })()}
+                            
+                            {/* 正文内容 segments */}
+                            {segments
+                              .filter((seg) => seg.kind === "content")
+                              .map((seg) => (
                                 <MessageContent
                                   key={seg.id}
                                   className="prose flex-1 rounded-lg bg-transparent p-0 text-zinc-900 dark:text-zinc-100"
@@ -226,13 +441,11 @@ export function ChatContent({
                                 >
                                   {seg.text}
                                 </MessageContent>
-                              );
-                            });
-                          })()}
-                        </div>
-                      )}
+                              ))}
+                          </div>
+                        );
+                      })()}
 
-                      {/* 商品卡片 */}
                       {message.products && message.products.length > 0 && (
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                           {message.products.map((product, productIndex) => {
@@ -240,9 +453,9 @@ export function ChatContent({
                               typeof product.id === "string" && product.id ? product.id : null;
                             const productKey = productId ?? `${messageKey}-product-${productIndex}`;
                             if (!productId) {
-                              console.log("[chat] product.id 缺失，已使用 fallback key", {
+                              console.log("[chat] product.id \u7f3a\u5931\uff0c\u5df2\u4f7f\u7528 fallback key", {
                                 messageId: message.id,
-                                messageIndex,
+                                itemIndex,
                                 productIndex,
                               });
                             }

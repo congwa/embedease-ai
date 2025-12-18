@@ -141,12 +141,14 @@ export interface ToolEndPayload {
 
 export interface LlmCallStartPayload {
   message_count: number;
+  llm_call_id?: string;
 }
 
 export interface LlmCallEndPayload {
   elapsed_ms: number;
   message_count?: number;
   error?: string;
+  llm_call_id?: string;
 }
 
 export interface ErrorPayload {
