@@ -1,7 +1,8 @@
 """LangChain v1.1 Agent 服务"""
 
-import json
 import asyncio
+import json
+import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -13,8 +14,10 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from app.core.config import settings
+from app.core.database import get_db_context
 from app.core.llm import get_chat_model
 from app.core.logging import get_logger
+from app.services.catalog_profile import CatalogProfileService
 from app.services.agent.tools import (
     search_products,
     get_product_details,
@@ -186,12 +189,23 @@ class AgentService:
     _checkpointer: AsyncSqliteSaver | None = None
     _conn: aiosqlite.Connection | None = None
     _checkpoint_path: str | None = None
+    
+    # 商品库画像缓存（TTL + fingerprint 变化检测）
+    _catalog_profile_prompt: str | None = None
+    _catalog_profile_fingerprint: str | None = None
+    _catalog_profile_cached_at: float | None = None
+    _catalog_profile_lock: asyncio.Lock | None = None
 
     def __new__(cls) -> "AgentService":
         """单例模式"""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._agents = {}
+            # 初始化画像缓存字段
+            cls._instance._catalog_profile_prompt = None
+            cls._instance._catalog_profile_fingerprint = None
+            cls._instance._catalog_profile_cached_at = None
+            cls._instance._catalog_profile_lock = asyncio.Lock()
         return cls._instance
 
     async def _get_checkpointer(self) -> AsyncSqliteSaver:
@@ -269,6 +283,76 @@ class AgentService:
         else:
             return NATURAL_SYSTEM_PROMPT
 
+    def _invalidate_all_agents(self) -> None:
+        """清空所有 mode 的 agent 缓存（画像变化时触发重建）"""
+        if self._agents:
+            logger.info("画像变化，清空所有 agent 缓存以触发重建", agent_count=len(self._agents))
+        self._agents = {}
+
+    async def _get_catalog_profile_prompt(self) -> str:
+        """获取商品库画像提示词（带 TTL 缓存 + fingerprint 变化检测）
+        
+        流程：
+        1. 若功能关闭，返回空
+        2. 若缓存命中且 TTL 未过期，直接返回
+        3. 否则从 DB 读取画像，若 fingerprint 变化则清空 agents
+        
+        Returns:
+            画像提示词（<=100 字），或空字符串
+        """
+        # 1. 功能开关
+        if not settings.CATALOG_PROFILE_ENABLED:
+            return ""
+        
+        # 2. 快路径：缓存命中且 TTL 未过期
+        now = time.monotonic()
+        ttl = settings.CATALOG_PROFILE_TTL_SECONDS
+        if (
+            self._catalog_profile_prompt is not None
+            and self._catalog_profile_cached_at is not None
+            and (now - self._catalog_profile_cached_at) < ttl
+        ):
+            return self._catalog_profile_prompt
+        
+        # 3. 慢路径：加锁读取 DB
+        async with self._catalog_profile_lock:
+            # 双重检查（避免并发重复读取）
+            if (
+                self._catalog_profile_prompt is not None
+                and self._catalog_profile_cached_at is not None
+                and (time.monotonic() - self._catalog_profile_cached_at) < ttl
+            ):
+                return self._catalog_profile_prompt
+            
+            try:
+                async with get_db_context() as session:
+                    service = CatalogProfileService(session)
+                    prompt, fingerprint = await service.get_prompt_and_fingerprint()
+                
+                # 检测 fingerprint 变化
+                old_fp = self._catalog_profile_fingerprint
+                if old_fp is not None and fingerprint and fingerprint != old_fp:
+                    self._invalidate_all_agents()
+                
+                # 更新缓存
+                self._catalog_profile_prompt = prompt
+                self._catalog_profile_fingerprint = fingerprint
+                self._catalog_profile_cached_at = time.monotonic()
+                
+                if prompt:
+                    logger.debug(
+                        "加载商品库画像",
+                        prompt_len=len(prompt),
+                        fingerprint_prefix=fingerprint[:8] if fingerprint else None,
+                    )
+                
+                return prompt
+            
+            except Exception as e:
+                # 读取失败不阻塞业务，返回空字符串
+                logger.warning("加载商品库画像失败", error=str(e))
+                return self._catalog_profile_prompt or ""
+
     async def get_agent(
         self,
         mode: str = "natural",
@@ -337,7 +421,14 @@ class AgentService:
                 middlewares.append(StrictModeMiddleware())
 
             # 获取对应模式的 system prompt
-            system_prompt = self._get_system_prompt(mode)
+            base_prompt = self._get_system_prompt(mode)
+            
+            # 拼接商品库画像提示词（如果启用）
+            catalog_prompt = await self._get_catalog_profile_prompt()
+            if catalog_prompt.strip():
+                system_prompt = base_prompt + "\n\n" + catalog_prompt
+            else:
+                system_prompt = base_prompt
 
             # 创建 Agent
             try:

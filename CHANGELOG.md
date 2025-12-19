@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.5] - 2025-12-19
 
+### 2025-12-19 11:45 (UTC+08:00)
+
+- **系统提示词结合库状态（商品库画像注入）** (`backend/scripts/import_products.py`, `backend/app/services/catalog_profile.py`, `backend/app/services/agent/agent.py`):
+  - 导入时对商品数据做源头标准化，并生成商品库画像（Top 类目/价位范围）与短提示词（<=100 字）
+  - 新增 `app_metadata` KV 表用于持久化存储 `catalog_profile.stats` / `catalog_profile.prompt_short` / `catalog_profile.fingerprint`
+  - Agent 初始化时读取画像提示词并拼接到 system prompt（带 TTL 缓存），fingerprint 变化时清空所有 mode 的 agent 缓存触发重建
+  - 新增配置项：`CATALOG_PROFILE_ENABLED` / `CATALOG_PROFILE_TTL_SECONDS` / `CATALOG_PROFILE_TOP_CATEGORIES`（并补充 `.env.example`）
+  - 新增单测：`tests/test_catalog_profile.py`
+
 ### 2025-12-19 10:50 (UTC+08:00)
 
 #### ⏱️ 时间线渲染重构 (Timeline-based Chat Rendering)
@@ -22,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **工具 tool_call_id 注入** (`backend/app/services/agent/tools/*.py`):
   - 5 个工具（`search_products` / `get_product_details` / `filter_by_price` / `compare_products` / `guide_user`）均生成并传递 `tool_call_id`
+
+
 
 ##### ✨ 前端改动 (Frontend Changes)
 
