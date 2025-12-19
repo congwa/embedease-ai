@@ -34,6 +34,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 
 from typing import Annotated
 
@@ -106,9 +107,11 @@ def filter_by_price(
         - 可以先价格过滤，再根据其他条件筛选
         - 默认最多返回 5 个商品
     """
+    tool_call_id = uuid.uuid4().hex
     runtime.context.emitter.emit(
         StreamEventType.TOOL_START.value,
         {
+            "tool_call_id": tool_call_id,
             "name": "filter_by_price",
             "input": {"min_price": min_price, "max_price": max_price},
         },
@@ -186,6 +189,7 @@ def filter_by_price(
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
+                    "tool_call_id": tool_call_id,
                     "name": "filter_by_price",
                     "status": "empty",
                     "output_preview": [],
@@ -205,6 +209,7 @@ def filter_by_price(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "filter_by_price",
                 "status": "success",
                 "output_preview": results[:3],
@@ -226,6 +231,7 @@ def filter_by_price(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "filter_by_price",
                 "status": "error",
                 "count": 0,

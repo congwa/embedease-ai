@@ -38,7 +38,7 @@ export function ChatApp() {
     [currentConversationId, updateConversationTitle]
   );
 
-  // 聊天状态
+  // 聊天状态（使用新的时间线 reducer）
   const { timeline, isStreaming, error, sendMessage, abortStream } = useChat(
     userId,
     currentConversationId,

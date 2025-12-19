@@ -24,6 +24,7 @@
 """
 
 import json
+import uuid
 
 from typing import Annotated
 
@@ -87,9 +88,11 @@ async def search_products(
         >>> search_products("1000元以下的耳机")
         '[{"id": "P002", "name": "小米耳机", "price": 899.0, ...}]'
     """
+    tool_call_id = uuid.uuid4().hex
     runtime.context.emitter.emit(
         StreamEventType.TOOL_START.value,
         {
+            "tool_call_id": tool_call_id,
             "name": "search_products",
             "input": {"query": query},
         },
@@ -138,6 +141,7 @@ async def search_products(
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
+                    "tool_call_id": tool_call_id,
                     "name": "search_products",
                     "status": "empty",
                     "output_preview": [],
@@ -187,6 +191,7 @@ async def search_products(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "search_products",
                 "status": "success",
                 "output_preview": results[:3],
@@ -209,6 +214,7 @@ async def search_products(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "search_products",
                 "status": "error",
                 "count": 0,

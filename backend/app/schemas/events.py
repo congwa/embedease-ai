@@ -45,12 +45,15 @@ class TextDeltaPayload(TypedDict):
 
 
 class ToolStartPayload(TypedDict):
+    tool_call_id: str
     name: str
     input: NotRequired[Any]
 
 
 class ToolEndPayload(TypedDict):
+    tool_call_id: str
     name: str
+    status: NotRequired[str]  # "success" | "error" | "empty"
     count: NotRequired[int]
     output_preview: NotRequired[Any]
     error: NotRequired[str]

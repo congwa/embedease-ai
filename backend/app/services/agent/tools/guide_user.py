@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 
 from typing import Annotated, Any
 
@@ -56,9 +57,11 @@ def guide_user(
         JSON 字符串，包含 message/questions/suggested_actions。
     """
 
+    tool_call_id = uuid.uuid4().hex
     runtime.context.emitter.emit(
         StreamEventType.TOOL_START.value,
         {
+            "tool_call_id": tool_call_id,
             "name": "guide_user",
             "input": {
                 "stage": stage,
@@ -135,6 +138,7 @@ def guide_user(
     runtime.context.emitter.emit(
         StreamEventType.TOOL_END.value,
         {
+            "tool_call_id": tool_call_id,
             "name": "guide_user",
             "status": "success",
             "output_preview": {

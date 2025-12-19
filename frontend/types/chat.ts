@@ -128,12 +128,15 @@ export interface FinalPayload {
 }
 
 export interface ToolStartPayload {
+  tool_call_id: string;
   name: string;
   input?: unknown;
 }
 
 export interface ToolEndPayload {
+  tool_call_id: string;
   name: string;
+  status?: "success" | "error" | "empty";
   count?: number;
   output_preview?: unknown;
   error?: string;

@@ -31,6 +31,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Annotated, Any
 
 from langchain.tools import ToolRuntime, tool
@@ -111,9 +112,11 @@ def compare_products(
     Note:
         建议先使用 search_products 搜索商品，再从结果中提取ID进行对比。
     """
+    tool_call_id = uuid.uuid4().hex
     runtime.context.emitter.emit(
         StreamEventType.TOOL_START.value,
         {
+            "tool_call_id": tool_call_id,
             "name": "compare_products",
             "input": {"product_ids": product_ids},
         },
@@ -131,6 +134,7 @@ def compare_products(
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
+                    "tool_call_id": tool_call_id,
                     "name": "compare_products",
                     "status": "error",
                     "count": 0,
@@ -168,6 +172,7 @@ def compare_products(
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
+                    "tool_call_id": tool_call_id,
                     "name": "compare_products",
                     "status": "empty",
                     "count": 0,
@@ -182,6 +187,7 @@ def compare_products(
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
+                    "tool_call_id": tool_call_id,
                     "name": "compare_products",
                     "status": "error",
                     "count": 0,
@@ -213,6 +219,7 @@ def compare_products(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "compare_products",
                 "status": "success",
                 "output_preview": comparison["products"][:3],
@@ -231,6 +238,7 @@ def compare_products(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "compare_products",
                 "status": "error",
                 "count": 0,

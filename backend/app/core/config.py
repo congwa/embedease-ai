@@ -93,6 +93,12 @@ class Settings(BaseSettings):
     # strict: 严格模式，必须基于工具输出或历史对话回答，否则返回受控失败
     CHAT_MODE: str = "natural"
 
+    # ========== 商品库画像配置 ==========
+    # 导入商品时生成画像摘要，注入 Agent system prompt 指导检索方向
+    CATALOG_PROFILE_ENABLED: bool = True  # 是否启用画像注入
+    CATALOG_PROFILE_TTL_SECONDS: float = 600.0  # Agent 侧缓存 TTL（秒）
+    CATALOG_PROFILE_TOP_CATEGORIES: int = 3  # 画像中展示的 Top 类目数量（建议 3，保证短）
+
     @property
     def database_url(self) -> str:
         """SQLite 数据库 URL"""

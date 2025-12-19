@@ -300,7 +300,8 @@ class LoggingMiddleware(AgentMiddleware):
             "message_count": len(effective_messages),
             "prompt": _build_prompt_preview(effective_messages),
             "additional_kwargs": _summarize_additional_kwargs(getattr(effective_messages, "additional_kwargs", None)),
-            "tools": [_serialize_tool(t) for t in request.tools], # 无用 暂时不记录
+            "tools": [_serialize_tool(t) for t in request.tools], # tools的完整信息
+            "tools_types": [type(t).__name__ for t in request.tools], # tools的类型
             "tool_count": len(request.tools),
             "tool_choice": request.tool_choice, # 记录了模型选择的工具的配置
             # "response_format": _truncate_text(request.response_format, limit=200), # 无用 暂时不记录

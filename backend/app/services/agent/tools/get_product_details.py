@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 
 from typing import Annotated, Any
 
@@ -74,9 +75,11 @@ def get_product_details(
         >>> get_product_details("INVALID")
         '{"error": "未找到商品 INVALID"}'
     """
+    tool_call_id = uuid.uuid4().hex
     runtime.context.emitter.emit(
         StreamEventType.TOOL_START.value,
         {
+            "tool_call_id": tool_call_id,
             "name": "get_product_details",
             "input": {"product_id": product_id},
         },
@@ -97,6 +100,7 @@ def get_product_details(
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
+                    "tool_call_id": tool_call_id,
                     "name": "get_product_details",
                     "status": "empty",
                     "count": 0,
@@ -121,6 +125,7 @@ def get_product_details(
                 runtime.context.emitter.emit(
                     StreamEventType.TOOL_END.value,
                     {
+                        "tool_call_id": tool_call_id,
                         "name": "get_product_details",
                         "status": "success",
                         "output_preview": product_detail,
@@ -138,6 +143,7 @@ def get_product_details(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "get_product_details",
                 "status": "empty",
                 "count": 0,
@@ -151,6 +157,7 @@ def get_product_details(
         runtime.context.emitter.emit(
             StreamEventType.TOOL_END.value,
             {
+                "tool_call_id": tool_call_id,
                 "name": "get_product_details",
                 "status": "error",
                 "count": 0,
