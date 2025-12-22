@@ -525,8 +525,8 @@ class FactMemoryService:
             # 转换为 Fact 对象
             facts = []
             for doc, score in results:
-                # Qdrant 返回的 score 是相似度（越高越好）
-                if score < threshold:
+                # Qdrant 返回的是距离（越小越相似），score 越大代表越不相关
+                if score > threshold:
                     continue
 
                 metadata = doc.metadata or {}

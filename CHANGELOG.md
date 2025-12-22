@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **记忆向量存储模块**：新增 `vector_store.py`，负责初始化/缓存 Qdrant 客户端，自动创建独立集合 `memory_facts`，并对嵌入模型进行统一管理。
 - **记忆配置扩展**：`.env.example` 与 `Settings` 增加 `MEMORY_FACT_COLLECTION`、`MEMORY_FACT_SIMILARITY_THRESHOLD` 等参数，允许针对不同环境调整集合名称与过滤阈值。
 - **文档补全**：`backend/app/services/memory/README.md` 新增“多层混合记忆 + 中间件编排”说明，详细描述 LangGraph Store、Fact Memory（SQLite + Qdrant）、Graph Memory、Orchestration 中间件的职责与交互流程。
+- **记忆抽取 SSE 事件** (`backend/app/schemas/events.py`, `backend/app/services/memory/middleware/orchestration.py`)：新增 `memory.extraction.start/complete` 事件类型及 payload，在记忆抽取开始/完成时向前端推送进度与统计信息，便于实时展示记忆写入状态。
 
 ### Changed
 
@@ -28,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `FactMemoryService` 写入阶段同时更新 SQLite（元数据 + 历史记录）与 Qdrant 向量；检索阶段改为调用 Qdrant `similarity_search_with_score`，并在失败时自动回退至关键词搜索。
   - `update_fact` / `delete_fact` 同步维护 Qdrant 向量数据，确保与 SQLite 状态一致。
   - `Fact` 数据模型移除本地 `embedding` 字段，由 Qdrant 负责托管向量，避免重复存储与手工余弦计算。
+- **记忆检索阈值语义** (`backend/app/core/config.py`, `backend/app/services/memory/fact_memory.py`)：将 `MEMORY_FACT_SIMILARITY_THRESHOLD` 明确为“距离阈值（越小越相似）”，检索逻辑改为过滤距离大于阈值的结果，与 Qdrant 的 Distance 语义保持一致。
+- **记忆编排中间件** (`backend/app/services/memory/middleware/orchestration.py`)：
+  - 新增 `MemoryWriteResult` 结构，统一记录事实/实体/关系写入统计及错误信息。
+  - 将记忆写入流程从 `awrap_model_call` 挪至 `aafter_agent` 钩子，仅在整轮 Agent 结束后执行一次，避免多次重复写入并保证抽取使用独立 LLM 调用。
+  - 增加 SSE 通知包装器，在记忆抽取开始与完成时通过 `StreamEventType` 向前端发送实时状态（含耗时与写入数量），支持同步/异步两种执行模式。
 - **记忆编排说明**：README 中的数据流图、工作流示例更新为“注入记忆 → Agent 推理 → 异步写入 SQLite + Qdrant”的完整闭环，并补充回退机制、并发安全策略。
 
 ## [0.1.5] - 2025-12-19

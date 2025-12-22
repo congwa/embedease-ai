@@ -32,6 +32,9 @@ class StreamEventType(StrEnum):
     LLM_CALL_START = "llm.call.start" # LLM调用开始
     LLM_CALL_END = "llm.call.end" # LLM调用结束
 
+    MEMORY_EXTRACTION_START = "memory.extraction.start" # 记忆抽取开始
+    MEMORY_EXTRACTION_COMPLETE = "memory.extraction.complete" # 记忆抽取完成
+
     ERROR = "error"
 
 
@@ -75,3 +78,19 @@ class ErrorPayload(TypedDict):
     message: str
     code: NotRequired[str]
     detail: NotRequired[Any]
+
+
+class MemoryExtractionStartPayload(TypedDict):
+    conversation_id: str
+    user_id: str
+
+
+class MemoryExtractionCompletePayload(TypedDict):
+    conversation_id: str
+    user_id: str
+    facts_added: NotRequired[int]
+    entities_created: NotRequired[int]
+    relations_created: NotRequired[int]
+    duration_ms: NotRequired[int]
+    status: NotRequired[str]  # "success" | "failed"
+    error: NotRequired[str]

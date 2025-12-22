@@ -1,9 +1,14 @@
 """记忆编排中间件
 
-参考 Cherry Studio searchOrchestrationPlugin 的三阶段：
+三阶段：
 1. Request Start：根据 assistant 设置/用户请求判断是否需记忆检索
 2. Params Transform：动态注入记忆上下文到 system prompt
-3. Request End：异步触发 MemoryProcessor（事实抽取 + 图谱抽取）
+3. After Agent：Agent 完成后异步触发 MemoryProcessor（事实抽取 + 图谱抽取）
+
+改进：
+- Phase 3 从 awrap_model_call 移至 aafter_agent 钩子，确保只在整轮 Agent 结束后执行一次
+- 记忆抽取前后发送 SSE 事件通知前端
+- 记忆抽取使用独立 LLM 调用，不走 Agent 中间件栈，不会污染主响应
 
 用法：
     在 AgentService.get_agent() 的 middleware 列表中添加：
@@ -16,20 +21,38 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Awaitable, Callable
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from langchain.agents.middleware.types import (
     AgentMiddleware,
+    AgentState,
     ModelRequest,
     ModelResponse,
 )
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+if TYPE_CHECKING:
+    from langgraph.runtime import Runtime
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.schemas.events import StreamEventType
 
 logger = get_logger("middleware.memory_orchestration")
+
+
+@dataclass
+class MemoryWriteResult:
+    """记忆写入结果"""
+
+    facts_added: int = 0
+    entities_created: int = 0
+    relations_created: int = 0
+    success: bool = True
+    error: str | None = None
 
 
 def _get_context_from_request(request: ModelRequest) -> Any:
@@ -57,9 +80,11 @@ class MemoryOrchestrationMiddleware(AgentMiddleware):
     """记忆编排中间件
 
     三阶段处理：
-    1. Request Start：检查记忆开关，判断是否需要检索
-    2. Params Transform：注入记忆上下文到 system prompt
-    3. Request End：异步触发事实抽取和记忆写入
+    1. awrap_model_call：检索记忆并注入到 system prompt
+    2. aafter_agent：Agent 完成后异步触发事实抽取和记忆写入
+    3. SSE 通知：记忆抽取开始/完成事件推送给前端
+
+    记忆抽取使用独立 LLM 调用（非流式），不走 Agent 中间件栈，不会污染主响应。
 
     配置：
     - MEMORY_ENABLED: 总开关
@@ -227,17 +252,18 @@ class MemoryOrchestrationMiddleware(AgentMiddleware):
         self,
         user_id: str,
         messages: list,
-        response_messages: list,
-    ) -> None:
-        """异步处理记忆写入
+    ) -> MemoryWriteResult:
+        """处理记忆写入（事实抽取 + 图谱抽取）
 
         Args:
             user_id: 用户 ID
-            messages: 请求消息列表
-            response_messages: 响应消息列表
+            messages: 完整的对话消息列表（包含 HumanMessage 和 AIMessage）
+
+        Returns:
+            MemoryWriteResult 包含写入统计
         """
         if not settings.MEMORY_ENABLED:
-            return
+            return MemoryWriteResult()
 
         try:
             # 构建对话上下文
@@ -247,14 +273,13 @@ class MemoryOrchestrationMiddleware(AgentMiddleware):
                     content = getattr(msg, "content", None)
                     if content:
                         conversation.append({"role": "user", "content": str(content)})
-
-            for msg in response_messages:
-                content = getattr(msg, "content", None)
-                if content:
-                    conversation.append({"role": "assistant", "content": str(content)})
+                elif isinstance(msg, AIMessage):
+                    content = getattr(msg, "content", None)
+                    if content:
+                        conversation.append({"role": "assistant", "content": str(content)})
 
             if not conversation:
-                return
+                return MemoryWriteResult()
 
             fact_count = 0
             entity_count = 0
@@ -293,8 +318,16 @@ class MemoryOrchestrationMiddleware(AgentMiddleware):
                     relations=relation_count,
                 )
 
+            return MemoryWriteResult(
+                facts_added=fact_count,
+                entities_created=entity_count,
+                relations_created=relation_count,
+                success=True,
+            )
+
         except Exception as e:
             logger.error("记忆写入失败", error=str(e), user_id=user_id)
+            return MemoryWriteResult(success=False, error=str(e))
 
     async def awrap_model_call(
         self,
@@ -349,21 +382,100 @@ class MemoryOrchestrationMiddleware(AgentMiddleware):
             except Exception as e:
                 logger.warning("注入记忆上下文失败", error=str(e), user_id=user_id)
 
-        # 调用模型
-        response = await handler(request)
+        # 调用模型（Phase 3 已移至 aafter_agent 钩子）
+        return await handler(request)
 
-        # === Phase 3: Request End ===
-        # 异步触发记忆写入（不阻塞响应）
-        if user_id:
-            if self.async_write:
-                asyncio.create_task(
-                    self._process_memory_write(
-                        user_id, list(request.messages), list(response.result)
+    async def aafter_agent(
+        self,
+        state: AgentState,
+        runtime: Runtime,
+    ) -> dict[str, Any] | None:
+        """Agent 完成后触发记忆写入
+
+        在整轮 Agent 结束后执行一次，确保：
+        1. 记忆写入不会在每次模型调用时重复执行
+        2. 记忆抽取的 LLM 调用不会污染主响应流
+        3. 通过 SSE 通知前端记忆抽取进度
+
+        Args:
+            state: Agent 最终状态（包含完整对话历史）
+            runtime: 运行时上下文
+
+        Returns:
+            None（不修改 state）
+        """
+        if not self.enabled or not settings.MEMORY_ENABLED:
+            return None
+
+        # 从 runtime.context 获取上下文信息
+        context = getattr(runtime, "context", None)
+        if context is None:
+            return None
+
+        user_id = getattr(context, "user_id", None)
+        conversation_id = getattr(context, "conversation_id", None)
+        emitter = getattr(context, "emitter", None)
+
+        if not user_id:
+            return None
+
+        # 获取对话消息
+        messages = state.get("messages", [])
+        if not messages:
+            return None
+
+        logger.debug(
+            "after_agent: 准备触发记忆写入",
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message_count=len(messages),
+        )
+
+        # 定义带 SSE 通知的记忆写入包装器
+        async def _memory_write_with_sse() -> None:
+            start_time = time.time()
+
+            # 发送记忆抽取开始事件
+            if emitter and hasattr(emitter, "aemit"):
+                try:
+                    await emitter.aemit(
+                        StreamEventType.MEMORY_EXTRACTION_START.value,
+                        {
+                            "conversation_id": conversation_id or "",
+                            "user_id": user_id,
+                        },
                     )
-                )
-            else:
-                await self._process_memory_write(
-                    user_id, list(request.messages), list(response.result)
-                )
+                except Exception as e:
+                    logger.warning("发送记忆抽取开始事件失败", error=str(e))
 
-        return response
+            # 执行记忆写入
+            result = await self._process_memory_write(user_id, list(messages))
+
+            elapsed_ms = int((time.time() - start_time) * 1000)
+
+            # 发送记忆抽取完成事件
+            if emitter and hasattr(emitter, "aemit"):
+                try:
+                    await emitter.aemit(
+                        StreamEventType.MEMORY_EXTRACTION_COMPLETE.value,
+                        {
+                            "conversation_id": conversation_id or "",
+                            "user_id": user_id,
+                            "facts_added": result.facts_added,
+                            "entities_created": result.entities_created,
+                            "relations_created": result.relations_created,
+                            "duration_ms": elapsed_ms,
+                            "status": "success" if result.success else "failed",
+                            "error": result.error,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning("发送记忆抽取完成事件失败", error=str(e))
+
+        # 根据配置决定异步或同步执行
+        if self.async_write:
+            asyncio.create_task(_memory_write_with_sse())
+        else:
+            await _memory_write_with_sse()
+
+        return None

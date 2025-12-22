@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     MEMORY_FACT_ENABLED: bool = True
     MEMORY_FACT_DB_PATH: str = "./data/facts.db"
     MEMORY_FACT_COLLECTION: str = "memory_facts"  # Qdrant 独立集合
-    MEMORY_FACT_SIMILARITY_THRESHOLD: float = 0.5  # Qdrant score 阈值
+    MEMORY_FACT_SIMILARITY_THRESHOLD: float = 0.5  # Qdrant 距离阈值（越小越相似）
     MEMORY_FACT_MAX_RESULTS: int = 10
     MEMORY_FACT_EXTRACTION_MODEL: str | None = None  # 留空则使用 LLM_CHAT_MODEL
 
