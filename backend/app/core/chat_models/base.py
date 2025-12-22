@@ -395,10 +395,13 @@ class BaseReasoningChatModel(ChatOpenAI, ABC):
 
 
 class StandardChatModel(ChatOpenAI):
-    """标准模型实现（不支持推理内容）
-
-    这是默认实现，用于不支持推理内容的模型。
-    直接使用 ChatOpenAI，不做任何修改。
+    """标准模型实现（非推理模型）
+    
+    用于 `reasoning_output=False` 的模型，只处理 content 字段。
+    
+    注意：
+    - 如果模型实际返回 reasoning 内容但 profile 标记为 `reasoning_output=False`，
+      说明 profile 配置有误，应在 `.env` 的 `MODEL_PROFILES_JSON` 中覆盖
     """
 
     pass
