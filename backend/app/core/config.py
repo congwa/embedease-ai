@@ -113,7 +113,7 @@ class Settings(BaseSettings):
     # 限制工具调用次数，防止 Agent 陷入无限循环
     AGENT_TOOL_LIMIT_ENABLED: bool = True  # 是否启用 ToolCallLimitMiddleware
     AGENT_TOOL_LIMIT_THREAD: int | None = None  # 线程级限制（跨 run 累计），留空不限制
-    AGENT_TOOL_LIMIT_RUN: int | None = 6  # 单次 run 限制，默认 6
+    AGENT_TOOL_LIMIT_RUN: int | None = 20  # 单次 run 限制，默认 20
     AGENT_TOOL_LIMIT_EXIT_BEHAVIOR: str = "continue"  # 超限行为: continue/error/end
 
     # ========== Agent 工具重试中间件配置 ==========

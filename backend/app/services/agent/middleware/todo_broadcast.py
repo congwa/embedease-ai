@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from langchain.agents.middleware.types import AgentMiddleware, ModelRequest, ModelResponse
+from langgraph.prebuilt.tool_node import ToolCallRequest
 
 from app.core.logging import get_logger
 from app.schemas.events import StreamEventType
@@ -52,7 +53,7 @@ class TodoBroadcastMiddleware(AgentMiddleware):
             current_hash = _hash_todos(todos)
             if current_hash == self._last_todos_hash:
                 return None
-            
+            logger.debug("TODO 列表内容", todos=todos)
             # 更新 hash
             self._last_todos_hash = current_hash
             
@@ -90,3 +91,87 @@ class TodoBroadcastMiddleware(AgentMiddleware):
     ) -> ModelResponse:
         """透传模型调用，不做修改"""
         return await handler(request)
+
+    async def awrap_tool_call(
+        self,
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[Any]],
+    ) -> Any:
+        """工具调用后检测 todos 变化并立即广播
+        
+        注意：write_todos 工具返回 Command 对象，todos 在 Command.update["todos"] 中
+        """
+        # 从 ToolCallRequest 获取工具名（格式如 "write_todos" 或带前缀）
+        tool_name = getattr(request, "name", None) or ""
+        
+        logger.debug(
+            "awrap_tool_call 被调用",
+            tool_name=tool_name,
+            request_type=type(request).__name__,
+        )
+        
+        # 执行工具调用
+        response = await handler(request)
+        
+        # 如果是 write_todos 工具，从 Command.update 中提取 todos 并广播
+        if "write_todos" in tool_name:
+            try:
+                logger.debug(
+                    "write_todos 工具调用完成",
+                    response_type=type(response).__name__,
+                    has_update=hasattr(response, "update"),
+                )
+                
+                # write_todos 返回 Command 对象，todos 在 Command.update 中
+                update = getattr(response, "update", None)
+                if update and isinstance(update, dict):
+                    todos = update.get("todos")
+                    if todos is not None:
+                        current_hash = _hash_todos(todos)
+                        
+                        # 只在实际变化时广播（避免重复发送）
+                        if current_hash != self._last_todos_hash:
+                            self._last_todos_hash = current_hash
+                            
+                            logger.debug(
+                                "write_todos 检测到 TODO 变化",
+                                todo_count=len(todos),
+                            )
+                            
+                            # 从 ToolCallRequest 获取 context 并广播
+                            # ToolCallRequest 通常有 tool_call_context 或类似属性
+                            context = getattr(request, "context", None)
+                            if context is None:
+                                # 尝试从 tool_call_context 获取
+                                context = getattr(request, "tool_call_context", None)
+                            
+                            if context:
+                                emitter = getattr(context, "emitter", None)
+                                if emitter and hasattr(emitter, "aemit"):
+                                    await emitter.aemit(
+                                        StreamEventType.ASSISTANT_TODOS.value,
+                                        {"todos": todos},
+                                    )
+                                    logger.info(
+                                        "write_todos 后立即广播 TODO 列表",
+                                        todo_count=len(todos),
+                                        statuses=[t.get("status") for t in todos],
+                                    )
+                                else:
+                                    logger.warning("emitter 不可用", context_attrs=dir(context))
+                            else:
+                                logger.warning(
+                                    "context 不可用",
+                                    request_attrs=[a for a in dir(request) if not a.startswith("_")],
+                                )
+                    else:
+                        logger.warning("Command.update 中没有 todos")
+                else:
+                    logger.warning(
+                        "response 不是预期的 Command 对象或没有 update",
+                        response_type=type(response).__name__,
+                    )
+            except Exception as e:
+                logger.exception("write_todos 后广播失败", error=str(e))
+        
+        return response

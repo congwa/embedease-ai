@@ -298,7 +298,7 @@ class LoggingMiddleware(AgentMiddleware):
             # "model": _get_model_identity(request.model), # 无用 暂时不记录
             # "messages": _serialize_messages(effective_messages), # 无用 暂时不记录
             "message_count": len(effective_messages),
-            "prompt": _build_prompt_preview(effective_messages),
+            # "prompt": _build_prompt_preview(effective_messages),
             "additional_kwargs": _summarize_additional_kwargs(getattr(effective_messages, "additional_kwargs", None)),
             "tools": [_serialize_tool(t) for t in request.tools], # tools的完整信息
             "tools_types": [type(t).__name__ for t in request.tools], # tools的类型

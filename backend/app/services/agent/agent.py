@@ -349,6 +349,20 @@ class AgentService:
                 SSEMiddleware(),
             ]
             
+            # 可选：添加任务规划中间件（放在可能改写工具执行流程的中间件之前）
+            if settings.AGENT_TODO_ENABLED:
+                try:
+                    todo_kwargs = {}
+                    if settings.AGENT_TODO_SYSTEM_PROMPT:
+                        todo_kwargs["system_prompt"] = settings.AGENT_TODO_SYSTEM_PROMPT
+                    if settings.AGENT_TODO_TOOL_DESCRIPTION:
+                        todo_kwargs["tool_description"] = settings.AGENT_TODO_TOOL_DESCRIPTION
+                    middlewares.append(TodoListMiddleware(**todo_kwargs))
+                    middlewares.append(TodoBroadcastMiddleware())
+                    logger.debug("启用 TODO 规划中间件")
+                except Exception as e:
+                    logger.warning("TODO 规划中间件初始化失败", error=str(e))
+            
             # 可选：添加串行工具执行中间件
             if settings.AGENT_SERIALIZE_TOOLS:
                 middlewares.append(SequentialToolExecutionMiddleware())
@@ -386,21 +400,6 @@ class AgentService:
                         )
                 except Exception as e:
                     logger.warning("工具调用限制中间件初始化失败", error=str(e))
-
-            # 可选：添加任务规划中间件（基于配置开关）
-            if settings.AGENT_TODO_ENABLED:
-                try:
-                    todo_kwargs = {}
-                    if settings.AGENT_TODO_SYSTEM_PROMPT:
-                        todo_kwargs["system_prompt"] = settings.AGENT_TODO_SYSTEM_PROMPT
-                    if settings.AGENT_TODO_TOOL_DESCRIPTION:
-                        todo_kwargs["tool_description"] = settings.AGENT_TODO_TOOL_DESCRIPTION
-                    middlewares.append(TodoListMiddleware(**todo_kwargs))
-                    # 添加 TODO 广播中间件（放在 TodoListMiddleware 之后，捕获 state.todos 变化）
-                    middlewares.append(TodoBroadcastMiddleware())
-                    logger.debug("启用 TODO 规划中间件")
-                except Exception as e:
-                    logger.warning("TODO 规划中间件初始化失败", error=str(e))
 
             # strict 模式：添加 StrictModeMiddleware（放在最后，对最终响应做检查）
             if mode == "strict":
@@ -633,6 +632,16 @@ class AgentService:
                 reasoning_events=reasoning_event_count,
                 reasoning_chars=reasoning_char_count,
             )
+
+            # 发送最终的 todos（确保前端能接收到 todo 列表更新）
+            try:
+                final_state = await agent.aget_state(config={"configurable": {"thread_id": conversation_id}})
+                todos = final_state.values.get("todos")
+                if todos:
+                    await emitter.aemit(StreamEventType.ASSISTANT_TODOS.value, {"todos": todos})
+                    logger.debug("发送最终 todos", todo_count=len(todos))
+            except Exception as e:
+                logger.warning("发送最终 todos 失败", error=str(e))
 
         except Exception as e:
             logger.exception("❌ chat_emit 失败", error=str(e), conversation_id=conversation_id)
