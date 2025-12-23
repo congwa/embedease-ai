@@ -9,7 +9,7 @@
 > </div>
 
 <video width="640" height="360" controls>
-  <source src="docs/agent0.mp4" type="video/mp4" />
+  <source src="https://github.com/congwa/embedAi-agent/blob/test/new/docs/agent0.mp4?raw=true" type="video/mp4" />
   您的浏览器不支持 HTML5 视频标签。
 </video>
 
