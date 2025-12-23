@@ -22,6 +22,7 @@ import type {
   TodoItem,
   FinalPayload,
   ErrorPayload,
+  ContextSummarizedPayload,
 } from "@/types/chat";
 
 /** 工具名称中文映射 */
@@ -124,6 +125,18 @@ export interface TodosItem {
   ts: number;
 }
 
+/** 上下文压缩 item */
+export interface ContextSummarizedItem {
+  type: "context.summarized";
+  id: string;
+  turnId: string;
+  messagesBefore: number;
+  messagesAfter: number;
+  tokensBefore?: number;
+  tokensAfter?: number;
+  ts: number;
+}
+
 /** 时间线 item 联合类型 */
 export type TimelineItem =
   | UserMessageItem
@@ -133,6 +146,7 @@ export type TimelineItem =
   | ToolCallItem
   | ProductsItem
   | TodosItem
+  | ContextSummarizedItem
   | ErrorItem;
 
 /** Timeline state */
@@ -521,6 +535,21 @@ export function timelineReducer(
         ...newState,
         activeTurn: { ...newState.activeTurn, isStreaming: false },
       };
+    }
+
+    case "context.summarized": {
+      const payload = event.payload as ContextSummarizedPayload;
+      const item: ContextSummarizedItem = {
+        type: "context.summarized",
+        id: `context-summarized:${event.seq}`,
+        turnId,
+        messagesBefore: payload.messages_before,
+        messagesAfter: payload.messages_after,
+        tokensBefore: payload.tokens_before,
+        tokensAfter: payload.tokens_after,
+        ts: now,
+      };
+      return insertItem(state, item);
     }
 
     case "error": {

@@ -38,6 +38,8 @@ class StreamEventType(StrEnum):
 
     ASSISTANT_TODOS = "assistant.todos" # TODO 规划列表更新
 
+    CONTEXT_SUMMARIZED = "context.summarized" # 上下文压缩完成
+
     ERROR = "error"
 
 
@@ -114,3 +116,11 @@ class TodoItem(TypedDict):
 class TodosPayload(TypedDict):
     """TODO 列表更新事件 payload"""
     todos: list[TodoItem]
+
+
+class ContextSummarizedPayload(TypedDict):
+    """上下文压缩完成事件 payload"""
+    messages_before: int  # 压缩前消息数
+    messages_after: int  # 压缩后消息数
+    tokens_before: NotRequired[int]  # 压缩前 token 数（可选）
+    tokens_after: NotRequired[int]  # 压缩后 token 数（可选）

@@ -124,6 +124,16 @@ class Settings(BaseSettings):
     AGENT_TOOL_RETRY_INITIAL_DELAY: float = 1.0  # 初始延迟（秒）
     AGENT_TOOL_RETRY_MAX_DELAY: float = 60.0  # 最大延迟（秒）
 
+    # ========== Agent 上下文压缩中间件配置 ==========
+    # 当消息历史过长时自动压缩（使用 LLM 生成摘要替换旧消息）
+    AGENT_SUMMARIZATION_ENABLED: bool = True  # 是否启用 SummarizationMiddleware
+    # 触发压缩的阈值（消息数），达到此数量时触发压缩
+    AGENT_SUMMARIZATION_TRIGGER_MESSAGES: int = 50
+    # 压缩后保留的最近消息数
+    AGENT_SUMMARIZATION_KEEP_MESSAGES: int = 20
+    # 用于生成摘要的最大 token 数（避免摘要请求过大）
+    AGENT_SUMMARIZATION_TRIM_TOKENS: int = 4000
+
     # ========== 记忆系统配置 ==========
     # 总开关
     MEMORY_ENABLED: bool = True

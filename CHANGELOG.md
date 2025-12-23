@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.7] - 2025-12-22
 
+### 2025-12-23 10:16 (UTC+08:00)
+
+#### Added
+
+- **上下文压缩配置与事件** (`backend/.env.example`, `backend/app/core/config.py`, `backend/app/schemas/events.py`): 默认开启 `SummarizationMiddleware`，新增触发阈值/保留条数/裁剪 token 配置，并定义 `context.summarized` SSE 事件 payload（包含压缩前后消息与 token 数）。
+- **SummarizationBroadcastMiddleware** (`backend/app/services/agent/middleware/summarization_broadcast.py`): 封装 LangChain `SummarizationMiddleware`，捕获压缩结果并向前端推送 SSE，复用当前 token 计数器估算压缩收益。
+- **前端上下文压缩可视化** (`frontend/types/chat.ts`, `frontend/hooks/use-timeline-reducer.ts`, `frontend/components/features/chat/timeline/TimelineContextSummarizedItem.tsx`, `frontend/components/features/chat/ChatContent.tsx`, `frontend/components/features/chat/timeline/index.ts`): 新增 `context.summarized` 事件类型、时间线 item 以及 UI 卡片，展示压缩前后消息/Token 变化。
+- **Agent 工具稳健性配置** (`backend/.env.example`, `backend/app/core/config.py`): 新增工具重试与调用次数限制配置（`AGENT_TOOL_RETRY_*`, `AGENT_TOOL_LIMIT_*`），并补全 TODO 规划开关及自定义提示/描述字段。
+- **中间件扩展** (`backend/app/services/agent/agent.py`, `backend/app/services/agent/middleware/todo_broadcast.py`): 条件注入 `ToolRetryMiddleware`、`ToolCallLimitMiddleware`、`TodoListMiddleware`，并新增 `TodoBroadcastMiddleware` 在 todos 变更时向前端推送 SSE。
+- **SSE 事件类型** (`backend/app/schemas/events.py`): 新增 `assistant.todos` 事件与 TODO payload 定义。
+- **前端待办渲染** (`frontend/hooks/use-timeline-reducer.ts`, `frontend/types/chat.ts`, `frontend/components/features/chat/TimelineTodosItem.tsx`, `frontend/components/prompt-kit/todo-list.tsx`, `frontend/components/features/chat/ChatContent.tsx`, `frontend/components/features/chat/timeline/index.ts`): 时间线 reducer 支持 `assistant.todos`，新增 TodoList 组件与时间线项渲染，展示待办清单及状态。
+
+#### Changed
+
+- **Agent 中间件声明式构建** (`backend/app/services/agent/agent.py`): 以 `MiddlewareSpec` 数据类集中声明中间件顺序/启用条件/工厂函数，并在注释表格中列出执行顺序，替代原先分散的 `insert/append` 逻辑。
+- **System Prompt 升级** (`backend/app/services/agent/agent.py`): 三种模式的 system prompt 精简为核心原则 + 输出格式，不再列举具体工具或流程。
+- **工具文档统一** (`backend/app/services/agent/tools/*.py`): `compare_products`、`get_product_details`、`filter_by_price`、`guide_user` docstring 统一使用“商品搜索能力/价格筛选能力”描述，示例与 Note 不再出现英文工具名。
+- **Strict 模式执行逻辑** (`backend/app/services/agent/middleware/strict_mode.py`): 依据 ToolPolicy 判断最小工具调用次数、允许直接回答与回退提示，替代 prompt 层强制逻辑。
+- **依赖版本** (`backend/pyproject.toml`, `backend/uv.lock`, `frontend/package.json`): bump 至 0.1.8 并同步锁定文件。
+
+#### Removed
+
+- **意图识别层** (`backend/app/services/agent/middleware/intent_recognition.py`, `backend/app/services/agent/intent_analyzer.py`, `backend/app/schemas/intent.py`): 删除规则/LLM 双重意图识别及工具过滤逻辑，改由策略层与模型自主判断。
+
 ### 2025-12-22 17:06 (UTC+08:00)
 
 #### Added

@@ -107,6 +107,7 @@ export type ChatEventType =
   | "tool.end"
   | "llm.call.start"
   | "llm.call.end"
+  | "context.summarized"
   | "error";
 
 export interface MetaStartPayload {
@@ -170,6 +171,13 @@ export interface ErrorPayload {
   detail?: unknown;
 }
 
+export interface ContextSummarizedPayload {
+  messages_before: number;
+  messages_after: number;
+  tokens_before?: number;
+  tokens_after?: number;
+}
+
 export type ChatEventPayload =
   | MetaStartPayload
   | TextDeltaPayload
@@ -181,6 +189,7 @@ export type ChatEventPayload =
   | LlmCallStartPayload
   | LlmCallEndPayload
   | ErrorPayload
+  | ContextSummarizedPayload
   | Record<string, unknown>;
 
 export interface ChatEventBase {
@@ -203,5 +212,6 @@ export type ChatEvent =
   | (ChatEventBase & { type: "tool.end"; payload: ToolEndPayload })
   | (ChatEventBase & { type: "llm.call.start"; payload: LlmCallStartPayload })
   | (ChatEventBase & { type: "llm.call.end"; payload: LlmCallEndPayload })
+  | (ChatEventBase & { type: "context.summarized"; payload: ContextSummarizedPayload })
   | (ChatEventBase & { type: "error"; payload: ErrorPayload })
   | (ChatEventBase & { type: ChatEventType; payload: Record<string, unknown> });

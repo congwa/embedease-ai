@@ -26,6 +26,7 @@ export type {
   ToolCallItem,
   ProductsItem,
   TodosItem,
+  ContextSummarizedItem,
   ErrorItem,
   ItemStatus,
 } from "./use-timeline-reducer";

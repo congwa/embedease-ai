@@ -24,6 +24,7 @@ import {
   TimelineContentItem,
   TimelineProductsItem,
   TimelineTodosItem,
+  TimelineContextSummarizedItem,
   TimelineUserMessageItem,
   TimelineErrorItem,
 } from "./timeline";
@@ -135,6 +136,16 @@ export function ChatContent({
             className="mx-auto w-full max-w-3xl px-6"
           >
             <TimelineTodosItem item={item} />
+          </div>
+        );
+
+      case "context.summarized":
+        return (
+          <div
+            key={item.id}
+            className="mx-auto w-full max-w-3xl px-6"
+          >
+            <TimelineContextSummarizedItem item={item} />
           </div>
         );
 
