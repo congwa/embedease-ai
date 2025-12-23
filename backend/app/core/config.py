@@ -142,13 +142,18 @@ class Settings(BaseSettings):
     MEMORY_STORE_ENABLED: bool = True
     MEMORY_STORE_DB_PATH: str = "./data/memory_store.db"
 
+    # Memory 专用模型配置（可以与聊天模型不同，例如使用更便宜的模型）
+    MEMORY_MODEL: str | None = None  # Memory 专用模型，留空则使用 LLM_CHAT_MODEL
+    MEMORY_PROVIDER: str | None = None  # Memory 提供商，留空则使用 LLM_PROVIDER
+    MEMORY_API_KEY: str | None = None  # Memory API Key，留空则使用 LLM_API_KEY
+    MEMORY_BASE_URL: str | None = None  # Memory Base URL，留空则使用 LLM_BASE_URL
+
     # 事实型长期记忆（Qdrant 向量检索）
     MEMORY_FACT_ENABLED: bool = True
     MEMORY_FACT_DB_PATH: str = "./data/facts.db"
     MEMORY_FACT_COLLECTION: str = "memory_facts"  # Qdrant 独立集合
     MEMORY_FACT_SIMILARITY_THRESHOLD: float = 0.5  # Qdrant 距离阈值（越小越相似）
     MEMORY_FACT_MAX_RESULTS: int = 10
-    MEMORY_FACT_EXTRACTION_MODEL: str | None = None  # 留空则使用 LLM_CHAT_MODEL
 
     # 图谱记忆
     MEMORY_GRAPH_ENABLED: bool = True
@@ -180,9 +185,24 @@ class Settings(BaseSettings):
         Path(self.MEMORY_GRAPH_FILE_PATH).parent.mkdir(parents=True, exist_ok=True)
 
     @property
-    def effective_fact_extraction_model(self) -> str:
-        """获取有效的事实抽取模型"""
-        return self.MEMORY_FACT_EXTRACTION_MODEL or self.LLM_CHAT_MODEL
+    def effective_memory_model(self) -> str:
+        """获取有效的 Memory 模型"""
+        return self.MEMORY_MODEL or self.LLM_CHAT_MODEL
+
+    @property
+    def effective_memory_provider(self) -> str:
+        """获取有效的 Memory 提供商"""
+        return self.MEMORY_PROVIDER or self.LLM_PROVIDER
+
+    @property
+    def effective_memory_api_key(self) -> str:
+        """获取有效的 Memory API Key"""
+        return self.MEMORY_API_KEY or self.LLM_API_KEY
+
+    @property
+    def effective_memory_base_url(self) -> str:
+        """获取有效的 Memory Base URL"""
+        return self.MEMORY_BASE_URL or self.LLM_BASE_URL
 
     @property
     def effective_embedding_api_key(self) -> str:

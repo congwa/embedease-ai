@@ -108,6 +108,69 @@ def get_chat_model() -> BaseChatModel:
 
 
 @lru_cache
+def get_memory_model() -> BaseChatModel:
+    """获取 Memory 专用模型
+
+    用于记忆系统的事实抽取、图谱抽取等任务。
+    可以配置独立的模型（如更便宜的模型），不设置则复用聊天模型。
+    """
+    # 如果没有配置独立的 Memory 模型，直接返回聊天模型
+    if not settings.MEMORY_MODEL:
+        logger.debug(
+            "Memory 使用主聊天模型",
+            model=settings.LLM_CHAT_MODEL,
+        )
+        return get_chat_model()
+
+    logger.info(
+        "初始化 Memory 专用模型",
+        provider=settings.effective_memory_provider,
+        model=settings.effective_memory_model,
+    )
+
+    # 获取 profile（如果启用 models.dev）
+    custom_profile = None
+    if settings.MODELS_DEV_ENABLED:
+        custom_profile = get_model_profile(
+            model_name=settings.effective_memory_model,
+            api_url=settings.MODELS_DEV_API_URL,
+            provider_id=settings.effective_memory_provider,
+            timeout_seconds=settings.MODELS_DEV_TIMEOUT_SECONDS,
+            cache_ttl_seconds=settings.MODELS_DEV_CACHE_TTL_SECONDS,
+            env_profiles=settings.model_profiles,
+        )
+    else:
+        model_key = settings.effective_memory_model.strip().lower()
+        custom_profile = settings.model_profiles.get(model_key, {})
+
+    # 从 profile 中提取参数
+    model_kwargs = {}
+    if custom_profile and isinstance(custom_profile, dict):
+        if "temperature" in custom_profile:
+            model_kwargs["temperature"] = custom_profile["temperature"]
+        if "max_tokens" in custom_profile:
+            model_kwargs["max_tokens"] = custom_profile["max_tokens"]
+
+    # 创建 Memory 专用模型
+    model = create_chat_model(
+        model=settings.effective_memory_model,
+        base_url=settings.effective_memory_base_url,
+        api_key=settings.effective_memory_api_key,
+        provider=settings.effective_memory_provider,
+        profile=custom_profile,
+        **model_kwargs,
+    )
+
+    logger.info(
+        "Memory 模型初始化完成",
+        provider=settings.effective_memory_provider,
+        model=settings.effective_memory_model,
+    )
+
+    return model
+
+
+@lru_cache
 def get_embeddings() -> OpenAIEmbeddings:
     """获取嵌入模型
 

@@ -442,9 +442,9 @@ class KnowledgeGraphManager:
 
         try:
             llm_start = time.perf_counter()
-            from app.core.llm import get_chat_model
+            from app.core.llm import get_memory_model
 
-            model = get_chat_model()
+            model = get_memory_model()
 
             recent_messages = messages[-10:]
             conversation = "\n".join(

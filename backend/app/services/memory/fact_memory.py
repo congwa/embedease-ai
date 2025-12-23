@@ -115,11 +115,11 @@ class FactMemoryService:
             self._conn = None
             self._initialized = False
 
-    async def _get_chat_model(self):
-        """获取聊天模型"""
-        from app.core.llm import get_chat_model
+    async def _get_memory_model(self):
+        """获取 Memory 专用模型"""
+        from app.core.llm import get_memory_model
 
-        return get_chat_model()
+        return get_memory_model()
 
     async def extract_facts(
         self, user_id: str, messages: list[dict[str, str]]
@@ -140,7 +140,7 @@ class FactMemoryService:
             return []
 
         try:
-            model = await self._get_chat_model()
+            model = await self._get_memory_model()
 
             # 只处理最近的消息
             recent_messages = messages[-10:]
@@ -204,7 +204,7 @@ class FactMemoryService:
             return MemoryAction.ADD, None
 
         try:
-            model = await self._get_chat_model()
+            model = await self._get_memory_model()
             existing_str = "\n".join(
                 [f"[{f.id[:8]}] {f.content}" for f in existing_facts[:5]]
             )

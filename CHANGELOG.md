@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **嵌入式脚本打包管线** (`frontend/embed/entry.tsx`, `frontend/embed/EmbedWidget.tsx`, `frontend/embed/embed.css`, `frontend/embed/vite.config.ts`, `frontend/embed/demo.html`): 新增纯 JS Widget 入口与 UI，实现 `window.EmbedAiChat.init()` API，并通过 Vite 打包为单文件 `embed-ai-chat.js`，可直接在第三方站点以 `<script>` 内嵌。
 - **构建脚本与依赖** (`frontend/package.json`): 添加 `pnpm build:embed` 命令及 `vite`、`@vitejs/plugin-react`、`terser` 依赖，确保嵌入脚本能够独立打包。
 - **README 演示入口** (`README.md`): 在文档顶部加入 `docs/agent0.mp4` 演示视频按钮，访客打开仓库即可直接观看。
+- **记忆专用模型配置** (`backend/app/core/config.py`, `backend/.env.example`, `backend/app/core/llm.py`, `backend/app/services/memory/fact_memory.py`, `backend/app/services/memory/graph_memory.py`): 引入 `MEMORY_MODEL/MEMORY_PROVIDER/MEMORY_API_KEY/MEMORY_BASE_URL` 配置与 `get_memory_model()`，记忆抽取可选用独立模型，避免与主聊天模型抢配额。
 
 #### Changed
 
