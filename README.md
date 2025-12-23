@@ -1,5 +1,12 @@
 # 商品推荐 Agent（Look & Run in 5 Minutes）
 
+> 🎥 **演示视频**：点击下方按钮快速了解项目（或直接下载 `docs/agent0.mp4`）
+>
+> <div align="center">
+>   <a href="docs/agent0.mp4" target="_blank">
+>     <img src="https://img.shields.io/badge/Play-Demo%20Video-orange?style=for-the-badge&logo=youtube" alt="播放演示视频" />
+>   </a>
+> </div>
 
 ## 1. TL;DR
 
@@ -153,8 +160,57 @@ embedAi-agent/
 | 导入商品 | `uv run python scripts/import_products.py` |
 | 后端测试 | `uv run pytest` 或 `make test`（按需） |
 | 前端开发 | `pnpm dev` |
+| 嵌入脚本打包 | `cd frontend && pnpm build:embed`（产物见 `frontend/dist/embed/embed-ai-chat.js`） |
 | Lint / Format | `uv run ruff check .` / `pnpm lint`（或见各子目录 README） |
 | API 文档 | `http://localhost:8000/docs` |
+
+---
+
+## 9. 嵌入任意网站（使用 `build:embed` 产物）
+
+1. **构建脚本**
+   ```bash
+   cd frontend
+   pnpm build:embed
+   ```
+   该命令会使用 `vite` + `embed/vite.config.ts` 将小组件打成单文件（IIFE），输出到 `frontend/dist/embed/embed-ai-chat.js`，并自动内联样式，方便直接托管到任意静态存储或 CDN。
+
+2. **部署产物**
+   - 将 `dist/embed/embed-ai-chat.js` 上传到你的静态资源服务（OSS、S3、Vercel、Cloudflare Pages 等）。
+   - 若需要多环境配置，可按域名区分不同脚本地址。
+
+3. **在外部站点引用**
+   - **自动初始化（推荐）**
+     ```html
+     <script
+       src="https://your-cdn.com/embed-ai-chat.js"
+       data-auto-init
+       data-api-base-url="https://your-backend.com"
+       data-position="bottom-right"
+       data-title="商品推荐助手">
+     </script>
+     ```
+     `data-*` 属性会在脚本加载后自动触发 `window.EmbedAiChat.init`，并将配置传入。可选参数包括 `api-base-url`、`position`（`bottom-right`/`bottom-left`）、`primary-color`、`title`、`placeholder`。
+
+   - **手动初始化**
+     ```html
+     <script src="https://your-cdn.com/embed-ai-chat.js"></script>
+     <script>
+       window.EmbedAiChat.init({
+         apiBaseUrl: "https://your-backend.com",
+         position: "bottom-right",
+         title: "商品推荐助手",
+         placeholder: "输入消息..."
+       });
+       // window.EmbedAiChat.destroy(); // 需要销毁时调用
+     </script>
+     ```
+
+4. **后端与跨域**
+   - 确保后端 `.env` 中的 `CORS_ALLOW_ORIGINS`（或相关配置）包含外部站点域名。
+   - 生产环境记得开启 HTTPS、鉴权与速率限制，避免被滥用。
+
+> Demo 可参考 `frontend/embed/demo.html`，它展示了打包产物如何在独立页面被引用。
 
 ---
 

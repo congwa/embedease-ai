@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Embed AI Chat Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 40px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #18181b;
+    }
+    p {
+      color: #71717a;
+      line-height: 1.6;
+    }
+    pre {
+      background: #18181b;
+      color: #f4f4f5;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    code {
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+    }
+    .note {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛒 Embed AI Chat Widget</h1>
+    <p>
+      这是一个可嵌入的 AI 聊天小窗口演示页面。点击右下角的橙色按钮开始聊天。
+    </p>
+
+    <h2>使用方式</h2>
+    
+    <h3>方式一：自动初始化</h3>
+    <pre><code>&lt;script 
+  src="https://your-cdn.com/embed-ai-chat.js" 
+  data-auto-init
+  data-api-base-url="https://your-api.com"
+&gt;&lt;/script&gt;</code></pre>
+
+    <h3>方式二：手动初始化</h3>
+    <pre><code>&lt;script src="https://your-cdn.com/embed-ai-chat.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  window.EmbedAiChat.init({
+    apiBaseUrl: 'https://your-api.com',
+    position: 'bottom-right', // 或 'bottom-left'
+    title: '商品推荐助手',
+    placeholder: '输入消息...'
+  });
+&lt;/script&gt;</code></pre>
+
+    <h3>销毁实例</h3>
+    <pre><code>window.EmbedAiChat.destroy();</code></pre>
+
+    <div class="note">
+      <strong>注意：</strong>确保 <code>apiBaseUrl</code> 指向正确的后端 API 地址，并且后端已配置 CORS 允许跨域请求。
+    </div>
+
+    <h2>配置选项</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+      <thead>
+        <tr style="background: #f4f4f5;">
+          <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e4e4e7;">参数</th>
+          <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e4e4e7;">类型</th>
+          <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e4e4e7;">默认值</th>
+          <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e4e4e7;">说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;"><code>apiBaseUrl</code></td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">string</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">""</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">后端 API 地址</td>
+        </tr>
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;"><code>position</code></td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">string</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">"bottom-right"</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">位置：bottom-right 或 bottom-left</td>
+        </tr>
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;"><code>title</code></td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">string</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">"商品推荐助手"</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">窗口标题</td>
+        </tr>
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;"><code>placeholder</code></td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">string</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">"输入消息..."</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">输入框占位符</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 加载构建后的嵌入脚本 -->
+  <script src="../dist/embed/embed-ai-chat.js" data-auto-init data-api-base-url=""></script>
+</body>
+</html>
