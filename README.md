@@ -8,6 +8,11 @@
 >   </a>
 > </div>
 
+<video width="640" height="360" controls>
+  <source src="docs/agent0.mp4" type="video/mp4" />
+  您的浏览器不支持 HTML5 视频标签。
+</video>
+
 ## 1. TL;DR
 
 | 我是谁 | 我能做什么 | 怎么跑起来 |
