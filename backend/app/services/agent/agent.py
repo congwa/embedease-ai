@@ -28,6 +28,14 @@ from app.services.agent.tools import (
     compare_products,
     filter_by_price,
     guide_user,
+    list_all_categories,
+    get_category_overview,
+    list_products_by_category,
+    find_similar_products,
+    list_featured_products,
+    list_products_by_attribute,
+    suggest_related_categories,
+    get_product_purchase_links,
 )
 from app.services.agent.middleware.logging import LoggingMiddleware
 from app.services.agent.middleware.response_sanitization import ResponseSanitizationMiddleware
@@ -365,6 +373,14 @@ class AgentService:
                 compare_products,
                 filter_by_price,
                 guide_user,
+                list_all_categories,
+                get_category_overview,
+                list_products_by_category,
+                find_similar_products,
+                list_featured_products,
+                list_products_by_attribute,
+                suggest_related_categories,
+                get_product_purchase_links,
             ]
 
             # ========== 中间件链配置（声明式，顺序一目了然） ==========
