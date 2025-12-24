@@ -466,22 +466,8 @@ export function timelineReducer(
       const todos = payload.todos;
       if (!todos || todos.length === 0) return state;
 
-      // 查找是否已存在同 turn 的 todos item，如果存在则更新
-      const existingTodos = getLastItemOfType<TodosItem>(
-        state,
-        "assistant.todos",
-        turnId
-      );
-
-      if (existingTodos) {
-        // 更新现有的 todos item
-        return updateItemById(state, existingTodos.id, (item) => {
-          if (item.type !== "assistant.todos") return item;
-          return { ...item, todos, ts: now };
-        });
-      }
-
-      // 创建新的 todos item
+      // 每次收到 assistant.todos 都创建新的 item，不更新已有记录
+      // 这样可以保留 LLM 思考过程中的多次计划变更历史
       const item: TodosItem = {
         type: "assistant.todos",
         id: `todos:${event.seq}`,
