@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
-from app.routers import chat, conversations, users
+from app.routers import chat, conversations, crawler, users
 from app.services.agent.agent import agent_service
 
 
@@ -73,11 +73,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _init_model_profiles()
 
     await init_db()
+
+    # 初始化爬取调度器
+    if settings.CRAWLER_ENABLED:
+        from app.services.crawler import CrawlScheduler
+        crawler_scheduler = CrawlScheduler.get_instance()
+        await crawler_scheduler.start()
+        logger.info("爬取调度器已启动", module="app")
+
     logger.info("应用启动完成", module="app", host=settings.API_HOST, port=settings.API_PORT)
 
     yield
 
     logger.info("正在关闭应用...", module="app")
+
+    # 0. 关闭爬取调度器
+    if settings.CRAWLER_ENABLED:
+        from app.services.crawler import CrawlScheduler
+        crawler_scheduler = CrawlScheduler.get_instance()
+        await crawler_scheduler.stop()
+        logger.debug("爬取调度器已关闭", module="app")
     
     # 1. 关闭 Agent 服务（checkpointer 连接）
     await agent_service.close()
@@ -155,6 +170,7 @@ app.add_middleware(
 # 注册路由
 app.include_router(chat.router)
 app.include_router(conversations.router)
+app.include_router(crawler.router)
 app.include_router(users.router)
 
 

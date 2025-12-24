@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Added
 
+- 新增爬虫模块配置与数据模型，支持自动发现商品并导入
+
+	-  新增爬虫配置项：`CRAWLER_ENABLED`（总开关）、`CRAWLER_MODEL/PROVIDER/API_KEY/BASE_URL`（专用模型配置）、浏览器/限制/调度等 13 项配置
+  - 新增 `effective_crawler_*` 系列属性方法，支持爬虫模型配置回退至主 LLM 配置
+  - 新增爬虫数据模型：`CrawlSite`（站点配置）、`CrawlTask`（爬取任务）、`CrawlPage`（页面记录）
+  - 新增爬虫 Schema：`CrawlSiteCreate`、`CrawlSiteUpdate`、`CrawlTaskCreate`、`CrawlPageCreate`
+
 - **Agent 工具稳健性配置** (`backend/.env.example`, `backend/app/core/config.py`): 新增工具重试与调用次数限制配置（`AGENT_TOOL_RETRY_*`, `AGENT_TOOL_LIMIT_*`），并补全 TODO 规划开关及自定义提示/描述字段。
 - **中间件扩展** (`backend/app/services/agent/agent.py`, `backend/app/services/agent/middleware/todo_broadcast.py`): 条件注入 `ToolRetryMiddleware`、`ToolCallLimitMiddleware`、`TodoListMiddleware`，并新增 `TodoBroadcastMiddleware` 在 todos 变更时向前端推送 SSE。
 - **SSE 事件类型** (`backend/app/schemas/events.py`): 新增 `assistant.todos` 事件与 TODO payload 定义。

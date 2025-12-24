@@ -163,6 +163,29 @@ class Settings(BaseSettings):
     MEMORY_ORCHESTRATION_ENABLED: bool = True
     MEMORY_ASYNC_WRITE: bool = True
 
+    # ========== 爬取模块配置 ==========
+    # 总开关
+    CRAWLER_ENABLED: bool = False  # 是否启用爬取模块
+
+    # 爬取专用模型配置（可以与聊天模型不同，例如使用更便宜的模型）
+    CRAWLER_MODEL: str | None = None  # 爬取专用模型，留空则使用 LLM_CHAT_MODEL
+    CRAWLER_PROVIDER: str | None = None  # 爬取提供商，留空则使用 LLM_PROVIDER
+    CRAWLER_API_KEY: str | None = None  # 爬取 API Key，留空则使用 LLM_API_KEY
+    CRAWLER_BASE_URL: str | None = None  # 爬取 Base URL，留空则使用 LLM_BASE_URL
+
+    # 浏览器配置
+    CRAWLER_HEADLESS: bool = True  # 是否无头模式
+    CRAWLER_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+    # 爬取限制
+    CRAWLER_MAX_HTML_LENGTH: int = 50000  # LLM 解析的最大 HTML 长度
+    CRAWLER_DEFAULT_DELAY: float = 1.0  # 默认请求间隔（秒）
+    CRAWLER_DEFAULT_MAX_DEPTH: int = 3  # 默认最大爬取深度
+    CRAWLER_DEFAULT_MAX_PAGES: int = 500  # 默认最大页面数
+
+    # 调度配置
+    CRAWLER_SCHEDULE_CHECK_INTERVAL: int = 5  # 调度检查间隔（分钟）
+
     @property
     def database_url(self) -> str:
         """SQLite 数据库 URL"""
@@ -253,6 +276,26 @@ class Settings(BaseSettings):
                 continue
             out[k.strip().lower()] = v
         return out
+
+    @property
+    def effective_crawler_model(self) -> str:
+        """获取有效的爬取模型"""
+        return self.CRAWLER_MODEL or self.LLM_CHAT_MODEL
+
+    @property
+    def effective_crawler_provider(self) -> str:
+        """获取有效的爬取提供商"""
+        return self.CRAWLER_PROVIDER or self.LLM_PROVIDER
+
+    @property
+    def effective_crawler_api_key(self) -> str:
+        """获取有效的爬取 API Key"""
+        return self.CRAWLER_API_KEY or self.LLM_API_KEY
+
+    @property
+    def effective_crawler_base_url(self) -> str:
+        """获取有效的爬取 Base URL"""
+        return self.CRAWLER_BASE_URL or self.LLM_BASE_URL
 
 
 @lru_cache

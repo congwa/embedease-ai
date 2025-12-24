@@ -1,902 +1,506 @@
 [
     {
         "id": "P0001",
-        "name": "数码影音-商品01",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 99.0,
+        "name": "Apple AirPods Pro 2",
+        "summary": "第二代主动降噪真无线耳机",
+        "description": "H2 芯片与自适应 EQ 带来更精准的降噪与沉浸式聆听体验，支持 MagSafe 充电与个性化空间音频。",
+        "price": 1899.0,
         "category": "数码影音",
-        "url": "https://example.com/product/P0001"
+        "url": "https://store.example.com/products/airpods-pro-2",
+        "tags": ["真无线", "主动降噪", "蓝牙 5.3"],
+        "brand": "Apple",
+        "image_urls": [
+            "https://cdn.example.com/images/P0001/main.jpg",
+            "https://cdn.example.com/images/P0001/side.jpg"
+        ],
+        "specs": {
+            "芯片": "Apple H2",
+            "续航": "6 小时（单次）",
+            "充电接口": "Lightning / MagSafe"
+        },
+        "extra_metadata": {
+            "color": "白色",
+            "warranty": "1 年",
+            "launch_year": 2023
+        },
+        "source_site_id": "apple_flagship"
     },
     {
         "id": "P0002",
-        "name": "数码影音-商品02",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 119.0,
+        "name": "Sony WH-1000XM5",
+        "summary": "旗舰级头戴式降噪耳机",
+        "description": "双芯降噪处理器结合 8 颗麦克风精准捕捉环境噪声，轻量化头梁设计适合长时间佩戴。",
+        "price": 2999.0,
         "category": "数码影音",
-        "url": "https://example.com/product/P0002"
+        "url": "https://store.example.com/products/sony-wh-1000xm5",
+        "tags": ["头戴式", "LDAC", "多设备连接"],
+        "brand": "Sony",
+        "image_urls": [
+            "https://cdn.example.com/images/P0002/main.jpg"
+        ],
+        "specs": {
+            "重量": "250 g",
+            "续航": "30 小时",
+            "接口": "USB-C"
+        },
+        "extra_metadata": {
+            "color": "曜石黑",
+            "noise_control": "ANC + Aware",
+            "availability": "in_stock"
+        },
+        "source_site_id": "sony_flagship"
     },
     {
         "id": "P0003",
-        "name": "数码影音-商品03",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 139.0,
+        "name": "Nintendo Switch OLED",
+        "summary": "7 英寸 OLED 便携主机",
+        "description": "更高对比度的 OLED 屏幕与增强支架，带来更细腻的掌机体验，支持 TV/桌面/掌机三种模式。",
+        "price": 2599.0,
         "category": "数码影音",
-        "url": "https://example.com/product/P0003"
+        "url": "https://store.example.com/products/switch-oled",
+        "tags": ["游戏主机", "OLED", "多人娱乐"],
+        "brand": "Nintendo",
+        "image_urls": [
+            "https://cdn.example.com/images/P0003/main.jpg"
+        ],
+        "specs": {
+            "存储": "64 GB",
+            "屏幕": "7\" OLED",
+            "接口": "USB-C / HDMI"
+        },
+        "extra_metadata": {
+            "color": "白色 Joy-Con",
+            "bundle": "含底座",
+            "warranty": "18 个月"
+        },
+        "source_site_id": "gamehub"
     },
     {
         "id": "P0004",
-        "name": "数码影音-商品04",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 159.0,
+        "name": "DJI Mini 4 Pro",
+        "summary": "249g 级别避障航拍无人机",
+        "description": "全向避障 + 10-bit D-Log M 视频，支持 20km O4 传输，轻巧机身适合旅行随拍。",
+        "price": 6799.0,
         "category": "数码影音",
-        "url": "https://example.com/product/P0004"
+        "url": "https://store.example.com/products/dji-mini-4-pro",
+        "tags": ["航拍", "全向避障", "4K60fps"],
+        "brand": "DJI",
+        "image_urls": [
+            "https://cdn.example.com/images/P0004/main.jpg",
+            "https://cdn.example.com/images/P0004/folded.jpg"
+        ],
+        "specs": {
+            "重量": "249 g",
+            "飞行时间": "34 分钟",
+            "传感器": "1/1.3\" CMOS"
+        },
+        "extra_metadata": {
+            "color": "北极灰",
+            "package": "Fly More Combo",
+            "availability": "preorder"
+        },
+        "source_site_id": "dji_store"
     },
     {
         "id": "P0005",
-        "name": "数码影音-商品05",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 179.0,
-        "category": "数码影音",
-        "url": "https://example.com/product/P0005"
+        "name": "Kindle Paperwhite 第 11 代",
+        "summary": "6.8 英寸防水电子书阅读器",
+        "description": "300 PPI 墨水屏搭配可调冷暖前灯，IPX8 级防水支持浴缸阅读，USB-C 充电更方便。",
+        "price": 1199.0,
+        "category": "图书文具",
+        "url": "https://store.example.com/products/kindle-paperwhite-11",
+        "tags": ["电子书", "防水", "轻薄"],
+        "brand": "Amazon",
+        "image_urls": [
+            "https://cdn.example.com/images/P0005/main.jpg"
+        ],
+        "specs": {
+            "屏幕": "6.8\" 300 PPI",
+            "存储": "16 GB",
+            "防水": "IPX8"
+        },
+        "extra_metadata": {
+            "color": "石墨黑",
+            "bundle": "含广告版本",
+            "warranty": "1 年"
+        },
+        "source_site_id": "readers_club"
     },
     {
         "id": "P0006",
-        "name": "数码影音-商品06",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 199.0,
-        "category": "数码影音",
-        "url": "https://example.com/product/P0006"
+        "name": "Logitech MX Master 3S",
+        "summary": "旗舰级人体工学鼠标",
+        "description": "8K 精度光学传感与 MagSpeed 滚轮，支持三设备跨平台切换，适合设计与办公场景。",
+        "price": 899.0,
+        "category": "办公外设",
+        "url": "https://store.example.com/products/mx-master-3s",
+        "tags": ["蓝牙", "人体工学", "多设备"],
+        "brand": "Logitech",
+        "image_urls": [
+            "https://cdn.example.com/images/P0006/main.jpg"
+        ],
+        "specs": {
+            "传感器": "Darkfield 8K",
+            "连接": "Bluetooth / Logi Bolt",
+            "续航": "70 天"
+        },
+        "extra_metadata": {
+            "color": "石墨灰",
+            "package": "含 USB-C 线",
+            "availability": "in_stock"
+        },
+        "source_site_id": "logitech_store"
     },
     {
         "id": "P0007",
-        "name": "数码影音-商品07",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 219.0,
-        "category": "数码影音",
-        "url": "https://example.com/product/P0007"
+        "name": "Dyson V12 Detect Slim",
+        "summary": "激光可视化除尘吸尘器",
+        "description": "激光照亮微尘、LCD 显示吸入颗粒数量，轻量机身配备自动调节吸力的压电传感器。",
+        "price": 4890.0,
+        "category": "家居生活",
+        "url": "https://store.example.com/products/dyson-v12-detect",
+        "tags": ["吸尘器", "激光除尘", "无线"],
+        "brand": "Dyson",
+        "image_urls": [
+            "https://cdn.example.com/images/P0007/main.jpg"
+        ],
+        "specs": {
+            "重量": "2.2 kg",
+            "续航": "60 分钟",
+            "集尘盒": "0.35 L"
+        },
+        "extra_metadata": {
+            "color": "金绿配色",
+            "accessories": "含软绒滚筒等 7 件套",
+            "warranty": "2 年"
+        },
+        "source_site_id": "dyson_home"
     },
     {
         "id": "P0008",
-        "name": "数码影音-商品08",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 239.0,
-        "category": "数码影音",
-        "url": "https://example.com/product/P0008"
+        "name": "Le Creuset 珐琅铸铁锅 24cm",
+        "summary": "法式多功能炖煮锅",
+        "description": "搪瓷内胆受热均匀，适合炖汤/烘焙/面包，樱桃红配色点亮厨房。",
+        "price": 2699.0,
+        "category": "厨房电器",
+        "url": "https://store.example.com/products/lecreuset-24cm",
+        "tags": ["珐琅锅", "炖煮", "烘焙"],
+        "brand": "Le Creuset",
+        "image_urls": [
+            "https://cdn.example.com/images/P0008/main.jpg"
+        ],
+        "specs": {
+            "容量": "4.2 L",
+            "材质": "铸铁 + 珐琅",
+            "适用": "明火 / 电磁炉 / 烤箱"
+        },
+        "extra_metadata": {
+            "color": "樱桃红",
+            "origin": "France",
+            "warranty": "终身保修"
+        },
+        "source_site_id": "chef_select"
     },
     {
         "id": "P0009",
-        "name": "数码影音-商品09",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 259.0,
-        "category": "数码影音",
-        "url": "https://example.com/product/P0009"
+        "name": "KitchenAid Artisan 立式搅拌机",
+        "summary": "经典台式烘焙搅拌机",
+        "description": "325W 直流马达提供 10 档变速，配套和面钩、打蛋器与搅拌桨，适合家庭烘焙。",
+        "price": 4599.0,
+        "category": "厨房电器",
+        "url": "https://store.example.com/products/kitchenaid-artisan",
+        "tags": ["烘焙", "立式搅拌", "多附件"],
+        "brand": "KitchenAid",
+        "image_urls": [
+            "https://cdn.example.com/images/P0009/main.jpg",
+            "https://cdn.example.com/images/P0009/bowl.jpg"
+        ],
+        "specs": {
+            "容量": "4.8 L",
+            "功率": "325 W",
+            "档位": "10 档"
+        },
+        "extra_metadata": {
+            "color": "薄荷蓝",
+            "accessories": "3 个搅拌头",
+            "warranty": "5 年"
+        },
+        "source_site_id": "gourmet_lab"
     },
     {
         "id": "P0010",
-        "name": "数码影音-商品10",
-        "summary": "高性价比数码单品",
-        "description": "适合日常使用",
-        "price": 279.0,
-        "category": "数码影音",
-        "url": "https://example.com/product/P0010"
+        "name": "Nespresso Vertuo Lattissima",
+        "summary": "胶囊咖啡与奶泡一体机",
+        "description": "创新 Vertuo 萃取结合自动奶泡系统，一键制作拿铁/卡布奇诺，支持 5 种杯量。",
+        "price": 3299.0,
+        "category": "厨房电器",
+        "url": "https://store.example.com/products/nespresso-vertuo-lattissima",
+        "tags": ["咖啡机", "胶囊", "自动奶泡"],
+        "brand": "Nespresso",
+        "image_urls": [
+            "https://cdn.example.com/images/P0010/main.jpg"
+        ],
+        "specs": {
+            "水箱": "1.6 L",
+            "奶罐": "0.25 L",
+            "功率": "1500 W"
+        },
+        "extra_metadata": {
+            "color": "雾霾蓝",
+            "bundle": "附 12 粒体验胶囊",
+            "availability": "in_stock"
+        },
+        "source_site_id": "coffee_lab"
     },
     {
         "id": "P0011",
-        "name": "家居生活-商品01",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 49.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0011"
+        "name": "Nike Air Zoom Pegasus 41",
+        "summary": "日常路跑缓震鞋",
+        "description": "ReactX 泡棉搭配双层 Zoom Air 提供回弹脚感，Flyknit 鞋面透气轻盈。",
+        "price": 1099.0,
+        "category": "运动户外",
+        "url": "https://store.example.com/products/nike-pegasus-41",
+        "tags": ["跑鞋", "缓震", "Flyknit"],
+        "brand": "Nike",
+        "image_urls": [
+            "https://cdn.example.com/images/P0011/main.jpg"
+        ],
+        "specs": {
+            "重量": "255 g（男 US9）",
+            "鞋面": "Flyknit",
+            "鞋底": "ReactX + Zoom Air"
+        },
+        "extra_metadata": {
+            "color": "白/橙",
+            "gender": "Unisex",
+            "season": "SS25"
+        },
+        "source_site_id": "nike_running"
     },
     {
         "id": "P0012",
-        "name": "家居生活-商品02",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 59.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0012"
+        "name": "Arc'teryx Beta LT Jacket",
+        "summary": "轻量三层冲锋衣",
+        "description": "GORE-TEX C-KNIT 面料兼顾耐候与透气，简约剪裁适合徒步与都市通勤。",
+        "price": 4699.0,
+        "category": "运动户外",
+        "url": "https://store.example.com/products/arcteryx-beta-lt",
+        "tags": ["冲锋衣", "GORE-TEX", "轻量"],
+        "brand": "Arc'teryx",
+        "image_urls": [
+            "https://cdn.example.com/images/P0012/main.jpg"
+        ],
+        "specs": {
+            "面料": "3L GORE-TEX",
+            "重量": "395 g",
+            "防水等级": "28,000 mm"
+        },
+        "extra_metadata": {
+            "color": "Nimbus",
+            "fit": "Regular",
+            "warranty": "终身"
+        },
+        "source_site_id": "mountain_pro"
     },
     {
         "id": "P0013",
-        "name": "家居生活-商品03",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 69.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0013"
+        "name": "Patagonia Black Hole 32L",
+        "summary": "多用途防泼水背包",
+        "description": "采用 100% 再生聚酯面料，带有加厚笔记本仓与前置网袋，适合周末短途与通勤。",
+        "price": 1299.0,
+        "category": "运动户外",
+        "url": "https://store.example.com/products/patagonia-black-hole-32",
+        "tags": ["背包", "防泼水", "可持续"],
+        "brand": "Patagonia",
+        "image_urls": [
+            "https://cdn.example.com/images/P0013/main.jpg"
+        ],
+        "specs": {
+            "容量": "32 L",
+            "尺寸": "53 x 33 x 19 cm",
+            "材质": "再生聚酯 + TPU"
+        },
+        "extra_metadata": {
+            "color": "Forge Grey",
+            "origin": "Vietnam",
+            "warranty": "Ironclad"
+        },
+        "source_site_id": "patagonia_cn"
     },
     {
         "id": "P0014",
-        "name": "家居生活-商品04",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 79.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0014"
+        "name": "UNIQLO U AIRism Cotton T 恤",
+        "summary": "日常透气基础款",
+        "description": "AIRism 内里与棉质表层融合，手感柔软且速干，宽松版型易于搭配。",
+        "price": 99.0,
+        "category": "服饰鞋包",
+        "url": "https://store.example.com/products/uniqlo-airism-u-tee",
+        "tags": ["基础款", "速干", "中性"],
+        "brand": "UNIQLO",
+        "image_urls": [
+            "https://cdn.example.com/images/P0014/main.jpg"
+        ],
+        "specs": {
+            "材质": "AIRism + 棉",
+            "版型": "Relaxed",
+            "尺码": "XS-XXL"
+        },
+        "extra_metadata": {
+            "color": "军绿色",
+            "season": "SS25",
+            "care": "机洗"
+        },
+        "source_site_id": "uniqlo_online"
     },
     {
         "id": "P0015",
-        "name": "家居生活-商品05",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 89.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0015"
+        "name": "RIMOWA Original Cabin 35L",
+        "summary": "铝镁合金登机箱",
+        "description": "经典沟槽箱体搭配 Multiwheel 系统，TSA 密码锁保障旅途安全。",
+        "price": 10800.0,
+        "category": "服饰鞋包",
+        "url": "https://store.example.com/products/rimowa-original-cabin",
+        "tags": ["旅行箱", "铝合金", "登机尺寸"],
+        "brand": "RIMOWA",
+        "image_urls": [
+            "https://cdn.example.com/images/P0015/main.jpg"
+        ],
+        "specs": {
+            "容量": "35 L",
+            "尺寸": "55 x 40 x 23 cm",
+            "重量": "4.3 kg"
+        },
+        "extra_metadata": {
+            "color": "银色",
+            "wheels": "Multiwheel",
+            "warranty": "5 年"
+        },
+        "source_site_id": "rimowa_cn"
     },
     {
         "id": "P0016",
-        "name": "家居生活-商品06",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 99.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0016"
+        "name": "SK-II 护肤精华露 230ml",
+        "summary": "Pitera 神仙水经典容量",
+        "description": "富含 90% 以上 Pitera，改善肤色暗沉与粗糙，帮助肌肤保持水润透亮。",
+        "price": 1540.0,
+        "category": "美妆个护",
+        "url": "https://store.example.com/products/sk2-fte-230",
+        "tags": ["精华水", "美白", "保湿"],
+        "brand": "SK-II",
+        "image_urls": [
+            "https://cdn.example.com/images/P0016/main.jpg"
+        ],
+        "specs": {
+            "容量": "230 ml",
+            "肤质": "所有肤质",
+            "产地": "Japan"
+        },
+        "extra_metadata": {
+            "shelf_life": "3 年",
+            "warranty": "正品保障",
+            "availability": "in_stock"
+        },
+        "source_site_id": "beauty_select"
     },
     {
         "id": "P0017",
-        "name": "家居生活-商品07",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 109.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0017"
+        "name": "La Roche-Posay 安得利清透防晒乳",
+        "summary": "轻薄不搓泥的日常防晒",
+        "description": "XL-PROTECT 专利过滤系统，SPF50+ PA++++，舒缓敏感肤质。",
+        "price": 268.0,
+        "category": "美妆个护",
+        "url": "https://store.example.com/products/lrp-anthelios-fluid",
+        "tags": ["防晒", "敏感肌", "轻薄"],
+        "brand": "La Roche-Posay",
+        "image_urls": [
+            "https://cdn.example.com/images/P0017/main.jpg"
+        ],
+        "specs": {
+            "容量": "50 ml",
+            "SPF": "50+",
+            "PA": "++++"
+        },
+        "extra_metadata": {
+            "texture": "流动乳液",
+            "fragrance": "无香",
+            "origin": "France"
+        },
+        "source_site_id": "derma_store"
     },
     {
         "id": "P0018",
-        "name": "家居生活-商品08",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 119.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0018"
+        "name": "Philips Sonicare 9900 Prestige",
+        "summary": "AI 智能护齿电动牙刷",
+        "description": "SenseIQ 技术实时调节力度，配合 A3 刷头一体清洁牙龈与牙面。",
+        "price": 2399.0,
+        "category": "个护电器",
+        "url": "https://store.example.com/products/sonicare-9900",
+        "tags": ["电动牙刷", "SenseIQ", "USB-C"],
+        "brand": "Philips",
+        "image_urls": [
+            "https://cdn.example.com/images/P0018/main.jpg",
+            "https://cdn.example.com/images/P0018/case.jpg"
+        ],
+        "specs": {
+            "模式": "Clean/White+ 等 5 种",
+            "续航": "2 周",
+            "充电": "USB-C 旅行盒"
+        },
+        "extra_metadata": {
+            "color": "香槟金",
+            "warranty": "2 年",
+            "replacement": "A3 刷头"
+        },
+        "source_site_id": "care_plus"
     },
     {
         "id": "P0019",
-        "name": "家居生活-商品09",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 129.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0019"
+        "name": "LEGO NASA 土星五号火箭",
+        "summary": "1900+ 颗粒收藏级积木",
+        "description": "高度一米的比例模型，可拆解三级火箭结构，附指令舱与登月舱。",
+        "price": 1099.0,
+        "category": "玩具乐器",
+        "url": "https://store.example.com/products/lego-saturn-v",
+        "tags": ["LEGO Ideas", "航天", "收藏"],
+        "brand": "LEGO",
+        "image_urls": [
+            "https://cdn.example.com/images/P0019/main.jpg"
+        ],
+        "specs": {
+            "颗粒数": "1969 pcs",
+            "高度": "100 cm",
+            "适龄": "14+"
+        },
+        "extra_metadata": {
+            "series": "21309",
+            "availability": "in_stock",
+            "warranty": "7 天无忧退"
+        },
+        "source_site_id": "lego_store"
     },
     {
         "id": "P0020",
-        "name": "家居生活-商品10",
-        "summary": "居家实用小物",
-        "description": "提升生活便利",
-        "price": 139.0,
-        "category": "家居生活",
-        "url": "https://example.com/product/P0020"
-    },
-    {
-        "id": "P0021",
-        "name": "美妆个护-商品01",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 39.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0021"
-    },
-    {
-        "id": "P0022",
-        "name": "美妆个护-商品02",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 45.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0022"
-    },
-    {
-        "id": "P0023",
-        "name": "美妆个护-商品03",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 52.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0023"
-    },
-    {
-        "id": "P0024",
-        "name": "美妆个护-商品04",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 59.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0024"
-    },
-    {
-        "id": "P0025",
-        "name": "美妆个护-商品05",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 66.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0025"
-    },
-    {
-        "id": "P0026",
-        "name": "美妆个护-商品06",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 73.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0026"
-    },
-    {
-        "id": "P0027",
-        "name": "美妆个护-商品07",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 80.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0027"
-    },
-    {
-        "id": "P0028",
-        "name": "美妆个护-商品08",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 87.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0028"
-    },
-    {
-        "id": "P0029",
-        "name": "美妆个护-商品09",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 94.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0029"
-    },
-    {
-        "id": "P0030",
-        "name": "美妆个护-商品10",
-        "summary": "温和配方",
-        "description": "适合日常护理",
-        "price": 101.0,
-        "category": "美妆个护",
-        "url": "https://example.com/product/P0030"
-    },
-    {
-        "id": "P0031",
-        "name": "运动户外-商品01",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 129.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0031"
-    },
-    {
-        "id": "P0032",
-        "name": "运动户外-商品02",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 149.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0032"
-    },
-    {
-        "id": "P0033",
-        "name": "运动户外-商品03",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 169.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0033"
-    },
-    {
-        "id": "P0034",
-        "name": "运动户外-商品04",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 189.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0034"
-    },
-    {
-        "id": "P0035",
-        "name": "运动户外-商品05",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 209.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0035"
-    },
-    {
-        "id": "P0036",
-        "name": "运动户外-商品06",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 229.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0036"
-    },
-    {
-        "id": "P0037",
-        "name": "运动户外-商品07",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 249.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0037"
-    },
-    {
-        "id": "P0038",
-        "name": "运动户外-商品08",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 269.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0038"
-    },
-    {
-        "id": "P0039",
-        "name": "运动户外-商品09",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 289.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0039"
-    },
-    {
-        "id": "P0040",
-        "name": "运动户外-商品10",
-        "summary": "轻便耐用",
-        "description": "适合周末出行",
-        "price": 309.0,
-        "category": "运动户外",
-        "url": "https://example.com/product/P0040"
-    },
-    {
-        "id": "P0041",
-        "name": "母婴用品-商品01",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 59.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0041"
-    },
-    {
-        "id": "P0042",
-        "name": "母婴用品-商品02",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 69.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0042"
-    },
-    {
-        "id": "P0043",
-        "name": "母婴用品-商品03",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 79.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0043"
-    },
-    {
-        "id": "P0044",
-        "name": "母婴用品-商品04",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 89.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0044"
-    },
-    {
-        "id": "P0045",
-        "name": "母婴用品-商品05",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 99.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0045"
-    },
-    {
-        "id": "P0046",
-        "name": "母婴用品-商品06",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 109.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0046"
-    },
-    {
-        "id": "P0047",
-        "name": "母婴用品-商品07",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 119.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0047"
-    },
-    {
-        "id": "P0048",
-        "name": "母婴用品-商品08",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 129.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0048"
-    },
-    {
-        "id": "P0049",
-        "name": "母婴用品-商品09",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 139.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0049"
-    },
-    {
-        "id": "P0050",
-        "name": "母婴用品-商品10",
-        "summary": "安心材质",
-        "description": "适合家庭使用",
-        "price": 149.0,
-        "category": "母婴用品",
-        "url": "https://example.com/product/P0050"
-    },
-    {
-        "id": "P0051",
-        "name": "食品饮料-商品01",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 19.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0051"
-    },
-    {
-        "id": "P0052",
-        "name": "食品饮料-商品02",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 22.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0052"
-    },
-    {
-        "id": "P0053",
-        "name": "食品饮料-商品03",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 25.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0053"
-    },
-    {
-        "id": "P0054",
-        "name": "食品饮料-商品04",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 28.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0054"
-    },
-    {
-        "id": "P0055",
-        "name": "食品饮料-商品05",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 31.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0055"
-    },
-    {
-        "id": "P0056",
-        "name": "食品饮料-商品06",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 34.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0056"
-    },
-    {
-        "id": "P0057",
-        "name": "食品饮料-商品07",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 37.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0057"
-    },
-    {
-        "id": "P0058",
-        "name": "食品饮料-商品08",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 40.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0058"
-    },
-    {
-        "id": "P0059",
-        "name": "食品饮料-商品09",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 43.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0059"
-    },
-    {
-        "id": "P0060",
-        "name": "食品饮料-商品10",
-        "summary": "精选原料",
-        "description": "口感清爽",
-        "price": 46.0,
-        "category": "食品饮料",
-        "url": "https://example.com/product/P0060"
-    },
-    {
-        "id": "P0061",
-        "name": "图书文具-商品01",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 15.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0061"
-    },
-    {
-        "id": "P0062",
-        "name": "图书文具-商品02",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 18.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0062"
-    },
-    {
-        "id": "P0063",
-        "name": "图书文具-商品03",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 21.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0063"
-    },
-    {
-        "id": "P0064",
-        "name": "图书文具-商品04",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 24.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0064"
-    },
-    {
-        "id": "P0065",
-        "name": "图书文具-商品05",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 27.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0065"
-    },
-    {
-        "id": "P0066",
-        "name": "图书文具-商品06",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 30.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0066"
-    },
-    {
-        "id": "P0067",
-        "name": "图书文具-商品07",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 33.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0067"
-    },
-    {
-        "id": "P0068",
-        "name": "图书文具-商品08",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 36.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0068"
-    },
-    {
-        "id": "P0069",
-        "name": "图书文具-商品09",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 39.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0069"
-    },
-    {
-        "id": "P0070",
-        "name": "图书文具-商品10",
-        "summary": "学习办公好帮手",
-        "description": "简洁耐用",
-        "price": 42.0,
-        "category": "图书文具",
-        "url": "https://example.com/product/P0070"
-    },
-    {
-        "id": "P0071",
-        "name": "服饰鞋包-商品01",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 89.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0071"
-    },
-    {
-        "id": "P0072",
-        "name": "服饰鞋包-商品02",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 99.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0072"
-    },
-    {
-        "id": "P0073",
-        "name": "服饰鞋包-商品03",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 109.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0073"
-    },
-    {
-        "id": "P0074",
-        "name": "服饰鞋包-商品04",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 119.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0074"
-    },
-    {
-        "id": "P0075",
-        "name": "服饰鞋包-商品05",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 129.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0075"
-    },
-    {
-        "id": "P0076",
-        "name": "服饰鞋包-商品06",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 139.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0076"
-    },
-    {
-        "id": "P0077",
-        "name": "服饰鞋包-商品07",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 149.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0077"
-    },
-    {
-        "id": "P0078",
-        "name": "服饰鞋包-商品08",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 159.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0078"
-    },
-    {
-        "id": "P0079",
-        "name": "服饰鞋包-商品09",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 169.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0079"
-    },
-    {
-        "id": "P0080",
-        "name": "服饰鞋包-商品10",
-        "summary": "简约百搭",
-        "description": "舒适易打理",
-        "price": 179.0,
-        "category": "服饰鞋包",
-        "url": "https://example.com/product/P0080"
-    },
-    {
-        "id": "P0081",
-        "name": "厨房电器-商品01",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 199.0,
+        "name": "KitchenAid Artisan Go Cordless",
+        "summary": "无绳手持料理棒套装",
+        "description": "可拆卸搅拌杆 + 刀具 + 奶泡器，USB-C 快充 2 小时即可续航 20 分钟。",
+        "price": 1899.0,
         "category": "厨房电器",
-        "url": "https://example.com/product/P0081"
-    },
-    {
-        "id": "P0082",
-        "name": "厨房电器-商品02",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 229.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0082"
-    },
-    {
-        "id": "P0083",
-        "name": "厨房电器-商品03",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 259.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0083"
-    },
-    {
-        "id": "P0084",
-        "name": "厨房电器-商品04",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 289.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0084"
-    },
-    {
-        "id": "P0085",
-        "name": "厨房电器-商品05",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 319.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0085"
-    },
-    {
-        "id": "P0086",
-        "name": "厨房电器-商品06",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 349.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0086"
-    },
-    {
-        "id": "P0087",
-        "name": "厨房电器-商品07",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 379.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0087"
-    },
-    {
-        "id": "P0088",
-        "name": "厨房电器-商品08",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 409.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0088"
-    },
-    {
-        "id": "P0089",
-        "name": "厨房电器-商品09",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 439.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0089"
-    },
-    {
-        "id": "P0090",
-        "name": "厨房电器-商品10",
-        "summary": "省时省力",
-        "description": "操作简单",
-        "price": 469.0,
-        "category": "厨房电器",
-        "url": "https://example.com/product/P0090"
-    },
-    {
-        "id": "P0091",
-        "name": "玩具乐器-商品01",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 59.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0091"
-    },
-    {
-        "id": "P0092",
-        "name": "玩具乐器-商品02",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 69.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0092"
-    },
-    {
-        "id": "P0093",
-        "name": "玩具乐器-商品03",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 79.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0093"
-    },
-    {
-        "id": "P0094",
-        "name": "玩具乐器-商品04",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 89.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0094"
-    },
-    {
-        "id": "P0095",
-        "name": "玩具乐器-商品05",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 99.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0095"
-    },
-    {
-        "id": "P0096",
-        "name": "玩具乐器-商品06",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 109.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0096"
-    },
-    {
-        "id": "P0097",
-        "name": "玩具乐器-商品07",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 119.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0097"
-    },
-    {
-        "id": "P0098",
-        "name": "玩具乐器-商品08",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 129.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0098"
-    },
-    {
-        "id": "P0099",
-        "name": "玩具乐器-商品09",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 139.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0099"
-    },
-    {
-        "id": "P0100",
-        "name": "玩具乐器-商品10",
-        "summary": "启发兴趣",
-        "description": "适合亲子互动",
-        "price": 149.0,
-        "category": "玩具乐器",
-        "url": "https://example.com/product/P0100"
+        "url": "https://store.example.com/products/kitchenaid-go-cordless",
+        "tags": ["料理棒", "无绳", "多功能"],
+        "brand": "KitchenAid",
+        "image_urls": [
+            "https://cdn.example.com/images/P0020/main.jpg"
+        ],
+        "specs": {
+            "功率": "180 W",
+            "续航": "20 分钟",
+            "配件": "搅拌杯/奶泡器/切碎杯"
+        },
+        "extra_metadata": {
+            "color": "星辰白",
+            "warranty": "3 年",
+            "availability": "preorder"
+        },
+        "source_site_id": "smart_kitchen"
     }
 ]

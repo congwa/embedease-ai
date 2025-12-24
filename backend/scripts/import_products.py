@@ -30,6 +30,9 @@ def normalize_product(raw: dict) -> dict:
     - category 为 None 或非空字符串
     - price 为 float 或 None
     - summary/description/url 为 None 或非空字符串
+    - tags/image_urls 为 list 或 None
+    - specs/extra_metadata 为 dict 或 None
+    - brand/source_site_id 为 str 或 None
     """
     product_id = str(raw.get("id", "")).strip()
     name = str(raw.get("name", "")).strip()
@@ -55,6 +58,18 @@ def normalize_product(raw: dict) -> dict:
             return val.strip() or None
         return None
     
+    # 列表字段: 确保为 list 或 None
+    def clean_list(val):
+        if isinstance(val, list):
+            return [str(v).strip() for v in val if v] or None
+        return None
+    
+    # 字典字段: 确保为 dict 或 None
+    def clean_dict(val):
+        if isinstance(val, dict):
+            return val or None
+        return None
+    
     return {
         "id": product_id,
         "name": name,
@@ -63,6 +78,13 @@ def normalize_product(raw: dict) -> dict:
         "summary": clean_str(raw.get("summary")),
         "description": clean_str(raw.get("description")),
         "url": clean_str(raw.get("url")),
+        # 扩展字段（向后兼容，可选）
+        "tags": clean_list(raw.get("tags")),
+        "brand": clean_str(raw.get("brand")),
+        "image_urls": clean_list(raw.get("image_urls")),
+        "specs": clean_dict(raw.get("specs")),
+        "extra_metadata": clean_dict(raw.get("extra_metadata")),
+        "source_site_id": clean_str(raw.get("source_site_id")),
     }
 
 
@@ -181,10 +203,29 @@ async def create_vector_index(products_data: list[dict]) -> None:
             text_parts = [
                 f"商品名称: {product['name']}",
             ]
+            if product.get("brand"):
+                text_parts.append(f"品牌: {product['brand']}")
             if product.get("summary"):
                 text_parts.append(f"核心卖点: {product['summary']}")
             if product.get("category"):
                 text_parts.append(f"分类: {product['category']}")
+            if product.get("tags"):
+                text_parts.append(f"标签: {', '.join(product['tags'])}")
+            
+            # 构建基础 metadata
+            base_metadata = {
+                "product_id": product["id"],
+                "product_name": product["name"],
+                "price": product.get("price"),
+                "category": product.get("category"),
+                "url": product.get("url"),
+                "brand": product.get("brand"),
+                "tags": product.get("tags"),
+                "image_urls": product.get("image_urls"),
+                "source_site_id": product.get("source_site_id"),
+                "extra_metadata": product.get("extra_metadata"),
+            }
+            
             if product.get("description"):
                 # 如果描述太长，进行分块
                 description = product["description"]
@@ -194,11 +235,7 @@ async def create_vector_index(products_data: list[dict]) -> None:
                         doc = Document(
                             page_content=f"{text_parts[0]}\n{chunk}",
                             metadata={
-                                "product_id": product["id"],
-                                "product_name": product["name"],
-                                "price": product.get("price"),
-                                "category": product.get("category"),
-                                "url": product.get("url"),
+                                **base_metadata,
                                 "chunk_index": i + 1,  # 1 表示第一个分块
                             },
                         )
@@ -210,11 +247,7 @@ async def create_vector_index(products_data: list[dict]) -> None:
             main_doc = Document(
                 page_content="\n".join(text_parts),
                 metadata={
-                    "product_id": product["id"],
-                    "product_name": product["name"],
-                    "price": product.get("price"),
-                    "category": product.get("category"),
-                    "url": product.get("url"),
+                    **base_metadata,
                     "chunk_index": 0,  # 0 表示摘要
                 },
             )
