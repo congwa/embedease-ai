@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Added
 
 - 新增爬虫模块配置与数据模型，支持自动发现商品并导入
+- 新增 `scheduler` 模块，提供 TaskRegistry/TaskScheduler/TaskRunner 结构，支持单站点多任务调度
+- 新增 `CrawlSiteTask` 及 `/scheduler/*` API，文档化扩展方式（`backend/app/scheduler/README.md`）
+
+#### Removed
+
+- 删除旧的 `CrawlScheduler` 及相关 API 逻辑，改用统一调度模块
 
 	-  新增爬虫配置项：`CRAWLER_ENABLED`（总开关）、`CRAWLER_MODEL/PROVIDER/API_KEY/BASE_URL`（专用模型配置）、浏览器/限制/调度等 13 项配置
   - 新增 `effective_crawler_*` 系列属性方法，支持爬虫模型配置回退至主 LLM 配置

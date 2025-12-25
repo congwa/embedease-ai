@@ -28,7 +28,7 @@ from app.schemas.crawler import (
     CrawlTaskResponse,
     ExtractionConfig,
 )
-from app.services.crawler import CrawlerService, CrawlScheduler
+from app.services.crawler import CrawlerService
 
 logger = get_logger("router.crawler")
 router = APIRouter(prefix="/crawler", tags=["crawler"])
@@ -86,11 +86,6 @@ async def create_site(
         cron_expression=site_data.cron_expression,
     )
     site = await repo.create(site)
-
-    # 更新调度器
-    if site_data.cron_expression:
-        scheduler = CrawlScheduler.get_instance()
-        await scheduler.update_site_schedule(site.id, site_data.cron_expression)
 
     logger.info("创建站点配置", site_id=site.id, name=site.name)
     return _site_to_response(site)
@@ -171,10 +166,6 @@ async def update_site(
 
     site = await repo.update(site)
 
-    # 更新调度器
-    scheduler = CrawlScheduler.get_instance()
-    await scheduler.update_site_schedule(site.id, site.cron_expression)
-
     logger.info("更新站点配置", site_id=site.id)
     return _site_to_response(site)
 
@@ -194,10 +185,6 @@ async def delete_site(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"站点不存在: {site_id}",
         )
-
-    # 移除调度任务
-    scheduler = CrawlScheduler.get_instance()
-    await scheduler.update_site_schedule(site_id, None)
 
     await repo.delete(site)
     logger.info("删除站点配置", site_id=site_id)
@@ -332,15 +319,6 @@ async def get_stats(
         total_pages=total_pages,
         total_products=0,  # TODO: 从商品表统计
     )
-
-
-@router.get("/scheduler/status")
-async def get_scheduler_status():
-    """获取调度器状态"""
-    check_crawler_enabled()
-
-    scheduler = CrawlScheduler.get_instance()
-    return scheduler.get_status()
 
 
 # ==================== 辅助函数 ====================

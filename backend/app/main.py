@@ -11,6 +11,9 @@ from app.core.database import init_db
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
 from app.routers import chat, conversations, crawler, users
+from app.scheduler import task_registry, task_scheduler
+from app.scheduler.routers import router as scheduler_router
+from app.scheduler.tasks import CrawlSiteTask
 from app.services.agent.agent import agent_service
 
 
@@ -74,12 +77,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_db()
 
-    # 初始化爬取调度器
+    # 初始化任务调度器
     if settings.CRAWLER_ENABLED:
-        from app.services.crawler import CrawlScheduler
-        crawler_scheduler = CrawlScheduler.get_instance()
-        await crawler_scheduler.start()
-        logger.info("爬取调度器已启动", module="app")
+        # 注册爬虫任务
+        task_registry.register(CrawlSiteTask())
+    
+    # 启动调度器（即使没有任务也启动，方便后续动态注册）
+    await task_scheduler.start()
+    logger.info("任务调度器已启动", module="app", task_count=len(task_registry))
 
     logger.info("应用启动完成", module="app", host=settings.API_HOST, port=settings.API_PORT)
 
@@ -87,12 +92,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("正在关闭应用...", module="app")
 
-    # 0. 关闭爬取调度器
-    if settings.CRAWLER_ENABLED:
-        from app.services.crawler import CrawlScheduler
-        crawler_scheduler = CrawlScheduler.get_instance()
-        await crawler_scheduler.stop()
-        logger.debug("爬取调度器已关闭", module="app")
+    # 0. 关闭任务调度器
+    await task_scheduler.stop()
+    logger.debug("任务调度器已关闭", module="app")
     
     # 1. 关闭 Agent 服务（checkpointer 连接）
     await agent_service.close()
@@ -172,6 +174,7 @@ app.include_router(chat.router)
 app.include_router(conversations.router)
 app.include_router(crawler.router)
 app.include_router(users.router)
+app.include_router(scheduler_router)
 
 
 @app.get("/health")
