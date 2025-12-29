@@ -386,7 +386,7 @@ class CrawlerService:
         """
         try:
             # 解析页面
-            logger.debug("解析页面")
+            logger.debug("解析页面", url=url)
             is_product, product_data, error = await self.parser.parse(
                 html_content, url, extraction_config
             )
@@ -403,7 +403,7 @@ class CrawlerService:
                 return
 
             if not is_product or not product_data:
-                logger.debug("页面不包含商品")
+                logger.debug("页面不包含商品", url=url)
                 await self.page_repo.update_page_parsed(
                     page_id,
                     CrawlPageStatus.SKIPPED,
@@ -412,18 +412,18 @@ class CrawlerService:
                 return
 
             # 生成商品 ID
-            logger.debug("生成商品 ID")
+            logger.debug("生成商品 ID", url=url)
             product_id = product_data.id
             if not product_id:
                 # 从 URL 生成 ID
                 product_id = f"{site_id}_{hashlib.md5(url.encode()).hexdigest()[:8]}"
 
             # 保存商品
-            logger.debug("保存商品")
+            logger.debug("保存商品", url=url)
             is_new = await self._save_product(product_id, product_data, site_id)
 
             # 更新页面状态
-            logger.debug("更新页面状态")
+            logger.debug("更新页面状态", url=url)
             await self.page_repo.update_page_parsed(
                 page_id,
                 CrawlPageStatus.PARSED,
@@ -434,7 +434,7 @@ class CrawlerService:
 
             # 更新任务统计
             if is_new:
-                logger.debug("商品为新商品")
+                logger.debug("商品为新商品", url=url)
                 await self.task_repo.increment_task_stats(
                     task_id,
                     pages_parsed=1,
@@ -442,7 +442,7 @@ class CrawlerService:
                     products_created=1,
                 )
             else:
-                logger.debug("商品为已存在商品")
+                logger.debug("商品为已存在商品", url=url)
                 await self.task_repo.increment_task_stats(
                     task_id,
                     pages_parsed=1,
