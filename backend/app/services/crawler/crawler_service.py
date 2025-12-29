@@ -255,7 +255,7 @@ class CrawlerService:
                                 new_links += 1
                             else:
                                 duplicate_links += 1
-                                logger.debug("跳过已入队/已处理链接", link=link)
+                                # logger.debug("跳过已入队/已处理链接", link=link)
                         logger.info(
                             "提取链接完成",
                             url=url,
