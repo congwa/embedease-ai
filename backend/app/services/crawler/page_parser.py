@@ -88,11 +88,13 @@ class PageParser:
             from app.core.llm import get_chat_model
 
             # 使用爬取专用模型或默认模型
+            # temperature=0 确保 LLM 输出稳定，避免同一内容多次解析结果不一致
             self._llm = get_chat_model(
                 model=settings.CRAWLER_MODEL or settings.LLM_CHAT_MODEL,
                 provider=settings.CRAWLER_PROVIDER or settings.LLM_PROVIDER,
                 api_key=settings.effective_crawler_api_key,
                 base_url=settings.effective_crawler_base_url,
+                temperature=0,
             )
         return self._llm
 
@@ -335,8 +337,11 @@ class PageParser:
         for a in soup.find_all("a", href=True):
             href = a["href"]
 
+            logger.debug(f"检查链接: {href}")
+
             # 跳过锚点和 JavaScript
             if href.startswith("#") or href.startswith("javascript:"):
+                logger.debug("跳过锚点或 JavaScript")
                 continue
 
             # 处理相对路径
@@ -345,25 +350,33 @@ class PageParser:
             # 只保留同域名的链接
             parsed = urlparse(full_url)
             if parsed.netloc != base_domain:
+                logger.debug(f"跳过不同域名的链接: {parsed.netloc} != {base_domain}")
                 continue
 
             # 移除锚点
             full_url = full_url.split("#")[0]
 
+            logger.debug(f"处理后的链接: {full_url}")
+
             # 应用链接过滤
             if link_pattern:
-                if not self._match_pattern(parsed.path, link_pattern):
+                if not self._match_pattern(parsed.path, full_url, link_pattern):
+                    logger.debug(
+                        f"跳过不匹配的链接: {parsed.path} | {full_url} not match {link_pattern}"
+                    )
                     continue
 
             links.add(full_url)
+            logger.debug(f"添加链接到列表: {full_url}")
 
         return list(links)
 
-    def _match_pattern(self, path: str, pattern: str) -> bool:
-        """检查路径是否匹配模式
+    def _match_pattern(self, path: str, full_url: str, pattern: str) -> bool:
+        """检查路径或完整 URL 是否匹配模式
 
         Args:
             path: URL 路径
+            full_url: 完整 URL
             pattern: 匹配模式（支持 glob 和正则）
 
         Returns:
@@ -371,15 +384,15 @@ class PageParser:
         """
         import fnmatch
 
-        # 尝试作为 glob 模式匹配
-        if fnmatch.fnmatch(path, pattern):
-            return True
-
-        # 尝试作为正则表达式匹配
-        try:
-            if re.search(pattern, path):
+        def _match(target: str) -> bool:
+            if fnmatch.fnmatch(target, pattern):
                 return True
-        except re.error:
-            pass
+            try:
+                if re.search(pattern, target):
+                    return True
+            except re.error:
+                pass
+            return False
 
-        return False
+        # 先尝试路径（兼容以前的配置），再尝试完整 URL
+        return _match(path) or _match(full_url)

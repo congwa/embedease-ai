@@ -15,8 +15,22 @@ logger = get_logger("llm")
 
 
 @lru_cache
-def get_chat_model() -> BaseChatModel:
+def get_chat_model(
+    *,
+    model: str | None = None,
+    provider: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    temperature: float | None = None,
+) -> BaseChatModel:
     """获取聊天模型
+
+    Args:
+        model: 可选，覆盖默认聊天模型 ID（例如爬虫/记忆模块使用独立模型）
+        provider: 可选，覆盖默认提供商
+        api_key: 可选，覆盖默认 API Key
+        base_url: 可选，覆盖默认 Base URL
+        temperature: 可选，模型温度（爬虫等场景建议使用 0 以获得稳定输出）
 
     支持的提供商：OpenAI、Anthropic、DeepSeek、SiliconFlow 等
     模型 profile 获取流程：
@@ -24,30 +38,35 @@ def get_chat_model() -> BaseChatModel:
     2. 用 .env 的 MODEL_PROFILES_JSON 覆盖（env 优先）
     3. 拉取失败时回退到纯 .env 配置（不影响启动）
     """
+    model_name = model or settings.LLM_CHAT_MODEL
+    provider_name = provider or settings.LLM_PROVIDER
+    api_key_value = api_key or settings.LLM_API_KEY
+    base_url_value = base_url or settings.LLM_BASE_URL
+
     logger.info(
         "初始化聊天模型",
-        provider=settings.LLM_PROVIDER,
-        model=settings.LLM_CHAT_MODEL,
+        provider=provider_name,
+        model=model_name,
     )
 
     # 获取最终 profile（models.dev + .env 合并）
     if settings.MODELS_DEV_ENABLED:
         custom_profile = get_model_profile(
-            model_name=settings.LLM_CHAT_MODEL,
+            model_name=model_name,
             api_url=settings.MODELS_DEV_API_URL,
-            provider_id=settings.effective_models_dev_provider_id,
+            provider_id=provider_name,
             timeout_seconds=settings.MODELS_DEV_TIMEOUT_SECONDS,
             cache_ttl_seconds=settings.MODELS_DEV_CACHE_TTL_SECONDS,
             env_profiles=settings.model_profiles,
         )
     else:
         # models.dev 禁用，仅使用 .env 配置
-        model_key = settings.LLM_CHAT_MODEL.strip().lower()
+        model_key = model_name.strip().lower()
         custom_profile = settings.model_profiles.get(model_key, {})
         logger.info(
             "models.dev 已禁用，仅使用 .env 配置",
-            provider=settings.LLM_PROVIDER,
-            model=settings.LLM_CHAT_MODEL,
+            provider=provider_name,
+            model=model_name,
             profile=custom_profile,
         )
 
@@ -58,9 +77,13 @@ def get_chat_model() -> BaseChatModel:
     # ModelRegistry 会自动根据模型特征选择合适的实现（完全无感知）
     # 从 profile 中提取参数（如果存在）
     model_kwargs = {}
+    # 优先使用显式传入的 temperature，否则从 profile 中获取
+    if temperature is not None:
+        model_kwargs["temperature"] = temperature
+    elif profile_arg and isinstance(profile_arg, dict) and "temperature" in profile_arg:
+        model_kwargs["temperature"] = profile_arg["temperature"]
+    
     if profile_arg and isinstance(profile_arg, dict):
-        if "temperature" in profile_arg:
-            model_kwargs["temperature"] = profile_arg["temperature"]
         if "max_tokens" in profile_arg:
             model_kwargs["max_tokens"] = profile_arg["max_tokens"]
         if "max_completion_tokens" in profile_arg:
@@ -68,10 +91,10 @@ def get_chat_model() -> BaseChatModel:
 
     # 使用统一的创建接口，根据 provider 和 profile 自动选择合适的实现
     model = create_chat_model(
-        model=settings.LLM_CHAT_MODEL,
-        base_url=settings.LLM_BASE_URL,
-        api_key=settings.LLM_API_KEY,
-        provider=settings.LLM_PROVIDER,  # 传递提供商标识
+        model=model_name,
+        base_url=base_url_value,
+        api_key=api_key_value,
+        provider=provider_name,  # 传递提供商标识
         profile=custom_profile,  # 传递 profile 用于选择正确的实现
         **model_kwargs,
     )
@@ -88,8 +111,8 @@ def get_chat_model() -> BaseChatModel:
         actual_profile = getattr(model, "profile", None)
         logger.info(
             "模型初始化完成",
-            provider=settings.LLM_PROVIDER,
-            model=settings.LLM_CHAT_MODEL,
+            provider=provider_name,
+            model=model_name,
             structured_output=(actual_profile or {}).get("structured_output")
             if isinstance(actual_profile, dict)
             else None,

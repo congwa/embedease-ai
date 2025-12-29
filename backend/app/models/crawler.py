@@ -49,6 +49,7 @@ class CrawlPageStatus(str, Enum):
     PARSED = "parsed"  # 已解析
     FAILED = "failed"  # 解析失败
     SKIPPED = "skipped"  # 跳过（非商品页）
+    SKIPPED_DUPLICATE = "skipped_duplicate"  # 跳过（内容未变化）
 
 
 class CrawlSite(Base):
@@ -164,9 +165,11 @@ class CrawlTask(Base):
     pages_crawled: Mapped[int] = mapped_column(Integer, default=0, comment="已爬取页面数")
     pages_parsed: Mapped[int] = mapped_column(Integer, default=0, comment="成功解析页面数")
     pages_failed: Mapped[int] = mapped_column(Integer, default=0, comment="解析失败页面数")
+    pages_skipped_duplicate: Mapped[int] = mapped_column(Integer, default=0, comment="跳过的重复页面数")
     products_found: Mapped[int] = mapped_column(Integer, default=0, comment="发现商品数")
     products_created: Mapped[int] = mapped_column(Integer, default=0, comment="新增商品数")
     products_updated: Mapped[int] = mapped_column(Integer, default=0, comment="更新商品数")
+    products_skipped: Mapped[int] = mapped_column(Integer, default=0, comment="跳过的重复商品数")
 
     # 执行时间
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -218,6 +221,7 @@ class CrawlPage(Base):
     content_hash: Mapped[str | None] = mapped_column(
         String(64), nullable=True, comment="内容哈希（用于检测变化）"
     )
+    version: Mapped[int] = mapped_column(Integer, default=1, comment="页面版本号（内容变化时递增）")
 
     # 解析状态
     status: Mapped[str] = mapped_column(

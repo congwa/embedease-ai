@@ -22,11 +22,14 @@ from app.schemas.crawler import (
     CrawlPageResponse,
     CrawlSiteCreate,
     CrawlSiteResponse,
+    CrawlSiteRetryResponse,
     CrawlSiteUpdate,
     CrawlStats,
     CrawlTaskCreate,
     CrawlTaskResponse,
+    CrawlTaskRetryResponse,
     ExtractionConfig,
+    RetryMode,
 )
 from app.services.crawler import CrawlerService
 from app.services.crawler.utils import generate_site_id, normalize_domain
@@ -217,6 +220,72 @@ async def delete_site(
     return {"message": f"站点 {site_id} 已删除"}
 
 
+@router.post("/sites/{site_id}/retry", response_model=CrawlSiteRetryResponse)
+async def retry_site(
+    site_id: str,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    mode: RetryMode = RetryMode.INCREMENTAL,
+):
+    """重新触发站点爬取任务
+    
+    Args:
+        site_id: 站点 ID
+        mode: 重试模式
+            - incremental: 增量模式（默认），不清空页面，根据 content_hash 跳过未变化的页面
+            - force: 强制模式，清空所有页面后重新爬取
+    """
+    check_crawler_enabled()
+
+    site_repo = CrawlSiteRepository(session)
+    site = await site_repo.get_by_id(site_id)
+    if not site:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"站点不存在: {site_id}",
+        )
+
+    # 检查是否有运行中的任务（并发控制）
+    task_repo = CrawlTaskRepository(session)
+    if await task_repo.has_running_task_for_site(site_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"站点 {site_id} 已有运行中的任务，请等待完成后再重试",
+        )
+
+    deleted_pages = 0
+    page_repo = CrawlPageRepository(session)
+    
+    # 强制模式：清空所有页面
+    if mode == RetryMode.FORCE:
+        deleted_pages = await page_repo.delete_pages_by_site(site_id)
+
+    crawler = CrawlerService(session)
+    try:
+        task_id = await crawler.crawl_site(site_id)
+    finally:
+        await crawler.close()
+
+    task = await task_repo.get_by_id(task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="重试任务创建失败",
+        )
+
+    logger.info(
+        "站点重试成功",
+        site_id=site_id,
+        mode=mode.value,
+        deleted_pages=deleted_pages,
+        task_id=task_id,
+    )
+    return CrawlSiteRetryResponse(
+        site_id=site_id,
+        deleted_pages=deleted_pages,
+        task=_task_to_response(task),
+    )
+
+
 # ==================== 任务管理 ====================
 
 
@@ -317,6 +386,76 @@ async def get_task_pages(
         )
         for page in pages
     ]
+
+
+@router.post("/tasks/{task_id}/retry", response_model=CrawlTaskRetryResponse)
+async def retry_task(
+    task_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    mode: RetryMode = RetryMode.INCREMENTAL,
+):
+    """重新触发任务所属站点的爬取
+    
+    Args:
+        task_id: 原任务 ID
+        mode: 重试模式
+            - incremental: 增量模式（默认），不清空页面，根据 content_hash 跳过未变化的页面
+            - force: 强制模式，清空所有页面后重新爬取
+    """
+    check_crawler_enabled()
+
+    task_repo = CrawlTaskRepository(session)
+    original_task = await task_repo.get_by_id(task_id)
+    if not original_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"任务不存在: {task_id}",
+        )
+
+    site_id = original_task.site_id
+
+    # 检查是否有运行中的任务（并发控制）
+    if await task_repo.has_running_task_for_site(site_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"站点 {site_id} 已有运行中的任务，请等待完成后再重试",
+        )
+
+    deleted_pages = 0
+    page_repo = CrawlPageRepository(session)
+    
+    # 强制模式：清空所有页面
+    if mode == RetryMode.FORCE:
+        deleted_pages = await page_repo.delete_pages_by_site(site_id)
+
+    crawler = CrawlerService(session)
+    try:
+        new_task_id = await crawler.crawl_site(site_id)
+    finally:
+        await crawler.close()
+
+    new_task = await task_repo.get_by_id(new_task_id)
+    if not new_task:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="重试任务创建失败",
+        )
+
+    logger.info(
+        "任务重试成功",
+        original_task_id=task_id,
+        new_task_id=new_task_id,
+        site_id=site_id,
+        mode=mode.value,
+        deleted_pages=deleted_pages,
+    )
+
+    return CrawlTaskRetryResponse(
+        site_id=site_id,
+        original_task_id=task_id,
+        deleted_pages=deleted_pages,
+        task=_task_to_response(new_task),
+    )
 
 
 # ==================== 统计与状态 ====================

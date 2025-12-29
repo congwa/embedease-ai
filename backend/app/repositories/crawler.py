@@ -3,7 +3,7 @@
 import hashlib
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.crawler import (
@@ -88,6 +88,17 @@ class CrawlTaskRepository(BaseRepository[CrawlTask]):
         )
         return list(result.scalars().all())
 
+    async def has_running_task_for_site(self, site_id: str) -> bool:
+        """检查站点是否有运行中的任务（用于并发控制）"""
+        result = await self.session.execute(
+            select(func.count(CrawlTask.id)).where(
+                CrawlTask.site_id == site_id,
+                CrawlTask.status == CrawlTaskStatus.RUNNING.value,
+            )
+        )
+        count = result.scalar() or 0
+        return count > 0
+
     async def get_tasks_by_site(
         self, site_id: str, limit: int = 10
     ) -> list[CrawlTask]:
@@ -166,9 +177,11 @@ class CrawlTaskRepository(BaseRepository[CrawlTask]):
         pages_crawled: int = 0,
         pages_parsed: int = 0,
         pages_failed: int = 0,
+        pages_skipped_duplicate: int = 0,
         products_found: int = 0,
         products_created: int = 0,
         products_updated: int = 0,
+        products_skipped: int = 0,
     ) -> None:
         """增量更新任务统计"""
         await self.session.execute(
@@ -178,9 +191,11 @@ class CrawlTaskRepository(BaseRepository[CrawlTask]):
                 pages_crawled=CrawlTask.pages_crawled + pages_crawled,
                 pages_parsed=CrawlTask.pages_parsed + pages_parsed,
                 pages_failed=CrawlTask.pages_failed + pages_failed,
+                pages_skipped_duplicate=CrawlTask.pages_skipped_duplicate + pages_skipped_duplicate,
                 products_found=CrawlTask.products_found + products_found,
                 products_created=CrawlTask.products_created + products_created,
                 products_updated=CrawlTask.products_updated + products_updated,
+                products_skipped=CrawlTask.products_skipped + products_skipped,
             )
         )
         await self.session.flush()
@@ -220,6 +235,89 @@ class CrawlPageRepository(BaseRepository[CrawlPage]):
         page = await self.get_by_url_hash(site_id, url_hash)
         return page is not None
 
+    async def create_or_update_page(
+        self,
+        site_id: str,
+        task_id: int | None,
+        url: str,
+        depth: int,
+        html_content: str | None = None,
+    ) -> tuple[CrawlPage, bool, bool]:
+        """创建或更新页面记录（增量模式）
+        
+        通过 content_hash 检测内容变化：
+        - 若页面不存在：创建新记录
+        - 若页面存在且内容未变：标记 SKIPPED_DUPLICATE，跳过解析
+        - 若页面存在且内容已变：version += 1，更新内容，重新解析
+        
+        Returns:
+            tuple: (page, is_new, content_changed)
+            - page: 页面对象
+            - is_new: 是否为新页面
+            - content_changed: 内容是否变化（新页面或内容更新时为 True）
+        """
+        url_hash = hashlib.sha256(url.encode()).hexdigest()
+        new_content_hash = None
+        if html_content:
+            new_content_hash = hashlib.sha256(html_content.encode()).hexdigest()
+
+        # 查找现有页面
+        existing_page = await self.get_by_url_hash(site_id, url_hash)
+        
+        if existing_page is None:
+            # 新页面：创建记录
+            page = CrawlPage(
+                site_id=site_id,
+                task_id=task_id,
+                url=url,
+                url_hash=url_hash,
+                depth=depth,
+                html_content=html_content,
+                content_hash=new_content_hash,
+                version=1,
+                status=CrawlPageStatus.PENDING.value,
+            )
+            page = await self.create(page)
+            return page, True, True
+        
+        # 页面已存在，检查内容是否变化
+        if existing_page.content_hash == new_content_hash:
+            # 内容未变化：标记为重复跳过
+            await self.session.execute(
+                update(CrawlPage)
+                .where(CrawlPage.id == existing_page.id)
+                .values(
+                    task_id=task_id,  # 更新关联的任务 ID
+                    status=CrawlPageStatus.SKIPPED_DUPLICATE.value,
+                    crawled_at=datetime.now(),
+                )
+            )
+            await self.session.flush()
+            # 重新获取更新后的页面
+            await self.session.refresh(existing_page)
+            return existing_page, False, False
+        
+        # 内容已变化：更新页面，版本号 +1
+        new_version = existing_page.version + 1
+        await self.session.execute(
+            update(CrawlPage)
+            .where(CrawlPage.id == existing_page.id)
+            .values(
+                task_id=task_id,
+                html_content=html_content,
+                content_hash=new_content_hash,
+                version=new_version,
+                status=CrawlPageStatus.PENDING.value,  # 重新解析
+                crawled_at=datetime.now(),
+                parsed_at=None,  # 清除旧的解析时间
+                parsed_data=None,  # 清除旧的解析结果
+                parse_error=None,
+            )
+        )
+        await self.session.flush()
+        await self.session.refresh(existing_page)
+        return existing_page, False, True
+
     async def create_page(
         self,
         site_id: str,
@@ -228,7 +326,7 @@ class CrawlPageRepository(BaseRepository[CrawlPage]):
         depth: int,
         html_content: str | None = None,
     ) -> CrawlPage:
-        """创建页面记录"""
+        """创建页面记录（强制模式，不检查重复）"""
         url_hash = hashlib.sha256(url.encode()).hexdigest()
         content_hash = None
         if html_content:
@@ -242,9 +340,26 @@ class CrawlPageRepository(BaseRepository[CrawlPage]):
             depth=depth,
             html_content=html_content,
             content_hash=content_hash,
+            version=1,
             status=CrawlPageStatus.PENDING.value,
         )
         return await self.create(page)
+
+    async def delete_pages_by_task(self, task_id: int) -> int:
+        """根据任务删除页面，返回删除数量"""
+        result = await self.session.execute(
+            delete(CrawlPage).where(CrawlPage.task_id == task_id)
+        )
+        await self.session.flush()
+        return result.rowcount or 0
+
+    async def delete_pages_by_site(self, site_id: str) -> int:
+        """删除站点的所有页面，返回删除数量"""
+        result = await self.session.execute(
+            delete(CrawlPage).where(CrawlPage.site_id == site_id)
+        )
+        await self.session.flush()
+        return result.rowcount or 0
 
     async def update_page_content(
         self, page_id: int, html_content: str

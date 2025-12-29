@@ -98,10 +98,32 @@ class CrawlerService:
         task_id = task.id
         logger.info("创建爬取任务", site_id=site_id, task_id=task_id)
 
-        # 异步执行爬取
-        asyncio.create_task(self._execute_crawl(site_id, task_id))
+        # 异步执行爬取（使用独立的数据库会话，避免 session 生命周期冲突）
+        # 注意：不能直接使用当前 self.session，因为调用方的 session 可能在后台任务执行前就已提交/关闭
+        asyncio.create_task(self._run_with_new_session(site_id, task_id))
 
         return task_id
+
+    async def _run_with_new_session(self, site_id: str, task_id: int) -> None:
+        """为后台爬取任务创建独立的数据库会话
+        
+        这个方法确保后台协程使用自己的 session，不会受到调用方 session 生命周期的影响。
+        当调用方（如 CrawlSiteTask.run）的 async with get_db_context() 退出后，
+        其 session 会进入 prepared 状态，无法再执行 SQL。
+        因此后台任务必须创建新的 session。
+        
+        Args:
+            site_id: 站点 ID
+            task_id: 任务 ID
+        """
+        async with get_db_context() as session:
+            # 为后台任务创建新的 CrawlerService 实例，使用独立的 session
+            service = CrawlerService(session)
+            try:
+                await service._execute_crawl(site_id, task_id)
+            finally:
+                # 确保浏览器资源被正确释放
+                await service.close()
 
     async def _execute_crawl(self, site_id: str, task_id: int) -> None:
         """执行爬取任务（内部方法）"""
@@ -145,16 +167,19 @@ class CrawlerService:
 
             while queue and pages_crawled < max_pages:
                 url, depth = queue.pop(0)
+                logger.info(
+                    "开始处理页面",
+                    url=url,
+                    depth=depth,
+                    queue_remaining=len(queue),
+                    pages_crawled=pages_crawled,
+                )
 
-                # 跳过已访问的 URL
+                # 跳过已访问的 URL（本次任务内去重）
                 if url in visited_urls:
+                    logger.info("页面已处理，跳过", url=url, depth=depth)
                     continue
                 visited_urls.add(url)
-
-                # 检查是否已存在
-                if await self.page_repo.page_exists(site_id, url):
-                    logger.debug("页面已存在，跳过", url=url)
-                    continue
 
                 try:
                     # 爬取页面
@@ -170,8 +195,8 @@ class CrawlerService:
                         logger.warning("页面内容为空", url=url)
                         continue
 
-                    # 保存页面
-                    page = await self.page_repo.create_page(
+                    # 保存页面（增量模式：检测内容变化）
+                    page, is_new, content_changed = await self.page_repo.create_or_update_page(
                         site_id=site_id,
                         task_id=task_id,
                         url=url,
@@ -180,30 +205,63 @@ class CrawlerService:
                     )
 
                     pages_crawled += 1
-                    await self.task_repo.increment_task_stats(
-                        task_id, pages_crawled=1
-                    )
 
-                    logger.info(
-                        "爬取页面成功",
-                        url=url,
-                        depth=depth,
-                        pages_crawled=pages_crawled,
-                    )
+                    if not content_changed:
+                        # 内容未变化，跳过解析
+                        await self.task_repo.increment_task_stats(
+                            task_id, pages_crawled=1, pages_skipped_duplicate=1
+                        )
+                        logger.debug(
+                            "页面内容未变化，跳过解析",
+                            url=url,
+                            version=page.version,
+                        )
+                    else:
+                        # 新页面或内容已变化，需要解析
+                        await self.task_repo.increment_task_stats(
+                            task_id, pages_crawled=1
+                        )
+                        logger.info(
+                            "爬取页面成功",
+                            url=url,
+                            depth=depth,
+                            is_new=is_new,
+                            version=page.version,
+                            pages_crawled=pages_crawled,
+                        )
 
-                    # 解析页面
-                    await self._parse_and_save_product(
-                        page.id, html_content, url, site_id, task_id, extraction_config
-                    )
+                        # 解析页面
+                        await self._parse_and_save_product(
+                            page.id, html_content, url, site_id, task_id, extraction_config
+                        )
 
-                    # 提取链接并加入队列
+                    # 提取链接并加入队列（无论内容是否变化都要提取链接）
                     if depth < max_depth:
                         links = self.parser.extract_links(
                             html_content, url, site.link_pattern
                         )
+                        new_links = 0
                         for link in links:
                             if link not in visited_urls:
                                 queue.append((link, depth + 1))
+                                new_links += 1
+                        logger.info(
+                            "提取链接完成",
+                            url=url,
+                            depth=depth,
+                            next_depth=depth + 1,
+                            links_found=len(links),
+                            links_enqueued=new_links,
+                            queue_size=len(queue),
+                            links=links,
+                        )
+                    else:
+                        logger.info(
+                            "达到最大爬取深度，停止扩展链接",
+                            url=url,
+                            depth=depth,
+                            max_depth=max_depth,
+                        )
 
                     # 延迟
                     if crawl_delay > 0:
@@ -280,6 +338,12 @@ class CrawlerService:
 
             # 获取 HTML
             html_content = await page.content()
+            logger.debug(
+                "页面 HTML 预览",
+                url=url,
+                length=len(html_content),
+                snippet=html_content[:20],
+            )
             return html_content
 
         except Exception as e:
@@ -311,11 +375,13 @@ class CrawlerService:
         """
         try:
             # 解析页面
+            logger.debug("解析页面")
             is_product, product_data, error = await self.parser.parse(
                 html_content, url, extraction_config
             )
 
             if error:
+                logger.error("解析页面失败", url=url, error=error)
                 await self.page_repo.update_page_parsed(
                     page_id,
                     CrawlPageStatus.FAILED,
@@ -326,6 +392,7 @@ class CrawlerService:
                 return
 
             if not is_product or not product_data:
+                logger.debug("页面不包含商品")
                 await self.page_repo.update_page_parsed(
                     page_id,
                     CrawlPageStatus.SKIPPED,
@@ -334,15 +401,18 @@ class CrawlerService:
                 return
 
             # 生成商品 ID
+            logger.debug("生成商品 ID")
             product_id = product_data.id
             if not product_id:
                 # 从 URL 生成 ID
                 product_id = f"{site_id}_{hashlib.md5(url.encode()).hexdigest()[:8]}"
 
             # 保存商品
+            logger.debug("保存商品")
             is_new = await self._save_product(product_id, product_data, site_id)
 
             # 更新页面状态
+            logger.debug("更新页面状态")
             await self.page_repo.update_page_parsed(
                 page_id,
                 CrawlPageStatus.PARSED,
@@ -353,6 +423,7 @@ class CrawlerService:
 
             # 更新任务统计
             if is_new:
+                logger.debug("商品为新商品")
                 await self.task_repo.increment_task_stats(
                     task_id,
                     pages_parsed=1,
@@ -360,6 +431,7 @@ class CrawlerService:
                     products_created=1,
                 )
             else:
+                logger.debug("商品为已存在商品")
                 await self.task_repo.increment_task_stats(
                     task_id,
                     pages_parsed=1,

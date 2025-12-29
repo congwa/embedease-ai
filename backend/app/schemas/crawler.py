@@ -1,5 +1,7 @@
 """爬取模块相关 Schema"""
 
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 
@@ -31,6 +33,14 @@ class CrawlPageStatus(str, Enum):
     PARSED = "parsed"
     FAILED = "failed"
     SKIPPED = "skipped"
+    SKIPPED_DUPLICATE = "skipped_duplicate"  # 跳过（内容未变化）
+
+
+class RetryMode(str, Enum):
+    """重试模式"""
+
+    INCREMENTAL = "incremental"  # 增量模式：不清空页面，仅重新触发任务（根据 content_hash 跳过未变化的页面）
+    FORCE = "force"  # 强制模式：清空所有页面后重新爬取
 
 
 class ExtractionMode(str, Enum):
@@ -140,6 +150,23 @@ class CrawlSiteResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class CrawlSiteRetryResponse(BaseModel):
+    """站点重试结果"""
+
+    site_id: str
+    deleted_pages: int
+    task: CrawlTaskResponse
+
+
+class CrawlTaskRetryResponse(BaseModel):
+    """任务重试结果"""
+
+    site_id: str
+    original_task_id: int
+    deleted_pages: int
+    task: CrawlTaskResponse
 
 
 class CrawlTaskCreate(BaseModel):
