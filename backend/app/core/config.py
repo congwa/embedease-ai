@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # 目录内文件命名规则：<ENV_VAR_NAME>.json（如 MODEL_PROFILES_JSON.json）
     # 加载优先级：.env 中的环境变量 > .env.json 目录中的文件
     # 留空则不启用目录加载，仅使用 .env 中的内联 JSON
-    ENV_JSON_DIR: str = ""  # 示例：backend/.env.json
+    ENV_JSON_DIR: str = ""  # 示例：.env.json
 
     # ========== 模型能力配置 ==========
     # 通过 .env 提供 JSON，手动指定模型能力（会覆盖 models.dev 的配置）
@@ -277,9 +277,9 @@ class Settings(BaseSettings):
             
         示例：
             # .env 中设置
-            ENV_JSON_DIR=backend/.env.json
+            ENV_JSON_DIR=.env.json
             
-            # backend/.env.json/MODEL_PROFILES_JSON.json 内容
+            # .env.json/MODEL_PROFILES_JSON.json 内容
             {
               "model1": {"capability": "value"}
             }
@@ -300,23 +300,56 @@ class Settings(BaseSettings):
         if not self.ENV_JSON_DIR:
             return None
             
-        json_file = Path(self.ENV_JSON_DIR) / f"{var_name}.json"
+        env_dir = Path(self.ENV_JSON_DIR)
+        if not env_dir.is_absolute():
+            backend_root = Path(__file__).resolve().parents[2]
+            project_root = backend_root.parent
+            if env_dir.parts and env_dir.parts[0] == backend_root.name:
+                env_dir = (project_root / env_dir).resolve()
+            else:
+                env_dir = (backend_root / env_dir).resolve()
+        json_file = env_dir / f"{var_name}.json"
         if not json_file.exists():
             return None
             
         try:
             content = json_file.read_text(encoding="utf-8")
             # 支持简单的注释剥离（仅支持 // 单行注释）
-            lines = []
-            for line in content.split("\n"):
-                # 移除 // 注释（保留字符串内的 //）
-                comment_pos = line.find("//")
-                if comment_pos >= 0:
-                    # 简单处理：不在引号内的 // 才算注释
-                    # 这里用简化逻辑，生产环境可用 jsonc 库
-                    line = line[:comment_pos]
-                lines.append(line)
-            cleaned = "\n".join(lines)
+            def _strip_line_comments(text: str) -> str:
+                """移除行尾 // 注释，保留字符串内的内容"""
+                cleaned_chars: list[str] = []
+                in_string = False
+                escape = False
+                i = 0
+                while i < len(text):
+                    ch = text[i]
+                    if escape:
+                        cleaned_chars.append(ch)
+                        escape = False
+                        i += 1
+                        continue
+                    if ch == "\\":
+                        cleaned_chars.append(ch)
+                        escape = True
+                        i += 1
+                        continue
+                    if ch == '"':
+                        in_string = not in_string
+                        cleaned_chars.append(ch)
+                        i += 1
+                        continue
+                    if (
+                        ch == "/"
+                        and not in_string
+                        and i + 1 < len(text)
+                        and text[i + 1] == "/"
+                    ):
+                        break
+                    cleaned_chars.append(ch)
+                    i += 1
+                return "".join(cleaned_chars).rstrip()
+
+            cleaned = "\n".join(_strip_line_comments(line) for line in content.split("\n"))
             return json.loads(cleaned)
         except (json.JSONDecodeError, OSError):
             # 文件读取或解析失败

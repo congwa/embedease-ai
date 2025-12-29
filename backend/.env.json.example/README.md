@@ -9,7 +9,7 @@
 在 `.env` 文件中设置：
 
 ```bash
-ENV_JSON_DIR=backend/.env.json
+ENV_JSON_DIR=.env.json
 ```
 
 ### 2. 文件命名规则
@@ -117,7 +117,7 @@ JSON 文件支持 `//` 单行注释（会在加载时自动剥离）：
 
 ```bash
 # .env
-ENV_JSON_DIR=backend/.env.json
+ENV_JSON_DIR=.env.json
 
 # 临时覆盖 MODEL_PROFILES_JSON.json 中的配置
 MODEL_PROFILES_JSON='{"test/model": {"tool_calling": true}}'

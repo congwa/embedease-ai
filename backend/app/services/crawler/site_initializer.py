@@ -34,6 +34,7 @@ async def init_config_sites(session: AsyncSession) -> list[str]:
         return []
     
     sites_config = settings.crawler_sites
+    logger.info(f"Final crawler sites config: {sites_config}")
     if not sites_config:
         logger.debug("未配置预置站点")
         return []
