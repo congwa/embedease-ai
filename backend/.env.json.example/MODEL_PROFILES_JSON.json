@@ -1,0 +1,12 @@
+{
+  "moonshotai/Kimi-K2-Thinking": {
+    "reasoning_output": true,
+    "tool_calling": true,
+    "structured_output": true
+  },
+  "openai/o1": {
+    "reasoning_output": true,
+    "tool_calling": false,
+    "structured_output": false
+  }
+}

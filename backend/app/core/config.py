@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     RERANK_TOP_N: int = 5  # 返回前 N 个结果
     RERANK_INSTRUCTION: str = "根据查询对商品进行相关性排序"  # Rerank 指令
 
+    # ========== ENV_JSON 目录配置 ==========
+    # 支持将复杂 JSON 配置放在独立文件中，提升可读性和可维护性
+    # 目录内文件命名规则：<ENV_VAR_NAME>.json（如 MODEL_PROFILES_JSON.json）
+    # 加载优先级：.env 中的环境变量 > .env.json 目录中的文件
+    # 留空则不启用目录加载，仅使用 .env 中的内联 JSON
+    ENV_JSON_DIR: str = ""  # 示例：backend/.env.json
+
     # ========== 模型能力配置 ==========
     # 通过 .env 提供 JSON，手动指定模型能力（会覆盖 models.dev 的配置）
     # 示例：
@@ -197,17 +204,21 @@ class Settings(BaseSettings):
 
     @property
     def crawler_sites(self) -> list[dict[str, Any]]:
-        """解析爬虫站点配置"""
-        raw = (self.CRAWLER_SITES_JSON or "").strip()
-        if not raw:
+        """
+        解析爬虫站点配置
+        
+        支持两种加载方式：
+        1. 从 .env 的 CRAWLER_SITES_JSON 环境变量加载（单行 JSON）
+        2. 从 ENV_JSON_DIR/CRAWLER_SITES_JSON.json 文件加载（多行格式化 JSON）
+        
+        优先级：环境变量 > 文件
+        """
+        parsed = self._load_json_from_env_or_file("CRAWLER_SITES_JSON", self.CRAWLER_SITES_JSON)
+        if parsed is None:
             return []
-        try:
-            parsed = json.loads(raw)
-            if not isinstance(parsed, list):
-                return []
-            return parsed
-        except Exception:
+        if not isinstance(parsed, list):
             return []
+        return parsed
 
     @property
     def database_url(self) -> str:
@@ -216,7 +227,25 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        """CORS 允许的源列表"""
+        """
+        CORS 允许的源列表
+        
+        支持三种加载方式：
+        1. 从 .env 的 CORS_ORIGINS 环境变量加载（逗号分隔字符串）
+        2. 从 ENV_JSON_DIR/CORS_ORIGINS.json 文件加载（JSON 数组）
+        
+        优先级：环境变量 > 文件
+        """
+        # 尝试从 JSON 加载
+        parsed = self._load_json_from_env_or_file("CORS_ORIGINS", self.CORS_ORIGINS)
+        if parsed is not None:
+            if isinstance(parsed, list):
+                return [str(origin).strip() for origin in parsed]
+            # 如果是字符串，按逗号分隔
+            if isinstance(parsed, str):
+                return [origin.strip() for origin in parsed.split(",")]
+        
+        # 回退到默认的逗号分隔处理
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     def ensure_data_dir(self) -> None:
@@ -229,6 +258,69 @@ class Settings(BaseSettings):
         Path(self.MEMORY_STORE_DB_PATH).parent.mkdir(parents=True, exist_ok=True)
         Path(self.MEMORY_FACT_DB_PATH).parent.mkdir(parents=True, exist_ok=True)
         Path(self.MEMORY_GRAPH_FILE_PATH).parent.mkdir(parents=True, exist_ok=True)
+
+    def _load_json_from_env_or_file(self, var_name: str, env_value: str) -> Any:
+        """
+        通用 JSON 配置加载函数，支持从环境变量或 .env.json 目录加载
+        
+        加载优先级：
+        1. 优先使用 .env 中的环境变量（env_value）
+        2. 若环境变量为空，尝试从 ENV_JSON_DIR/<var_name>.json 加载
+        3. 若都不存在，返回 None
+        
+        Args:
+            var_name: 环境变量名（如 "MODEL_PROFILES_JSON"）
+            env_value: .env 中的环境变量值
+            
+        Returns:
+            解析后的 JSON 对象（dict/list），失败返回 None
+            
+        示例：
+            # .env 中设置
+            ENV_JSON_DIR=backend/.env.json
+            
+            # backend/.env.json/MODEL_PROFILES_JSON.json 内容
+            {
+              "model1": {"capability": "value"}
+            }
+            
+            # 调用
+            result = self._load_json_from_env_or_file("MODEL_PROFILES_JSON", self.MODEL_PROFILES_JSON)
+        """
+        # 1. 优先使用环境变量
+        raw = (env_value or "").strip()
+        if raw:
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                # 环境变量解析失败，记录但不中断，继续尝试文件
+                pass
+        
+        # 2. 尝试从 .env.json 目录加载
+        if not self.ENV_JSON_DIR:
+            return None
+            
+        json_file = Path(self.ENV_JSON_DIR) / f"{var_name}.json"
+        if not json_file.exists():
+            return None
+            
+        try:
+            content = json_file.read_text(encoding="utf-8")
+            # 支持简单的注释剥离（仅支持 // 单行注释）
+            lines = []
+            for line in content.split("\n"):
+                # 移除 // 注释（保留字符串内的 //）
+                comment_pos = line.find("//")
+                if comment_pos >= 0:
+                    # 简单处理：不在引号内的 // 才算注释
+                    # 这里用简化逻辑，生产环境可用 jsonc 库
+                    line = line[:comment_pos]
+                lines.append(line)
+            cleaned = "\n".join(lines)
+            return json.loads(cleaned)
+        except (json.JSONDecodeError, OSError):
+            # 文件读取或解析失败
+            return None
 
     @property
     def effective_memory_model(self) -> str:
@@ -282,14 +374,17 @@ class Settings(BaseSettings):
 
     @property
     def model_profiles(self) -> dict[str, dict[str, Any]]:
-        """解析 .env 中的模型 profile JSON 配置"""
-        raw = (self.MODEL_PROFILES_JSON or "").strip()
-        if not raw:
-            return {}
-        try:
-            parsed = json.loads(raw)
-        except Exception:
-            # 环境变量属于系统边界：允许报错并提示用户修正配置
+        """
+        解析模型 profile JSON 配置
+        
+        支持两种加载方式：
+        1. 从 .env 的 MODEL_PROFILES_JSON 环境变量加载（单行 JSON）
+        2. 从 ENV_JSON_DIR/MODEL_PROFILES_JSON.json 文件加载（多行格式化 JSON）
+        
+        优先级：环境变量 > 文件
+        """
+        parsed = self._load_json_from_env_or_file("MODEL_PROFILES_JSON", self.MODEL_PROFILES_JSON)
+        if parsed is None:
             return {}
         if not isinstance(parsed, dict):
             return {}

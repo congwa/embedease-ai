@@ -43,6 +43,7 @@ stats.html
 .env
 .env.*
 !.env.example
+!.env.json.example
 
 # Local
 local

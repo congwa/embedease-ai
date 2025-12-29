@@ -1,0 +1,61 @@
+[
+  {
+    "id": "example_com",
+    "name": "example官网",
+    "start_url": "http://www.example.com",
+    "status": "active",
+    "link_pattern": "^http(s)?://www\\.example\\.com/.*",
+    "max_depth": 3,
+    "max_pages": 500,
+    "crawl_delay": 1.0,
+    "is_spa": true,
+    "wait_for_selector": "body",
+    "wait_timeout": 10000,
+    "cron_expression": "0 2 * * *",
+    "extraction_config": {
+      "mode": "selector",
+      "product_page_indicator": ".product-detail",
+      "fields": {
+        "name": {
+          "selector": "h1.product-title",
+          "required": true
+        },
+        "summary": {
+          "selector": ".product-summary",
+          "required": false
+        },
+        "description": {
+          "selector": ".product-description",
+          "required": false
+        },
+        "price": {
+          "selector": ".product-price",
+          "required": false
+        },
+        "category": {
+          "selector": ".product-category",
+          "required": false
+        },
+        "tags": {
+          "selector": ".product-tags .tag",
+          "multiple": true,
+          "required": false
+        },
+        "brand": {
+          "selector": ".product-brand",
+          "required": false
+        },
+        "image_urls": {
+          "selector": ".product-images img",
+          "attribute": "src",
+          "multiple": true,
+          "required": false
+        },
+        "specs": {
+          "selector": ".product-specs",
+          "required": false
+        }
+      }
+    }
+  }
+]
