@@ -188,7 +188,12 @@ class Settings(BaseSettings):
     CRAWLER_RUN_ON_START: bool = False  # 调度器启动时是否立即执行一次
 
     # 站点配置（JSON 数组格式）
-    CRAWLER_SITES_JSON: str = ""  # 预置站点配置，格式：[{"id":"site_id","name":"站点名","start_url":"https://...","cron_expression":"0 2 * * *",...}]
+    # 结构：JSON 数组，每个元素是 site_initializer 导入的站点定义，常用字段：
+    #   id（可缺省自动生成）、name、start_url、status、link_pattern、
+    #   max_depth、max_pages、crawl_delay、is_spa、wait_for_selector、
+    #   wait_timeout、extraction_config、cron_expression。
+    # 运行机制：应用启动时解析此字段 -> 批量创建/更新站点 -> 按 cron 注册任务。
+    CRAWLER_SITES_JSON: str = ""  # 示例：[{"id":"site_id","name":"站点名","start_url":"https://...","cron_expression":"0 2 * * *",...}]
 
     @property
     def crawler_sites(self) -> list[dict[str, Any]]:
