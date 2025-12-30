@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.database import get_db_context, init_db
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
-from app.routers import chat, conversations, crawler, support, users, ws
+from app.routers import admin, chat, conversations, crawler, support, users, ws
 from app.scheduler import task_registry, task_scheduler
 from app.scheduler.routers import router as scheduler_router
 from app.scheduler.tasks import CrawlSiteTask
@@ -199,6 +199,7 @@ app.add_middleware(
 )
 
 # 注册路由
+app.include_router(admin.router)
 app.include_router(chat.router)
 app.include_router(conversations.router)
 app.include_router(crawler.router)
