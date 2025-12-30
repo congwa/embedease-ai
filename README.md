@@ -11,6 +11,12 @@
 | :---- | :--------- | :--------- |
 | 基于 **LangChain v1.1 + LangGraph** 的「商品推荐 Agent」一体化工程（后端 FastAPI，前端 Next.js 15） | 多 LLM Provider 推理、记忆系统、上下文压缩、SSE 时间线、Todo & 商品卡片混合流式展示 | 准备 `.env` → `uv sync && uvicorn`（后端）+ `pnpm dev`（前端）→ 打开 `http://localhost:3000` |
 
+### 🚀 数据录入 & 爬虫怎么用？
+
+1. **站点爬虫调度**：ENV_JSON_DIR 指到 `.env.json` 后填好 `CRAWLER_SITES_JSON.json`，启动后端就会把站点导入并自动注册定时任务。
+2. **工具调用稳健性 + TODO 广播**：开启 `AGENT_TOOL_RETRY_* / AGENT_TOOL_LIMIT_* / AGENT_TODO_*`，即可看到工具重试与 TODO 卡在前端时间线上实时出现。
+3. **分类/推荐工具链**：直接让模型“列出分类并推荐、附购买链接”，Agent 会串起 8 个新工具完成“分类 → 筛选 → 相似/精选 → 下单入口”的一条龙流程。
+
 ---
 
 ## 2. 它到底能做什么？（用人话讲清楚）
