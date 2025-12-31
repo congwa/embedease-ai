@@ -96,19 +96,53 @@ export interface ChatRequest {
   message: string;
 }
 
-export type ChatEventType =
-  | "meta.start"
-  | "assistant.delta"
+/**
+ * LLM 调用内部事件（在 llm.call.start → llm.call.end 之间触发）
+ * 对应后端 LLMCallDomainEventType
+ */
+export type LLMCallInternalEventType =
   | "assistant.reasoning.delta"
+  | "assistant.delta"
   | "assistant.products"
-  | "assistant.todos"
-  | "assistant.final"
   | "tool.start"
   | "tool.end"
+  | "context.summarized"
+  | "assistant.todos";
+
+/**
+ * 非 LLM 调用内部事件（与 LLM 调用并列或跨调用）
+ * 对应后端 NonLLMCallDomainEventType
+ */
+export type NonLLMCallEventType =
+  | "meta.start"
+  | "assistant.final"
   | "llm.call.start"
   | "llm.call.end"
-  | "context.summarized"
+  | "memory.extraction.start"
+  | "memory.extraction.complete"
+  | "memory.profile.updated"
+  | "support.handoff_started"
+  | "support.handoff_ended"
+  | "support.human_message"
+  | "support.connected"
+  | "support.ping"
   | "error";
+
+/** 所有事件类型 */
+export type ChatEventType = LLMCallInternalEventType | NonLLMCallEventType;
+
+/** 判断是否为 LLM 调用内部事件 */
+export function isLLMCallInternalEvent(type: string): type is LLMCallInternalEventType {
+  return [
+    "assistant.reasoning.delta",
+    "assistant.delta",
+    "assistant.products",
+    "tool.start",
+    "tool.end",
+    "context.summarized",
+    "assistant.todos",
+  ].includes(type);
+}
 
 export interface MetaStartPayload {
   user_message_id: string;
@@ -178,6 +212,22 @@ export interface ContextSummarizedPayload {
   tokens_after?: number;
 }
 
+export interface MemoryExtractionPayload {
+  extraction_id?: string;
+  status?: string;
+}
+
+export interface MemoryProfilePayload {
+  profile_id?: string;
+  updated_fields?: string[];
+}
+
+export interface SupportEventPayload {
+  session_id?: string;
+  agent_id?: string;
+  message?: string;
+}
+
 export type ChatEventPayload =
   | MetaStartPayload
   | TextDeltaPayload
@@ -190,6 +240,9 @@ export type ChatEventPayload =
   | LlmCallEndPayload
   | ErrorPayload
   | ContextSummarizedPayload
+  | MemoryExtractionPayload
+  | MemoryProfilePayload
+  | SupportEventPayload
   | Record<string, unknown>;
 
 export interface ChatEventBase {
@@ -202,16 +255,27 @@ export interface ChatEventBase {
 }
 
 export type ChatEvent =
+  // ========== 非 LLM 调用内部事件 ==========
   | (ChatEventBase & { type: "meta.start"; payload: MetaStartPayload })
-  | (ChatEventBase & { type: "assistant.delta"; payload: TextDeltaPayload })
-  | (ChatEventBase & { type: "assistant.reasoning.delta"; payload: TextDeltaPayload })
-  | (ChatEventBase & { type: "assistant.products"; payload: ProductsPayload })
-  | (ChatEventBase & { type: "assistant.todos"; payload: TodosPayload })
   | (ChatEventBase & { type: "assistant.final"; payload: FinalPayload })
-  | (ChatEventBase & { type: "tool.start"; payload: ToolStartPayload })
-  | (ChatEventBase & { type: "tool.end"; payload: ToolEndPayload })
   | (ChatEventBase & { type: "llm.call.start"; payload: LlmCallStartPayload })
   | (ChatEventBase & { type: "llm.call.end"; payload: LlmCallEndPayload })
-  | (ChatEventBase & { type: "context.summarized"; payload: ContextSummarizedPayload })
+  | (ChatEventBase & { type: "memory.extraction.start"; payload: MemoryExtractionPayload })
+  | (ChatEventBase & { type: "memory.extraction.complete"; payload: MemoryExtractionPayload })
+  | (ChatEventBase & { type: "memory.profile.updated"; payload: MemoryProfilePayload })
+  | (ChatEventBase & { type: "support.handoff_started"; payload: SupportEventPayload })
+  | (ChatEventBase & { type: "support.handoff_ended"; payload: SupportEventPayload })
+  | (ChatEventBase & { type: "support.human_message"; payload: SupportEventPayload })
+  | (ChatEventBase & { type: "support.connected"; payload: SupportEventPayload })
+  | (ChatEventBase & { type: "support.ping"; payload: SupportEventPayload })
   | (ChatEventBase & { type: "error"; payload: ErrorPayload })
+  // ========== LLM 调用内部事件 ==========
+  | (ChatEventBase & { type: "assistant.reasoning.delta"; payload: TextDeltaPayload })
+  | (ChatEventBase & { type: "assistant.delta"; payload: TextDeltaPayload })
+  | (ChatEventBase & { type: "assistant.products"; payload: ProductsPayload })
+  | (ChatEventBase & { type: "tool.start"; payload: ToolStartPayload })
+  | (ChatEventBase & { type: "tool.end"; payload: ToolEndPayload })
+  | (ChatEventBase & { type: "context.summarized"; payload: ContextSummarizedPayload })
+  | (ChatEventBase & { type: "assistant.todos"; payload: TodosPayload })
+  // ========== 兜底 ==========
   | (ChatEventBase & { type: ChatEventType; payload: Record<string, unknown> });

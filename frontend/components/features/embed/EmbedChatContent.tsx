@@ -17,13 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TimelineItem } from "@/hooks/use-timeline-reducer";
 import {
-  TimelineLlmCallItem,
-  TimelineToolCallItem,
-  TimelineReasoningItem,
-  TimelineContentItem,
-  TimelineProductsItem,
-  TimelineTodosItem,
-  TimelineContextSummarizedItem,
+  LLMCallCluster,
   TimelineUserMessageItem,
   TimelineErrorItem,
 } from "../chat/timeline";
@@ -71,62 +65,14 @@ export function EmbedChatContent({
           </Message>
         );
 
-      case "llm.call":
-        return (
-          <div key={item.id} className="w-full px-3">
-            <TimelineLlmCallItem item={item} />
-          </div>
-        );
-
-      case "tool.call":
-        return (
-          <div key={item.id} className="w-full px-3">
-            <TimelineToolCallItem item={item} />
-          </div>
-        );
-
-      case "assistant.reasoning":
+      case "llm.call.cluster":
         return (
           <Message
             key={item.id}
             className="flex w-full flex-col gap-1 items-start px-3"
           >
-            <TimelineReasoningItem item={item} isStreaming={isStreaming} />
+            <LLMCallCluster item={item} isStreaming={isStreaming} />
           </Message>
-        );
-
-      case "assistant.content":
-        return (
-          <Message
-            key={item.id}
-            className="flex w-full flex-col gap-1 items-start px-3"
-          >
-            <TimelineContentItem item={item} />
-          </Message>
-        );
-
-      case "assistant.products":
-        return (
-          <Message
-            key={item.id}
-            className="flex w-full flex-col gap-1 items-start px-3"
-          >
-            <TimelineProductsItem item={item} />
-          </Message>
-        );
-
-      case "assistant.todos":
-        return (
-          <div key={item.id} className="w-full px-3">
-            <TimelineTodosItem item={item} />
-          </div>
-        );
-
-      case "context.summarized":
-        return (
-          <div key={item.id} className="w-full px-3">
-            <TimelineContextSummarizedItem item={item} />
-          </div>
         );
 
       case "error":
@@ -135,6 +81,11 @@ export function EmbedChatContent({
             <TimelineErrorItem item={item} />
           </div>
         );
+
+      case "final":
+      case "memory.event":
+      case "support.event":
+        return null;
 
       default:
         return null;

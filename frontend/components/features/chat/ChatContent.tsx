@@ -18,13 +18,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import type { TimelineItem } from "@/hooks/use-timeline-reducer";
 import {
-  TimelineLlmCallItem,
-  TimelineToolCallItem,
-  TimelineReasoningItem,
-  TimelineContentItem,
-  TimelineProductsItem,
-  TimelineTodosItem,
-  TimelineContextSummarizedItem,
+  LLMCallCluster,
   TimelineUserMessageItem,
   TimelineErrorItem,
 } from "./timeline";
@@ -73,80 +67,16 @@ export function ChatContent({
           </Message>
         );
 
-      case "llm.call":
-        return (
-          <div
-            key={item.id}
-            className="mx-auto w-full max-w-3xl px-6"
-          >
-            <TimelineLlmCallItem item={item} />
-          </div>
-        );
-
-      case "tool.call":
-        return (
-          <div
-            key={item.id}
-            className="mx-auto w-full max-w-3xl px-6"
-          >
-            <TimelineToolCallItem item={item} />
-          </div>
-        );
-
-      case "assistant.reasoning":
+      case "llm.call.cluster":
         return (
           <Message
             key={item.id}
             className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
           >
             <div className="flex w-full flex-col gap-3">
-              <TimelineReasoningItem item={item} isStreaming={isStreaming} />
+              <LLMCallCluster item={item} isStreaming={isStreaming} />
             </div>
           </Message>
-        );
-
-      case "assistant.content":
-        return (
-          <Message
-            key={item.id}
-            className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
-          >
-            <div className="flex w-full flex-col gap-3">
-              <TimelineContentItem item={item} />
-            </div>
-          </Message>
-        );
-
-      case "assistant.products":
-        return (
-          <Message
-            key={item.id}
-            className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
-          >
-            <div className="flex w-full flex-col gap-3">
-              <TimelineProductsItem item={item} />
-            </div>
-          </Message>
-        );
-
-      case "assistant.todos":
-        return (
-          <div
-            key={item.id}
-            className="mx-auto w-full max-w-3xl px-6"
-          >
-            <TimelineTodosItem item={item} />
-          </div>
-        );
-
-      case "context.summarized":
-        return (
-          <div
-            key={item.id}
-            className="mx-auto w-full max-w-3xl px-6"
-          >
-            <TimelineContextSummarizedItem item={item} />
-          </div>
         );
 
       case "error":
@@ -158,6 +88,18 @@ export function ChatContent({
             <TimelineErrorItem item={item} />
           </div>
         );
+
+      case "final":
+        // FinalItem 不单独渲染，streaming 结束的标志
+        return null;
+
+      case "memory.event":
+        // 记忆事件暂不渲染（可后续扩展）
+        return null;
+
+      case "support.event":
+        // 客服事件暂不渲染（可后续扩展）
+        return null;
 
       default:
         return null;

@@ -16,29 +16,19 @@ from enum import StrEnum
 from typing import Any, NotRequired, TypedDict
 
 
-class StreamEventType(StrEnum):
-    """对外推送的事件类型（SSE 协议）。"""
+class NonLLMCallDomainEventType(StrEnum):
+    """LLM 调用相邻 / 跨调用的内部事件分类。"""
 
     META_START = "meta.start" # 流开始，提供message_id对齐前端渲染/落库
-
-    ASSISTANT_DELTA = "assistant.delta" # 文本增量
-    ASSISTANT_REASONING_DELTA = "assistant.reasoning.delta" # 推理内容增量
-    ASSISTANT_PRODUCTS = "assistant.products" # 商品数据
     ASSISTANT_FINAL = "assistant.final" # 最终态（流结束前必出）
 
-    TOOL_START = "tool.start" # 工具开始
-    TOOL_END = "tool.end" # 工具结束
-
     LLM_CALL_START = "llm.call.start" # LLM调用开始
+    # ... LLMCallDomainEventType 所有事件在中间触发
     LLM_CALL_END = "llm.call.end" # LLM调用结束
 
     MEMORY_EXTRACTION_START = "memory.extraction.start" # 记忆抽取开始
     MEMORY_EXTRACTION_COMPLETE = "memory.extraction.complete" # 记忆抽取完成
     MEMORY_PROFILE_UPDATED = "memory.profile.updated" # 用户画像更新
-
-    ASSISTANT_TODOS = "assistant.todos" # TODO 规划列表更新
-
-    CONTEXT_SUMMARIZED = "context.summarized" # 上下文压缩完成
 
     # ========== 客服支持事件 ==========
     SUPPORT_HANDOFF_STARTED = "support.handoff_started"  # 客服介入开始
@@ -48,6 +38,46 @@ class StreamEventType(StrEnum):
     SUPPORT_PING = "support.ping"  # 心跳
 
     ERROR = "error"
+
+
+class LLMCallDomainEventType(StrEnum):
+    """单次 LLM 调用内部细粒度事件分类。"""
+
+    ASSISTANT_REASONING_DELTA = "assistant.reasoning.delta" # 推理内容增量
+    ASSISTANT_DELTA = "assistant.delta" # 文本增量
+    ASSISTANT_PRODUCTS = "assistant.products" # 商品数据（仅在该调用内产生的）
+    TOOL_START = "tool.start" # 工具开始
+    TOOL_END = "tool.end" # 工具结束
+    CONTEXT_SUMMARIZED = "context.summarized" # 上下文压缩完成
+    ASSISTANT_TODOS = "assistant.todos" # TODO 规划列表更新（可能来自工具）
+
+
+class StreamEventType(StrEnum):
+    """对外推送的事件类型（SSE 协议），由领域事件枚举组成。"""
+
+    # ========== 非 LLM 内部事件 ==========
+    META_START = NonLLMCallDomainEventType.META_START.value
+    ASSISTANT_FINAL = NonLLMCallDomainEventType.ASSISTANT_FINAL.value
+    LLM_CALL_START = NonLLMCallDomainEventType.LLM_CALL_START.value
+    LLM_CALL_END = NonLLMCallDomainEventType.LLM_CALL_END.value
+    MEMORY_EXTRACTION_START = NonLLMCallDomainEventType.MEMORY_EXTRACTION_START.value
+    MEMORY_EXTRACTION_COMPLETE = NonLLMCallDomainEventType.MEMORY_EXTRACTION_COMPLETE.value
+    MEMORY_PROFILE_UPDATED = NonLLMCallDomainEventType.MEMORY_PROFILE_UPDATED.value
+    SUPPORT_HANDOFF_STARTED = NonLLMCallDomainEventType.SUPPORT_HANDOFF_STARTED.value
+    SUPPORT_HANDOFF_ENDED = NonLLMCallDomainEventType.SUPPORT_HANDOFF_ENDED.value
+    SUPPORT_HUMAN_MESSAGE = NonLLMCallDomainEventType.SUPPORT_HUMAN_MESSAGE.value
+    SUPPORT_CONNECTED = NonLLMCallDomainEventType.SUPPORT_CONNECTED.value
+    SUPPORT_PING = NonLLMCallDomainEventType.SUPPORT_PING.value
+    ERROR = NonLLMCallDomainEventType.ERROR.value
+
+    # ========== LLM 调用内部事件 ==========
+    ASSISTANT_REASONING_DELTA = LLMCallDomainEventType.ASSISTANT_REASONING_DELTA.value
+    ASSISTANT_DELTA = LLMCallDomainEventType.ASSISTANT_DELTA.value
+    ASSISTANT_PRODUCTS = LLMCallDomainEventType.ASSISTANT_PRODUCTS.value
+    TOOL_START = LLMCallDomainEventType.TOOL_START.value
+    TOOL_END = LLMCallDomainEventType.TOOL_END.value
+    CONTEXT_SUMMARIZED = LLMCallDomainEventType.CONTEXT_SUMMARIZED.value
+    ASSISTANT_TODOS = LLMCallDomainEventType.ASSISTANT_TODOS.value
 
 
 class MetaStartPayload(TypedDict):
