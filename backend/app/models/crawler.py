@@ -4,6 +4,9 @@
 1. CrawlSite - 站点配置表：存储目标网站的爬取规则
 2. CrawlPage - 原始页面表：存储爬取的原始 HTML 内容
 3. CrawlTask - 爬取任务表：记录每次爬取任务的执行状态和日志
+
+注意：爬虫模型使用独立的 CrawlerBase，存储在 crawler.db 中，
+与主应用数据库 (app.db) 分离，避免死锁和阻塞用户查询。
 """
 
 from datetime import datetime
@@ -19,9 +22,16 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.models.base import Base
+
+class CrawlerBase(DeclarativeBase):
+    """爬虫模块独立的基础模型类
+    
+    使用独立的 metadata，对应独立的 crawler.db 数据库
+    """
+
+    pass
 
 
 class CrawlSiteStatus(str, Enum):
@@ -52,7 +62,7 @@ class CrawlPageStatus(str, Enum):
     SKIPPED_DUPLICATE = "skipped_duplicate"  # 跳过（内容未变化）
 
 
-class CrawlSite(Base):
+class CrawlSite(CrawlerBase):
     """站点配置表
 
     存储目标网站的爬取配置，包括：
@@ -145,7 +155,7 @@ class CrawlSite(Base):
     )
 
 
-class CrawlTask(Base):
+class CrawlTask(CrawlerBase):
     """爬取任务表
 
     记录每次爬取任务的执行状态、统计信息和日志
@@ -190,7 +200,7 @@ class CrawlTask(Base):
     )
 
 
-class CrawlPage(Base):
+class CrawlPage(CrawlerBase):
     """原始页面表
 
     存储爬取的原始 HTML 内容，用于：

@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.crawler_database import get_crawler_db_dep
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models.conversation import Conversation, HandoffState
@@ -31,37 +33,43 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
     session: Annotated[AsyncSession, Depends(get_db)],
+    crawler_session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """获取仪表盘统计数据"""
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # 基础统计
+    # 基础统计（主数据库 app.db）
     total_products = await session.scalar(select(func.count(Product.id)))
     total_conversations = await session.scalar(select(func.count(Conversation.id)))
     total_users = await session.scalar(select(func.count(User.id)))
     total_messages = await session.scalar(select(func.count(Message.id)))
 
-    # 爬虫统计
-    total_crawl_sites = await session.scalar(select(func.count(CrawlSite.id)))
-    total_crawl_tasks = await session.scalar(select(func.count(CrawlTask.id)))
+    # 爬虫统计（爬虫数据库 crawler.db）
+    total_crawl_sites = 0
+    total_crawl_tasks = 0
+    crawl_success_rate = 0.0
+    
+    if settings.CRAWLER_ENABLED:
+        total_crawl_sites = await crawler_session.scalar(select(func.count(CrawlSite.id)))
+        total_crawl_tasks = await crawler_session.scalar(select(func.count(CrawlTask.id)))
 
-    # 计算爬取成功率
-    completed_tasks = await session.scalar(
-        select(func.count(CrawlTask.id)).where(
-            CrawlTask.status == CrawlTaskStatus.COMPLETED.value
+        # 计算爬取成功率
+        completed_tasks = await crawler_session.scalar(
+            select(func.count(CrawlTask.id)).where(
+                CrawlTask.status == CrawlTaskStatus.COMPLETED.value
+            )
         )
-    )
-    failed_tasks = await session.scalar(
-        select(func.count(CrawlTask.id)).where(
-            CrawlTask.status == CrawlTaskStatus.FAILED.value
+        failed_tasks = await crawler_session.scalar(
+            select(func.count(CrawlTask.id)).where(
+                CrawlTask.status == CrawlTaskStatus.FAILED.value
+            )
         )
-    )
-    total_finished = (completed_tasks or 0) + (failed_tasks or 0)
-    crawl_success_rate = (
-        (completed_tasks or 0) / total_finished * 100 if total_finished > 0 else 0
-    )
+        total_finished = (completed_tasks or 0) + (failed_tasks or 0)
+        crawl_success_rate = (
+            (completed_tasks or 0) / total_finished * 100 if total_finished > 0 else 0
+        )
 
-    # 今日统计
+    # 今日统计（主数据库）
     today_conversations = await session.scalar(
         select(func.count(Conversation.id)).where(Conversation.created_at >= today)
     )
@@ -69,7 +77,7 @@ async def get_dashboard_stats(
         select(func.count(Message.id)).where(Message.created_at >= today)
     )
 
-    # 会话状态分布
+    # 会话状态分布（主数据库）
     ai_conversations = await session.scalar(
         select(func.count(Conversation.id)).where(
             Conversation.handoff_state == HandoffState.AI.value
@@ -260,13 +268,13 @@ async def list_users(
 
 @router.get("/crawl-tasks", response_model=PaginatedResponse[CrawlTaskListItem])
 async def list_crawl_tasks(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    crawler_session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     site_id: str | None = None,
     status: str | None = None,
 ):
-    """获取爬取任务列表"""
+    """获取爬取任务列表（从爬虫数据库 crawler.db）"""
     query = select(CrawlTask, CrawlSite.name.label("site_name")).outerjoin(
         CrawlSite, CrawlTask.site_id == CrawlSite.id
     )
@@ -283,12 +291,12 @@ async def list_crawl_tasks(
         count_query = count_query.where(CrawlTask.site_id == site_id)
     if status:
         count_query = count_query.where(CrawlTask.status == status)
-    total = await session.scalar(count_query)
+    total = await crawler_session.scalar(count_query)
 
     # 分页
     query = query.order_by(CrawlTask.created_at.desc())
     query = query.offset((page - 1) * page_size).limit(page_size)
-    result = await session.execute(query)
+    result = await crawler_session.execute(query)
     rows = result.all()
 
     items = [
@@ -321,14 +329,14 @@ async def list_crawl_tasks(
 
 @router.get("/crawl-pages", response_model=PaginatedResponse[CrawlPageListItem])
 async def list_crawl_pages(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    crawler_session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     site_id: str | None = None,
     task_id: int | None = None,
     status: str | None = None,
 ):
-    """获取爬取页面列表"""
+    """获取爬取页面列表（从爬虫数据库 crawler.db）"""
     query = select(CrawlPage)
 
     # 筛选条件
@@ -347,12 +355,12 @@ async def list_crawl_pages(
         count_query = count_query.where(CrawlPage.task_id == task_id)
     if status:
         count_query = count_query.where(CrawlPage.status == status)
-    total = await session.scalar(count_query)
+    total = await crawler_session.scalar(count_query)
 
     # 分页
     query = query.order_by(CrawlPage.crawled_at.desc())
     query = query.offset((page - 1) * page_size).limit(page_size)
-    result = await session.execute(query)
+    result = await crawler_session.execute(query)
     items = result.scalars().all()
 
     return PaginatedResponse(

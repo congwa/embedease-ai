@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.crawler_database import get_crawler_db, init_crawler_db
 from app.core.database import get_db_context, init_db
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
@@ -81,13 +82,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 初始化爬虫配置站点
     if settings.CRAWLER_ENABLED:
-        async with get_db_context() as session:
-            imported_site_ids = await init_config_sites(session)
+        # 初始化爬虫独立数据库
+        await init_crawler_db()
+        
+        # 使用爬虫数据库会话初始化站点配置
+        async with get_crawler_db() as crawler_session:
+            imported_site_ids = await init_config_sites(crawler_session)
             
             # 为每个配置站点注册调度任务
             if imported_site_ids:
                 from app.repositories.crawler import CrawlSiteRepository
-                site_repo = CrawlSiteRepository(session)
+                site_repo = CrawlSiteRepository(crawler_session)
                 
                 for site_id in imported_site_ids:
                     site = await site_repo.get_by_id(site_id)
@@ -152,9 +157,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from app.core.database import engine
         await engine.dispose()
-        logger.debug("数据库引擎已关闭", module="app")
+        logger.debug("主数据库引擎已关闭", module="app")
     except Exception as e:
-        logger.warning("关闭数据库引擎时出错", module="app", error=str(e))
+        logger.warning("关闭主数据库引擎时出错", module="app", error=str(e))
+    
+    # 3.1 关闭爬虫数据库引擎
+    if settings.CRAWLER_ENABLED:
+        try:
+            from app.core.crawler_database import crawler_engine
+            await crawler_engine.dispose()
+            logger.debug("爬虫数据库引擎已关闭", module="app")
+        except Exception as e:
+            logger.warning("关闭爬虫数据库引擎时出错", module="app", error=str(e))
     
     # 4. 关闭 OpenAI 客户端（仅清理已初始化的资源）
     try:

@@ -14,6 +14,7 @@ from playwright.async_api import async_playwright, Browser, Page
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.crawler_database import get_crawler_db
 from app.core.database import get_db_context
 from app.core.logging import get_logger
 from app.models.crawler import CrawlPageStatus, CrawlSiteStatus, CrawlTaskStatus
@@ -120,12 +121,14 @@ class CrawlerService:
         其 session 会进入 prepared 状态，无法再执行 SQL。
         因此后台任务必须创建新的 session。
         
+        注意：爬虫数据使用独立的 crawler.db，Product 写入使用主 app.db 的短事务。
+        
         Args:
             site_id: 站点 ID
             task_id: 任务 ID
         """
-        async with get_db_context() as session:
-            # 为后台任务创建新的 CrawlerService 实例，使用独立的 session
+        async with get_crawler_db() as session:
+            # 为后台任务创建新的 CrawlerService 实例，使用爬虫数据库的独立 session
             service = CrawlerService(session)
             try:
                 await service._execute_crawl(site_id, task_id)
@@ -268,7 +271,7 @@ class CrawlerService:
         link_pattern: str | None,
         extraction_config: ExtractionConfig | None,
     ) -> list[str]:
-        """处理单个页面（使用独立数据库会话，立即提交）
+        """处理单个页面（爬虫数据用 crawler_db，Product 用 app.db 短事务）
         
         Args:
             site_id: 站点 ID
@@ -283,11 +286,10 @@ class CrawlerService:
         Returns:
             提取的新链接列表
         """
-        # 使用独立会话处理页面数据，确保立即提交
-        async with get_db_context() as session:
-            page_repo = CrawlPageRepository(session)
-            task_repo = CrawlTaskRepository(session)
-            product_repo = ProductRepository(session)
+        # 使用爬虫数据库会话处理页面数据
+        async with get_crawler_db() as crawler_session:
+            page_repo = CrawlPageRepository(crawler_session)
+            task_repo = CrawlTaskRepository(crawler_session)
             
             try:
                 # 保存页面（增量模式：检测内容变化）
@@ -322,12 +324,11 @@ class CrawlerService:
                         version=page.version,
                     )
 
-                    # 解析页面并保存商品
+                    # 解析页面并保存商品（Product 写入使用独立短事务）
                     await self._parse_and_save_product(
-                        session=session,
+                        crawler_session=crawler_session,
                         page_repo=page_repo,
                         task_repo=task_repo,
-                        product_repo=product_repo,
                         page_id=page.id,
                         html_content=html_content,
                         url=url,
@@ -358,12 +359,12 @@ class CrawlerService:
                         max_depth=max_depth,
                     )
 
-                # session 会在 async with 退出时自动 commit
+                # crawler_session 会在 async with 退出时自动 commit
                 return new_links
 
             except Exception as e:
                 logger.error("处理页面失败", url=url, error=str(e))
-                # session 会在 async with 退出时自动 rollback
+                # crawler_session 会在 async with 退出时自动 rollback
                 return []
 
     async def _fetch_page(
@@ -431,10 +432,9 @@ class CrawlerService:
 
     async def _parse_and_save_product(
         self,
-        session: AsyncSession,
+        crawler_session: AsyncSession,
         page_repo: CrawlPageRepository,
         task_repo: CrawlTaskRepository,
-        product_repo: ProductRepository,
         page_id: int,
         html_content: str,
         url: str,
@@ -442,13 +442,15 @@ class CrawlerService:
         task_id: int,
         extraction_config: ExtractionConfig | None,
     ) -> None:
-        """解析页面并保存商品（在指定会话中）
+        """解析页面并保存商品
+        
+        爬虫数据（page, task）使用 crawler_session（crawler.db）
+        商品数据（Product）使用独立短事务连接 app.db，快速写入后立即释放
 
         Args:
-            session: 数据库会话
-            page_repo: 页面仓库
-            task_repo: 任务仓库
-            product_repo: 商品仓库
+            crawler_session: 爬虫数据库会话
+            page_repo: 页面仓库（crawler.db）
+            task_repo: 任务仓库（crawler.db）
             page_id: 页面 ID
             html_content: HTML 内容
             url: 页面 URL
@@ -490,11 +492,14 @@ class CrawlerService:
                 # 从 URL 生成 ID
                 product_id = f"{site_id}_{hashlib.md5(url.encode()).hexdigest()[:8]}"
 
-            # 保存商品
-            logger.debug("保存商品", url=url)
-            is_new = await self._save_product(product_repo, product_id, product_data, site_id)
+            # 使用独立短事务写入商品到主数据库（app.db）
+            # 快速写入后立即释放连接，避免和用户查询造成死锁
+            logger.debug("保存商品到主数据库", url=url)
+            is_new = await self._save_product_with_short_transaction(
+                product_id, product_data, site_id
+            )
 
-            # 更新页面状态
+            # 更新页面状态（crawler.db）
             logger.debug("更新页面状态", url=url)
             await page_repo.update_page_parsed(
                 page_id,
@@ -504,7 +509,7 @@ class CrawlerService:
                 product_id=product_id,
             )
 
-            # 更新任务统计
+            # 更新任务统计（crawler.db）
             if is_new:
                 logger.debug("商品为新商品", url=url)
                 await task_repo.increment_task_stats(
@@ -539,17 +544,23 @@ class CrawlerService:
             )
             await task_repo.increment_task_stats(task_id, pages_failed=1)
 
-    async def _save_product(
+    async def _save_product_with_short_transaction(
         self,
-        product_repo: ProductRepository,
         product_id: str,
         data: ParsedProductData,
         site_id: str,
     ) -> bool:
-        """保存商品到数据库（在指定仓库中）
+        """使用独立短事务保存商品到主数据库（app.db）
+        
+        这个方法创建一个独立的短事务连接主数据库，快速写入商品后立即释放连接，
+        避免和用户的真实查询造成死锁。
+        
+        设计原则：
+        1. 爬虫数据准备好后才请求主数据库连接
+        2. 快速写入，写入后立即释放
+        3. 与爬虫数据库的事务完全独立
 
         Args:
-            product_repo: 商品仓库
             product_id: 商品 ID
             data: 商品数据
             site_id: 来源站点 ID
@@ -557,11 +568,7 @@ class CrawlerService:
         Returns:
             是否为新商品
         """
-        # 检查是否存在
-        existing = await product_repo.get_by_id(product_id)
-        is_new = existing is None
-
-        # 序列化 JSON 字段
+        # 序列化 JSON 字段（在获取数据库连接之前完成，减少连接持有时间）
         tags_json = json.dumps(data.tags, ensure_ascii=False) if data.tags else None
         image_urls_json = (
             json.dumps(data.image_urls, ensure_ascii=False) if data.image_urls else None
@@ -571,22 +578,31 @@ class CrawlerService:
             json.dumps(data.extra_metadata, ensure_ascii=False) if data.extra_metadata else None
         )
 
-        # 创建或更新商品
-        await product_repo.upsert_product(
-            product_id=product_id,
-            name=data.name,
-            summary=data.summary,
-            description=data.description,
-            price=data.price,
-            category=data.category,
-            url=data.url,
-            tags=tags_json,
-            brand=data.brand,
-            image_urls=image_urls_json,
-            specs=specs_json,
-            extra_metadata=extra_metadata_json,
-            source_site_id=site_id,
-        )
+        # 使用主数据库的独立短事务
+        async with get_db_context() as app_session:
+            product_repo = ProductRepository(app_session)
+            
+            # 检查是否存在
+            existing = await product_repo.get_by_id(product_id)
+            is_new = existing is None
+
+            # 创建或更新商品
+            await product_repo.upsert_product(
+                product_id=product_id,
+                name=data.name,
+                summary=data.summary,
+                description=data.description,
+                price=data.price,
+                category=data.category,
+                url=data.url,
+                tags=tags_json,
+                brand=data.brand,
+                image_urls=image_urls_json,
+                specs=specs_json,
+                extra_metadata=extra_metadata_json,
+                source_site_id=site_id,
+            )
+            # app_session 会在退出 async with 时自动 commit 并释放连接
 
         return is_new
 
@@ -619,17 +635,15 @@ class CrawlerService:
 
         for page in pages:
             if page.html_content:
-                # 使用独立会话处理每个待解析页面
-                async with get_db_context() as session:
-                    page_repo = CrawlPageRepository(session)
-                    task_repo = CrawlTaskRepository(session)
-                    product_repo = ProductRepository(session)
+                # 使用爬虫数据库会话处理每个待解析页面
+                async with get_crawler_db() as crawler_session:
+                    page_repo = CrawlPageRepository(crawler_session)
+                    task_repo = CrawlTaskRepository(crawler_session)
                     
                     await self._parse_and_save_product(
-                        session=session,
+                        crawler_session=crawler_session,
                         page_repo=page_repo,
                         task_repo=task_repo,
-                        product_repo=product_repo,
                         page_id=page.id,
                         html_content=page.html_content,
                         url=page.url,
@@ -643,6 +657,9 @@ class CrawlerService:
 
 
 async def create_crawler_service() -> CrawlerService:
-    """创建爬取服务实例（用于外部调用）"""
-    async with get_db_context() as session:
+    """创建爬取服务实例（用于外部调用）
+    
+    注意：返回的 CrawlerService 使用爬虫数据库 (crawler.db)
+    """
+    async with get_crawler_db() as session:
         return CrawlerService(session)

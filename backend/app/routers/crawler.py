@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.crawler_database import get_crawler_db_dep
 from app.core.logging import get_logger
 from app.models.crawler import CrawlSite, CrawlTask
 from app.repositories.crawler import (
@@ -53,7 +53,7 @@ def check_crawler_enabled():
 @router.post("/sites", response_model=CrawlSiteResponse)
 async def create_site(
     site_data: CrawlSiteCreate,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """创建站点配置"""
     check_crawler_enabled()
@@ -115,7 +115,7 @@ async def create_site(
 
 @router.get("/sites", response_model=list[CrawlSiteResponse])
 async def list_sites(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """获取所有站点配置"""
     check_crawler_enabled()
@@ -128,7 +128,7 @@ async def list_sites(
 @router.get("/sites/{site_id}", response_model=CrawlSiteResponse)
 async def get_site(
     site_id: str,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """获取站点配置详情"""
     check_crawler_enabled()
@@ -147,7 +147,7 @@ async def get_site(
 async def update_site(
     site_id: str,
     update_data: CrawlSiteUpdate,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """更新站点配置"""
     check_crawler_enabled()
@@ -195,7 +195,7 @@ async def update_site(
 @router.delete("/sites/{site_id}")
 async def delete_site(
     site_id: str,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """删除站点配置"""
     check_crawler_enabled()
@@ -223,7 +223,7 @@ async def delete_site(
 @router.post("/sites/{site_id}/retry", response_model=CrawlSiteRetryResponse)
 async def retry_site(
     site_id: str,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
     mode: RetryMode = RetryMode.INCREMENTAL,
 ):
     """重新触发站点爬取任务
@@ -292,7 +292,7 @@ async def retry_site(
 @router.post("/tasks", response_model=CrawlTaskResponse)
 async def create_task(
     task_data: CrawlTaskCreate,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """手动触发爬取任务"""
     check_crawler_enabled()
@@ -323,7 +323,7 @@ async def create_task(
 
 @router.get("/tasks", response_model=list[CrawlTaskResponse])
 async def list_tasks(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
     site_id: str | None = None,
     limit: int = 20,
 ):
@@ -343,7 +343,7 @@ async def list_tasks(
 @router.get("/tasks/{task_id}", response_model=CrawlTaskResponse)
 async def get_task(
     task_id: int,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """获取任务详情"""
     check_crawler_enabled()
@@ -361,7 +361,7 @@ async def get_task(
 @router.get("/tasks/{task_id}/pages", response_model=list[CrawlPageResponse])
 async def get_task_pages(
     task_id: int,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
     limit: int = 100,
     offset: int = 0,
 ):
@@ -391,7 +391,7 @@ async def get_task_pages(
 @router.post("/tasks/{task_id}/retry", response_model=CrawlTaskRetryResponse)
 async def retry_task(
     task_id: int,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
     mode: RetryMode = RetryMode.INCREMENTAL,
 ):
     """重新触发任务所属站点的爬取
@@ -463,7 +463,7 @@ async def retry_task(
 
 @router.get("/stats", response_model=CrawlStats)
 async def get_stats(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_crawler_db_dep)],
 ):
     """获取爬取统计信息"""
     check_crawler_enabled()

@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     # 数据库配置
     DATABASE_PATH: str = "./data/app.db"
     CHECKPOINT_DB_PATH: str = "./data/checkpoints.db"
+    CRAWLER_DATABASE_PATH: str = "./data/crawler.db"  # 爬虫独立数据库
 
     # 文本处理配置
     CHUNK_SIZE: int = 800
@@ -243,6 +244,11 @@ class Settings(BaseSettings):
         return f"sqlite+aiosqlite:///{self.DATABASE_PATH}"
 
     @property
+    def crawler_database_url(self) -> str:
+        """爬虫 SQLite 数据库 URL"""
+        return f"sqlite+aiosqlite:///{self.CRAWLER_DATABASE_PATH}"
+
+    @property
     def cors_origins_list(self) -> list[str]:
         """
         CORS 允许的源列表
@@ -269,6 +275,7 @@ class Settings(BaseSettings):
         """确保数据目录存在"""
         Path(self.DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
         Path(self.CHECKPOINT_DB_PATH).parent.mkdir(parents=True, exist_ok=True)
+        Path(self.CRAWLER_DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
 
     def ensure_memory_dirs(self) -> None:
         """确保记忆相关目录存在"""

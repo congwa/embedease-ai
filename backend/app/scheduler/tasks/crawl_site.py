@@ -4,7 +4,7 @@
 """
 
 from app.core.config import settings
-from app.core.database import get_db_context
+from app.core.crawler_database import get_crawler_db
 from app.core.logging import get_logger
 from app.repositories.crawler import CrawlSiteRepository
 from app.scheduler.tasks.base import (
@@ -64,7 +64,7 @@ class CrawlSiteTask(BaseTask):
         if not settings.CRAWLER_ENABLED:
             return TaskResult.skipped("爬虫模块未启用")
 
-        async with get_db_context() as session:
+        async with get_crawler_db() as session:
             site_repo = CrawlSiteRepository(session)
 
             # 确定要爬取的站点
