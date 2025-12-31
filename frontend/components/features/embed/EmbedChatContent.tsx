@@ -20,6 +20,7 @@ import {
   LLMCallCluster,
   TimelineUserMessageItem,
   TimelineErrorItem,
+  TimelineToolCallItem,
 } from "../chat/timeline";
 
 interface EmbedChatContentProps {
@@ -72,6 +73,16 @@ export function EmbedChatContent({
             className="flex w-full flex-col gap-1 items-start px-3"
           >
             <LLMCallCluster item={item} isStreaming={isStreaming} />
+          </Message>
+        );
+
+      case "tool.call":
+        return (
+          <Message
+            key={item.id}
+            className="flex w-full flex-col gap-1 items-start px-3"
+          >
+            <TimelineToolCallItem item={item} />
           </Message>
         );
 

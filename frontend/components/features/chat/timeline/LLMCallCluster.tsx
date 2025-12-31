@@ -10,7 +10,6 @@ import type {
 } from "@/hooks/use-timeline-reducer";
 import { TimelineReasoningItem } from "./TimelineReasoningItem";
 import { TimelineContentItem } from "./TimelineContentItem";
-import { TimelineToolCallItem } from "./TimelineToolCallItem";
 import { TimelineProductsItem } from "./TimelineProductsItem";
 import { TimelineTodosItem } from "./TimelineTodosItem";
 import { TimelineContextSummarizedItem } from "./TimelineContextSummarizedItem";
@@ -76,25 +75,6 @@ function renderSubItem(subItem: LLMCallSubItem, isStreaming: boolean) {
           }}
         />
       );
-    case "tool":
-      return (
-        <TimelineToolCallItem
-          key={subItem.id}
-          item={{
-            type: "tool.call",
-            id: subItem.id,
-            turnId: "",
-            name: subItem.name,
-            label: subItem.label,
-            status: subItem.status,
-            count: subItem.count,
-            elapsedMs: subItem.elapsedMs,
-            error: subItem.error,
-            startedAt: subItem.startedAt,
-            ts: subItem.ts,
-          }}
-        />
-      );
     case "products":
       return (
         <TimelineProductsItem
@@ -149,16 +129,16 @@ export function LLMCallCluster({ item, isStreaming = false }: LLMCallClusterProp
   const hasChildren = item.children.length > 0;
 
   // 统计子事件
-  const toolCount = item.children.filter((c) => c.type === "tool").length;
   const hasContent = item.children.some((c) => c.type === "content");
   const hasReasoning = item.children.some((c) => c.type === "reasoning");
+  const hasProducts = item.children.some((c) => c.type === "products");
 
   // 生成摘要
   const getSummary = () => {
     const parts: string[] = [];
     if (hasReasoning) parts.push("推理");
     if (hasContent) parts.push("回复");
-    if (toolCount > 0) parts.push(`${toolCount}个工具`);
+    if (hasProducts) parts.push("商品");
     return parts.length > 0 ? parts.join(" · ") : "";
   };
 

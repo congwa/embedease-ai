@@ -1,11 +1,17 @@
 /**
  * Timeline Reducer：将 SSE 事件流映射为时间线 item 列表
  *
- * 新架构设计原则：
- * - 事件分为两类：LLM 调用内部事件 vs 非 LLM 调用事件
- * - LLM 调用内部事件归属到 LLMCallCluster 容器中
- * - 非 LLM 调用事件作为独立 item 插入时间线
- * - LLMCallCluster 包含 Header（状态）+ Body（内部子事件）+ Footer（耗时/错误）
+ * 事件流顺序：
+ * 1. meta.start - 流开始
+ * 2. [循环] llm.call.start → [reasoning.delta, delta...] → llm.call.end
+ *           → tool.start → [products, todos...] → tool.end
+ * 3. memory.* - 后处理
+ * 4. assistant.final - 流结束
+ *
+ * 架构设计：
+ * - LLMCallCluster：包含 LLM 调用内部的 reasoning/delta 子事件
+ * - ToolCallItem：独立的顶层 item，包含工具执行期间的数据事件
+ * - 数据事件（products/todos/context_summarized）根据当前上下文归属到 LLMCluster 或 ToolCall
  */
 
 import type { Product } from "@/types/product";
@@ -61,20 +67,6 @@ export interface ContentSubItem {
   ts: number;
 }
 
-/** 工具调用子项 */
-export interface ToolCallSubItem {
-  type: "tool";
-  id: string; // tool_call_id
-  name: string;
-  label: string;
-  status: ItemStatus;
-  count?: number;
-  elapsedMs?: number;
-  error?: string;
-  startedAt: number;
-  ts: number;
-}
-
 /** 商品列表子项 */
 export interface ProductsSubItem {
   type: "products";
@@ -102,14 +94,18 @@ export interface ContextSummarizedSubItem {
   ts: number;
 }
 
-/** LLM 调用内部子项联合类型 */
+/** LLM 调用内部子项联合类型（仅包含真正的 LLM 内部事件） */
 export type LLMCallSubItem =
   | ReasoningSubItem
   | ContentSubItem
-  | ToolCallSubItem
   | ProductsSubItem
   | TodosSubItem
   | ContextSummarizedSubItem;
+
+// ==================== 工具调用子事件类型 ====================
+
+/** 工具调用内部子项联合类型 */
+export type ToolCallSubItem = ProductsSubItem | TodosSubItem | ContextSummarizedSubItem;
 
 // ==================== 时间线顶层 Item 类型 ====================
 
@@ -122,7 +118,7 @@ export interface UserMessageItem {
   ts: number;
 }
 
-/** LLM 调用集群（容器）- 包含内部所有子事件 */
+/** LLM 调用集群（容器）- 包含 LLM 调用内部的子事件 */
 export interface LLMCallClusterItem {
   type: "llm.call.cluster";
   id: string; // llm_call_id
@@ -131,10 +127,29 @@ export interface LLMCallClusterItem {
   messageCount?: number;
   elapsedMs?: number;
   error?: string;
-  /** 内部子事件列表（按到达顺序） */
+  /** 内部子事件列表（仅 reasoning/content/data 事件） */
   children: LLMCallSubItem[];
   /** 子事件索引：id -> children index */
   childIndexById: Record<string, number>;
+  ts: number;
+}
+
+/** 工具调用 item（顶层，独立于 LLM 调用） */
+export interface ToolCallItem {
+  type: "tool.call";
+  id: string; // tool_call_id
+  turnId: string;
+  name: string;
+  label: string;
+  status: ItemStatus;
+  count?: number;
+  elapsedMs?: number;
+  error?: string;
+  input?: unknown;
+  /** 工具执行期间的数据事件 */
+  children: ToolCallSubItem[];
+  childIndexById: Record<string, number>;
+  startedAt: number;
   ts: number;
 }
 
@@ -179,13 +194,13 @@ export interface SupportEventItem {
 export type TimelineItem =
   | UserMessageItem
   | LLMCallClusterItem
+  | ToolCallItem
   | ErrorItem
   | FinalItem
   | MemoryEventItem
   | SupportEventItem;
 
 // ==================== 兼容旧组件的类型别名 ====================
-// 这些类型用于子组件接口，保持与旧代码的兼容性
 
 /** @deprecated 使用 ReasoningSubItem 代替 */
 export interface ReasoningItem {
@@ -205,21 +220,6 @@ export interface ContentItem {
   turnId: string;
   llmCallId?: string;
   text: string;
-  ts: number;
-}
-
-/** @deprecated 使用 ToolCallSubItem 代替 */
-export interface ToolCallItem {
-  type: "tool.call";
-  id: string;
-  turnId: string;
-  name: string;
-  label: string;
-  status: ItemStatus;
-  count?: number;
-  elapsedMs?: number;
-  error?: string;
-  startedAt: number;
   ts: number;
 }
 
@@ -259,7 +259,8 @@ export interface TimelineState {
   indexById: Record<string, number>; // id -> timeline index
   activeTurn: {
     turnId: string | null;
-    llmStack: string[]; // 当前运行的 llm_call_id 栈
+    currentLlmCallId: string | null; // 当前运行的 LLM 调用 ID
+    currentToolCallId: string | null; // 当前运行的工具调用 ID
     isStreaming: boolean;
   };
 }
@@ -271,7 +272,8 @@ export function createInitialState(): TimelineState {
     indexById: {},
     activeTurn: {
       turnId: null,
-      llmStack: [],
+      currentLlmCallId: null,
+      currentToolCallId: null,
       isStreaming: false,
     },
   };
@@ -298,15 +300,9 @@ function updateItemById(
   return { ...state, timeline };
 }
 
-/** 获取当前运行的 LLM call ID（栈顶） */
-function getCurrentLlmCallId(state: TimelineState): string | undefined {
-  const stack = state.activeTurn.llmStack;
-  return stack.length > 0 ? stack[stack.length - 1] : undefined;
-}
-
 /** 获取当前 LLM Call Cluster */
 function getCurrentLlmCluster(state: TimelineState): LLMCallClusterItem | undefined {
-  const llmCallId = getCurrentLlmCallId(state);
+  const llmCallId = state.activeTurn.currentLlmCallId;
   if (!llmCallId) return undefined;
   const index = state.indexById[llmCallId];
   if (index === undefined) return undefined;
@@ -315,12 +311,23 @@ function getCurrentLlmCluster(state: TimelineState): LLMCallClusterItem | undefi
   return undefined;
 }
 
+/** 获取当前 Tool Call Item */
+function getCurrentToolCall(state: TimelineState): ToolCallItem | undefined {
+  const toolCallId = state.activeTurn.currentToolCallId;
+  if (!toolCallId) return undefined;
+  const index = state.indexById[toolCallId];
+  if (index === undefined) return undefined;
+  const item = state.timeline[index];
+  if (item.type === "tool.call") return item;
+  return undefined;
+}
+
 /** 向当前 LLM Cluster 添加子事件 */
 function appendSubItemToCurrentCluster(
   state: TimelineState,
   subItem: LLMCallSubItem
 ): TimelineState {
-  const llmCallId = getCurrentLlmCallId(state);
+  const llmCallId = state.activeTurn.currentLlmCallId;
   if (!llmCallId) return state;
 
   return updateItemById(state, llmCallId, (item) => {
@@ -337,7 +344,7 @@ function updateSubItemInCurrentCluster(
   subItemId: string,
   updater: (subItem: LLMCallSubItem) => LLMCallSubItem
 ): TimelineState {
-  const llmCallId = getCurrentLlmCallId(state);
+  const llmCallId = state.activeTurn.currentLlmCallId;
   if (!llmCallId) return state;
 
   return updateItemById(state, llmCallId, (item) => {
@@ -347,6 +354,22 @@ function updateSubItemInCurrentCluster(
     const children = [...item.children];
     children[subIndex] = updater(children[subIndex]);
     return { ...item, children };
+  });
+}
+
+/** 向当前 Tool Call 添加子事件 */
+function appendSubItemToCurrentToolCall(
+  state: TimelineState,
+  subItem: ToolCallSubItem
+): TimelineState {
+  const toolCallId = state.activeTurn.currentToolCallId;
+  if (!toolCallId) return state;
+
+  return updateItemById(state, toolCallId, (item) => {
+    if (item.type !== "tool.call") return item;
+    const children = [...item.children, subItem];
+    const childIndexById = { ...item.childIndexById, [subItem.id]: children.length - 1 };
+    return { ...item, children, childIndexById };
   });
 }
 
@@ -387,7 +410,8 @@ export function startAssistantTurn(
     ...state,
     activeTurn: {
       turnId,
-      llmStack: [],
+      currentLlmCallId: null,
+      currentToolCallId: null,
       isStreaming: true,
     },
   };
@@ -447,7 +471,8 @@ export function timelineReducer(
         ...newState,
         activeTurn: {
           ...newState.activeTurn,
-          llmStack: [...newState.activeTurn.llmStack, llmCallId],
+          currentLlmCallId: llmCallId,
+          currentToolCallId: null, // 进入 LLM 调用时清除工具上下文
         },
       };
     }
@@ -456,7 +481,7 @@ export function timelineReducer(
       const payload = event.payload as LlmCallEndPayload;
       const llmCallId = payload.llm_call_id;
       const hasError = !!payload.error;
-      const targetId = llmCallId || getCurrentLlmCallId(state);
+      const targetId = llmCallId || state.activeTurn.currentLlmCallId;
       if (!targetId) return state;
 
       const newState = updateItemById(state, targetId, (item) => {
@@ -469,10 +494,12 @@ export function timelineReducer(
         };
       });
 
-      const llmStack = newState.activeTurn.llmStack.filter((id) => id !== targetId);
       return {
         ...newState,
-        activeTurn: { ...newState.activeTurn, llmStack },
+        activeTurn: {
+          ...newState.activeTurn,
+          currentLlmCallId: null, // LLM 调用结束
+        },
       };
     }
 
@@ -624,38 +651,61 @@ export function timelineReducer(
       return appendSubItemToCurrentCluster(newState, subItem);
     }
 
+    // ==================== 工具调用事件（顶层 item，在 llm.call.end 之后） ====================
+
     case "tool.start": {
       const payload = event.payload as ToolStartPayload;
       const toolCallId = payload.tool_call_id || crypto.randomUUID();
-      const subItem: ToolCallSubItem = {
-        type: "tool",
+      const toolItem: ToolCallItem = {
+        type: "tool.call",
         id: toolCallId,
+        turnId,
         name: payload.name,
         label: getToolLabel(payload.name),
         status: "running",
+        input: payload.input,
+        children: [],
+        childIndexById: {},
         startedAt: now,
         ts: now,
       };
-      return appendSubItemToCurrentCluster(state, subItem);
+      const newState = insertItem(state, toolItem);
+      return {
+        ...newState,
+        activeTurn: {
+          ...newState.activeTurn,
+          currentToolCallId: toolCallId,
+        },
+      };
     }
 
     case "tool.end": {
       const payload = event.payload as ToolEndPayload;
-      const toolCallId = payload.tool_call_id;
+      const toolCallId = payload.tool_call_id || state.activeTurn.currentToolCallId;
       if (!toolCallId) return state;
 
-      return updateSubItemInCurrentCluster(state, toolCallId, (sub) => {
-        if (sub.type !== "tool") return sub;
-        const elapsedMs = Date.now() - sub.startedAt;
+      const newState = updateItemById(state, toolCallId, (item) => {
+        if (item.type !== "tool.call") return item;
+        const elapsedMs = Date.now() - item.startedAt;
         return {
-          ...sub,
+          ...item,
           status: payload.status || (payload.error ? "error" : "success"),
           count: payload.count,
           elapsedMs,
           error: payload.error,
         };
       });
+
+      return {
+        ...newState,
+        activeTurn: {
+          ...newState.activeTurn,
+          currentToolCallId: null, // 工具调用结束
+        },
+      };
     }
+
+    // ==================== 数据事件（根据上下文归属到 LLMCluster 或 ToolCall） ====================
 
     case "assistant.products": {
       const payload = event.payload as ProductsPayload;
@@ -668,6 +718,11 @@ export function timelineReducer(
         products,
         ts: now,
       };
+
+      // 优先归属到当前工具调用，否则归属到 LLM 调用
+      if (state.activeTurn.currentToolCallId) {
+        return appendSubItemToCurrentToolCall(state, subItem);
+      }
       return appendSubItemToCurrentCluster(state, subItem);
     }
 
@@ -682,6 +737,10 @@ export function timelineReducer(
         todos,
         ts: now,
       };
+
+      if (state.activeTurn.currentToolCallId) {
+        return appendSubItemToCurrentToolCall(state, subItem);
+      }
       return appendSubItemToCurrentCluster(state, subItem);
     }
 
@@ -696,6 +755,10 @@ export function timelineReducer(
         tokensAfter: payload.tokens_after,
         ts: now,
       };
+
+      if (state.activeTurn.currentToolCallId) {
+        return appendSubItemToCurrentToolCall(state, subItem);
+      }
       return appendSubItemToCurrentCluster(state, subItem);
     }
 
@@ -717,7 +780,8 @@ export function clearTurn(state: TimelineState, turnId: string): TimelineState {
     indexById,
     activeTurn: {
       turnId: null,
-      llmStack: [],
+      currentLlmCallId: null,
+      currentToolCallId: null,
       isStreaming: false,
     },
   };

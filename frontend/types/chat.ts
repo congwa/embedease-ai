@@ -96,53 +96,91 @@ export interface ChatRequest {
   message: string;
 }
 
-/**
- * LLM 调用内部事件（在 llm.call.start → llm.call.end 之间触发）
- * 对应后端 LLMCallDomainEventType
- */
-export type LLMCallInternalEventType =
-  | "assistant.reasoning.delta"
-  | "assistant.delta"
-  | "assistant.products"
-  | "tool.start"
-  | "tool.end"
-  | "context.summarized"
-  | "assistant.todos";
+// ==================== 事件类型分类 ====================
 
 /**
- * 非 LLM 调用内部事件（与 LLM 调用并列或跨调用）
- * 对应后端 NonLLMCallDomainEventType
+ * 流级别事件：贯穿整个 SSE 流的生命周期
  */
-export type NonLLMCallEventType =
-  | "meta.start"
-  | "assistant.final"
-  | "llm.call.start"
-  | "llm.call.end"
+export type StreamLevelEventType = "meta.start" | "assistant.final" | "error";
+
+/**
+ * LLM 调用边界事件：标记单次 LLM 调用的开始和结束
+ */
+export type LLMCallBoundaryEventType = "llm.call.start" | "llm.call.end";
+
+/**
+ * LLM 调用内部事件：仅在 llm.call.start → llm.call.end 之间触发
+ */
+export type LLMCallInternalEventType = "assistant.reasoning.delta" | "assistant.delta";
+
+/**
+ * 工具调用事件：在 llm.call.end 之后触发，独立于 LLM 调用
+ * 
+ * 真实事件流：
+ * llm.call.start → [reasoning.delta, delta...] → llm.call.end
+ * → tool.start → [中间推送] → tool.end
+ * → llm.call.start → [...] → llm.call.end (下一轮)
+ */
+export type ToolCallEventType = "tool.start" | "tool.end";
+
+/**
+ * 数据事件：可能在 LLM 调用内部或工具执行时产生
+ */
+export type DataEventType = "assistant.products" | "assistant.todos" | "context.summarized";
+
+/**
+ * 后处理事件：流末尾的后处理操作
+ */
+export type PostProcessEventType =
   | "memory.extraction.start"
   | "memory.extraction.complete"
-  | "memory.profile.updated"
+  | "memory.profile.updated";
+
+/**
+ * 客服支持事件
+ */
+export type SupportEventType =
   | "support.handoff_started"
   | "support.handoff_ended"
   | "support.human_message"
   | "support.connected"
-  | "support.ping"
-  | "error";
+  | "support.ping";
 
 /** 所有事件类型 */
-export type ChatEventType = LLMCallInternalEventType | NonLLMCallEventType;
+export type ChatEventType =
+  | StreamLevelEventType
+  | LLMCallBoundaryEventType
+  | LLMCallInternalEventType
+  | ToolCallEventType
+  | DataEventType
+  | PostProcessEventType
+  | SupportEventType;
 
-/** 判断是否为 LLM 调用内部事件 */
+// ==================== 事件类型判断函数 ====================
+
+/** 判断是否为 LLM 调用内部事件（仅 reasoning.delta 和 delta） */
 export function isLLMCallInternalEvent(type: string): type is LLMCallInternalEventType {
-  return [
-    "assistant.reasoning.delta",
-    "assistant.delta",
-    "assistant.products",
-    "tool.start",
-    "tool.end",
-    "context.summarized",
-    "assistant.todos",
-  ].includes(type);
+  return ["assistant.reasoning.delta", "assistant.delta"].includes(type);
 }
+
+/** 判断是否为工具调用事件 */
+export function isToolCallEvent(type: string): type is ToolCallEventType {
+  return ["tool.start", "tool.end"].includes(type);
+}
+
+/** 判断是否为数据事件 */
+export function isDataEvent(type: string): type is DataEventType {
+  return ["assistant.products", "assistant.todos", "context.summarized"].includes(type);
+}
+
+// ==================== 兼容旧代码的类型别名 ====================
+
+/** @deprecated 使用更细粒度的事件类型 */
+export type NonLLMCallEventType =
+  | StreamLevelEventType
+  | LLMCallBoundaryEventType
+  | PostProcessEventType
+  | SupportEventType;
 
 export interface MetaStartPayload {
   user_message_id: string;

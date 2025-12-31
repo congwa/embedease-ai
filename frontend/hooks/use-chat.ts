@@ -21,10 +21,11 @@ export type {
   TimelineState,
   UserMessageItem,
   LLMCallClusterItem,
+  ToolCallItem,
   LLMCallSubItem,
+  ToolCallSubItem,
   ReasoningSubItem,
   ContentSubItem,
-  ToolCallSubItem,
   ProductsSubItem,
   TodosSubItem,
   ContextSummarizedSubItem,
@@ -36,7 +37,6 @@ export type {
   // 兼容旧类型
   ReasoningItem,
   ContentItem,
-  ToolCallItem,
   ProductsItem,
   TodosItem,
   ContextSummarizedItem,
@@ -119,9 +119,9 @@ export function useChat(
       setTimelineState((prev) => startAssistantTurn(prev, assistantTurnId));
 
       try {
-        const controller: StreamChatController = { abort: () => {} };
+        const controller: StreamChatController = { abort: () => { } };
         streamControllerRef.current = controller;
-
+        let loggedDeltaOnce = false;
         for await (const event of streamChat(
           {
             user_id: userId,
@@ -131,8 +131,15 @@ export function useChat(
           controller
         )) {
           // frontend/hooks/use-chat.ts
-          if (event.type !== "assistant.delta" && event.type !== "assistant.reasoning.delta") {
+          if (
+            event.type !== "assistant.delta" &&
+            event.type !== "assistant.reasoning.delta"
+          ) {
+            loggedDeltaOnce = false;
             console.log("[SSE Event]", event.type, JSON.stringify(event.payload));
+          } else if (!loggedDeltaOnce) {
+            console.log("[SSE Event]", event.type, "(delta streaming)");
+            loggedDeltaOnce = true;
           }
           setTimelineState((prev) => timelineReducer(prev, event));
         }

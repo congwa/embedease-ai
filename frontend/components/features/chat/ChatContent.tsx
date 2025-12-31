@@ -21,6 +21,7 @@ import {
   LLMCallCluster,
   TimelineUserMessageItem,
   TimelineErrorItem,
+  TimelineToolCallItem,
 } from "./timeline";
 
 interface ChatContentProps {  
@@ -75,6 +76,18 @@ export function ChatContent({
           >
             <div className="flex w-full flex-col gap-3">
               <LLMCallCluster item={item} isStreaming={isStreaming} />
+            </div>
+          </Message>
+        );
+
+      case "tool.call":
+        return (
+          <Message
+            key={item.id}
+            className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
+          >
+            <div className="flex w-full flex-col gap-3">
+              <TimelineToolCallItem item={item} />
             </div>
           </Message>
         );
