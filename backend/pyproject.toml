@@ -27,7 +27,8 @@ dependencies = [
   "rich>=14.2.0",
   "sqlalchemy>=2.0.45",
   "structlog>=25.5.0",
-  "uvicorn>=0.38.0",
+  "uvicorn[standard]>=0.38.0",
+  "websockets>=15.0.1",
 ]
 
 [dependency-groups]

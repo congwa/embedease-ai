@@ -64,14 +64,21 @@ export function useSupportWebSocket({
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectionId, setConnectionId] = useState<string | null>(null);
-  const [conversationState, setConversationState] = useState<ConversationState>({
+  const conversationStateRef = useRef<ConversationState>({
     handoff_state: "ai",
     user_online: false,
     agent_online: false,
   });
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [conversationState, setConversationState] = useState<ConversationState>(
+    conversationStateRef.current
+  );
   const [userTyping, setUserTyping] = useState(false);
+
+  useEffect(() => {
+    conversationStateRef.current = conversationState;
+  }, [conversationState]);
 
   // 发送消息
   const send = useCallback((message: WSMessage) => {
@@ -81,110 +88,104 @@ export function useSupportWebSocket({
   }, []);
 
   // 处理收到的消息
-  const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      try {
-        const msg: WSMessage = JSON.parse(event.data);
+  const handleMessage = useCallback((event: MessageEvent) => {
+    try {
+      const msg: WSMessage = JSON.parse(event.data);
+      const currentState = conversationStateRef.current;
 
-        switch (msg.action) {
-          case "system.connected": {
-            const payload = msg.payload as unknown as ConnectedPayload;
-            setConnectionId(payload.connection_id);
-            setConversationState((prev) => ({
-              ...prev,
-              handoff_state: payload.handoff_state as "ai" | "pending" | "human",
-              agent_online: true,
-            }));
-            break;
-          }
-
-          case "system.pong":
-            // 心跳响应，忽略
-            break;
-
-          case "system.ack":
-            // 消息确认，忽略
-            break;
-
-          case "system.error":
-            console.error("WebSocket error:", msg.payload);
-            break;
-
-          case "server.message": {
-            const payload = msg.payload as unknown as ServerMessagePayload;
-            onMessage?.({
-              id: payload.message_id,
-              role: payload.role,
-              content: payload.content,
-              created_at: payload.created_at,
-              operator: payload.operator,
-            });
-            break;
-          }
-
-          case "server.typing": {
-            const payload = msg.payload as unknown as TypingPayload;
-            if (payload.role === "user") {
-              setUserTyping(payload.is_typing);
-            }
-            break;
-          }
-
-          case "server.handoff_started": {
-            const payload = msg.payload as unknown as HandoffStartedPayload;
-            const newState: ConversationState = {
-              ...conversationState,
-              handoff_state: "human",
-              operator: payload.operator,
-            };
-            setConversationState(newState);
-            onStateChange?.(newState);
-            break;
-          }
-
-          case "server.handoff_ended": {
-            const newState: ConversationState = {
-              ...conversationState,
-              handoff_state: "ai",
-              operator: undefined,
-            };
-            setConversationState(newState);
-            onStateChange?.(newState);
-            break;
-          }
-
-          case "server.user_online": {
-            setConversationState((prev) => ({ ...prev, user_online: true }));
-            break;
-          }
-
-          case "server.user_offline": {
-            setConversationState((prev) => ({ ...prev, user_online: false }));
-            setUserTyping(false);
-            break;
-          }
-
-          case "server.conversation_state": {
-            const payload = msg.payload as unknown as ConversationStatePayload;
-            const newState: ConversationState = {
-              ...conversationState,
-              handoff_state: payload.handoff_state as "ai" | "pending" | "human",
-              operator: payload.operator,
-            };
-            setConversationState(newState);
-            onStateChange?.(newState);
-            break;
-          }
-
-          default:
-            console.log("Unknown action:", msg.action, msg.payload);
+      switch (msg.action) {
+        case "system.connected": {
+          const payload = msg.payload as unknown as ConnectedPayload;
+          setConnectionId(payload.connection_id);
+          setConversationState((prev) => ({
+            ...prev,
+            handoff_state: payload.handoff_state as "ai" | "pending" | "human",
+            agent_online: true,
+          }));
+          break;
         }
-      } catch (e) {
-        console.error("Failed to parse WebSocket message:", e);
+
+        case "system.pong":
+          break;
+        case "system.ack":
+          break;
+        case "system.error":
+          console.error("WebSocket error:", msg.payload);
+          break;
+
+        case "server.message": {
+          const payload = msg.payload as unknown as ServerMessagePayload;
+          onMessage?.({
+            id: payload.message_id,
+            role: payload.role,
+            content: payload.content,
+            created_at: payload.created_at,
+            operator: payload.operator,
+          });
+          break;
+        }
+
+        case "server.typing": {
+          const payload = msg.payload as unknown as TypingPayload;
+          if (payload.role === "user") {
+            setUserTyping(payload.is_typing);
+          }
+          break;
+        }
+
+        case "server.handoff_started": {
+          const payload = msg.payload as unknown as HandoffStartedPayload;
+          const newState: ConversationState = {
+            ...currentState,
+            handoff_state: "human",
+            operator: payload.operator,
+          };
+          setConversationState(newState);
+          onStateChange?.(newState);
+          break;
+        }
+
+        case "server.handoff_ended": {
+          const newState: ConversationState = {
+            ...currentState,
+            handoff_state: "ai",
+            operator: undefined,
+          };
+          setConversationState(newState);
+          onStateChange?.(newState);
+          break;
+        }
+
+        case "server.user_online": {
+          setConversationState((prev) => ({ ...prev, user_online: true }));
+          break;
+        }
+
+        case "server.user_offline": {
+          setConversationState((prev) => ({ ...prev, user_online: false }));
+          setUserTyping(false);
+          break;
+        }
+
+        case "server.conversation_state": {
+          const payload = msg.payload as unknown as ConversationStatePayload;
+          const newState: ConversationState = {
+            ...currentState,
+            handoff_state: payload.handoff_state as "ai" | "pending" | "human",
+            operator: payload.operator,
+          };
+          setConversationState(newState);
+          onStateChange?.(newState);
+          break;
+        }
+
+        default:
+          console.log("Unknown action:", msg.action, msg.payload);
       }
-    },
-    [conversationState, onMessage, onStateChange]
-  );
+    } catch (e) {
+      console.error("Failed to parse WebSocket message:", e);
+    }
+  }, [onMessage, onStateChange]);
 
   // 连接 WebSocket
   const connect = useCallback(() => {

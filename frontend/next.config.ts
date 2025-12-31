@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
         source: "/health",
         destination: `${target}/health`,
       },
+      {
+        // 兜底代理：其余 /api/* 请求统一转发到后端
+        source: "/api/:path*",
+        destination: `${target}/api/:path*`,
+      },
     ];
   },
 };

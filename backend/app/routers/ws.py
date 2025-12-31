@@ -235,6 +235,7 @@ async def ws_agent_endpoint(
                 break
             except Exception as e:
                 logger.exception("处理客服消息失败", error=str(e))
+                break
                 
     finally:
         # 8. 清理
