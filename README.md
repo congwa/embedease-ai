@@ -1,6 +1,5 @@
 # 商品推荐 Agent（Look & Run in 5 Minutes）
 
-
 [演示动图](http://qiniu.biomed168.com/agent0.gif)
 
 ![演示动图](http://qiniu.biomed168.com/agent0.gif)
@@ -21,6 +20,7 @@
 4. **记住用户偏好**：同一个用户 ID 多轮对话后，会存下预算、品类、品牌、语气等画像，下次开场就能 “记得你上次说想买苹果生态”的感觉。
 5. **同步 Todo / 推理过程**：当 Agent 决定“先去查库存再比较价格”时，前端时间线会蹦出 TODO 卡；推理文本与最终回答分开，让你知道它现在在想什么。
 6. **随时切换模型/成本**：一个 `.env` 就能决定用 OpenAI 还是国产模型，还能把 embedding/rerank 指到另一家服务，满足“老板要省钱”或“我要最强模型”的不同需求。
+7. **可追溯的工具调用与消息状态**：LangGraph state dump 到数据库，tool start/end、usage metadata、送达/已读、在线状态通通持久化，历史页、Dashboard、客服面板都能直接复用。
 
 > 一句话：它不仅会回话，还会自己组织步骤、记录偏好、把过程摊在阳光下，适合作为商品导购 / 复杂比较任务的基础工程。
 
@@ -30,11 +30,12 @@
 | --- | --- | --- |
 | **LLM/推理** | 多 Provider & 多态推理模型 | 统一 `ReasoningChunk`，按 provider（OpenAI / SiliconFlow / DeepSeek…）自动选择实现 |
 | **对话模式** | `natural / free / strict` | 通过 `ToolPolicy` + 中间件约束工具调用次数、允许直答或失败兜底 |
-| **流式体验** | SSE 时间线、推理/正文拆流 | `llm.call.*`、`assistant.reasoning.delta`、`assistant.todos` 等事件驱动前端时序卡片 |
+| **流式体验** | SSE + WebSocket 时间线、推理/正文拆流 | `llm.call.*`、`assistant.reasoning.delta`、`assistant.todos` 等事件驱动前端时序卡片，嵌入式组件改用 WebSocket 长连 |
+| **工具链路可视化** | LangGraph state dump + `tool_calls` 表 | AI/Tool 消息含完整参数、输入/输出、耗时、状态，便于历史回放、Token 统计、Dashboard |
 | **中间件编排** | Summarization / Todo / Sequential Tools | 配置驱动注入，支持上下文压缩广播、待办推送、串行工具执行 |
+| **客服协作** | 双端在线状态 + 人工介入 | 记录消息送达/已读/在线状态，客服切换走统一 WebSocket 广播，支持企业微信/Webhook 通知 |
 | **记忆系统** | 用户画像 + 事实 + 图谱 + Orchestration | LangGraph Store / SQLite / Qdrant 多层记忆，附带 SSE 进度事件 |
 | **商品体验** | 商品向量检索 + 卡片展示 | 标配 `search_products` 工具、Qdrant 检索、前端商品网格 |
-| **前端 UI** | 时间线式对话 + 卡片混排 | Next.js 15 + Tailwind + shadcn/ui，自适应展示推理、步骤、商品、Todos |
 | **配置/诊断** | `.env` 全量示例、结构化日志、Swagger | `backend/.env.example` 覆盖所有开关，`/docs` 自动文档，日志支持 simple/detailed/json |
 
 ---

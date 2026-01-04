@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-01-04
+
+### 2026-01-04 16:00 (UTC+08:00)
+
+#### Added
+
+- **工具调用追踪与消息元数据** (`backend/app/services/chat_stream.py`, `backend/app/models/message.py`, `backend/app/services/conversation.py`): 将 LangGraph 工具调用与模型 usage metadata 全量落库，暴露 `tool_calls` 表与 `message.extra_metadata`，方便历史回放、Token 统计与仪表盘分析。
+- **消息送达 / 已读与在线状态** (`backend/app/models/message.py`, `backend/app/services/conversation.py`, `backend/app/routers/chat.py`): 记录消息送达、已读时间与当前在线用户/客服 ID，支持客服面板实时掌握多端状态。
+- **客服双通道与嵌入式聊天 WebSocket** (`backend/app/services/chat_stream.py`, `backend/app/services/support/*`, `frontend/components/features/embed/*`): 嵌入式组件改为 WebSocket 长连推送，并允许在任意会话中一键切换人工客服；手动/自动交接均通过同一双通道广播。
+- **管理后台基础路由** (`backend/app/routers/admin.py`): 提供统一的后台入口，为后续运营面板/统计视图铺路。
+
+#### Changed
+
+- **客服介入通知机制重构** (`backend/app/services/support/handoff.py`, `backend/app/services/websocket/*`): 从 SSE + 客户端轮询改为服务端 WebSocket 广播，移除客服端主动推送，保证所有状态更新按服务器时间线下发。
+- **事件类型系统升级** (`backend/app/schemas/events.py`, `backend/app/services/agent/streams/response_handler.py`): 将 Agent 事件按生命周期重新分层，新增工具调用分组（Cluster）以便时间线展示，同时保留 start/end 精准配对。
+- **爬虫数据库拆分与 WAL** (`backend/app/core/crawler_database.py`, `backend/app/models/crawler/*.py`): 将爬虫数据迁移至独立 SQLite 文件，默认启用 WAL、分离页面处理事务，避免影响主业务数据库并提升并发能力。
+- **日志格式与转义** (`backend/app/core/logging.py`): 优化 loguru formatter，自动转义特殊字符，防止彩色输出被错误解析。
+
+#### Fixed
+
+- **WebSocket 连接稳定性** (`backend/app/services/websocket/manager.py`): 修复并发下的连接泄露与状态同步问题，避免客服端卡死或状态错乱。
+
+#### Docs
+
+- **客服配置指南** (`README.md`, `docs/support.md`): 补充企业微信 / Webhook 通知、人工介入开关与新 WebSocket 事件说明。
+
 ## [0.1.9] - 2025-12-24
 
 ### 2025-12-24 21:09 (UTC+08:00)
