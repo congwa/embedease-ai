@@ -1,11 +1,14 @@
 """消息 Repository"""
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.message import Message
+from app.models.tool_call import ToolCall
 from app.repositories.base import BaseRepository
 
 
@@ -17,14 +20,23 @@ class MessageRepository(BaseRepository[Message]):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def get_by_conversation_id(self, conversation_id: str) -> list[Message]:
-        """获取会话的所有消息"""
-        result = await self.session.execute(
-            select(Message)
-            .where(Message.conversation_id == conversation_id)
-            .order_by(Message.created_at)
-        )
-        return list(result.scalars().all())
+    async def get_by_conversation_id(
+        self,
+        conversation_id: str,
+        include_tool_calls: bool = False,
+    ) -> list[Message]:
+        """获取会话的所有消息
+        
+        Args:
+            conversation_id: 会话 ID
+            include_tool_calls: 是否预加载工具调用记录
+        """
+        query = select(Message).where(Message.conversation_id == conversation_id)
+        if include_tool_calls:
+            query = query.options(selectinload(Message.tool_calls))
+        query = query.order_by(Message.created_at)
+        result = await self.session.execute(query)
+        return list(result.scalars().unique().all())
 
     async def create_message(
         self,
@@ -34,8 +46,23 @@ class MessageRepository(BaseRepository[Message]):
         content: str,
         products: str | None = None,
         is_delivered: bool = False,
+        message_type: str = "text",
+        extra_metadata: dict[str, Any] | None = None,
+        token_count: int | None = None,
     ) -> Message:
-        """创建消息"""
+        """创建消息
+        
+        Args:
+            message_id: 消息 ID
+            conversation_id: 会话 ID
+            role: 角色
+            content: 内容
+            products: 推荐商品 JSON
+            is_delivered: 是否已送达
+            message_type: 消息类型 (text/tool_call/tool_result/multimodal_image)
+            extra_metadata: 完整消息元数据（含 tool_calls、usage_metadata 等）
+            token_count: Token 计数
+        """
         message = Message(
             id=message_id,
             conversation_id=conversation_id,
@@ -44,6 +71,9 @@ class MessageRepository(BaseRepository[Message]):
             products=products,
             is_delivered=is_delivered,
             delivered_at=datetime.now() if is_delivered else None,
+            message_type=message_type,
+            extra_metadata=extra_metadata,
+            token_count=token_count,
         )
         return await self.create(message)
 

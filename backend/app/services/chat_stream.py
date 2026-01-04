@@ -56,6 +56,10 @@ class ChatStreamOrchestrator:
         self._last_tool_end_status: str | None = None
         self._last_tool_end_name: str | None = None
 
+        # 工具调用追踪：收集 tool.start/tool.end 事件中的信息
+        self._tool_calls: dict[str, dict[str, Any]] = {}  # tool_call_id -> tool_call_data
+        self._tool_call_start_times: dict[str, float] = {}  # tool_call_id -> start_time
+
     def _next_seq(self) -> int:
         self._seq += 1
         return self._seq
@@ -118,6 +122,18 @@ class ChatStreamOrchestrator:
                 elif evt_type == StreamEventType.ASSISTANT_PRODUCTS.value:
                     self._products = payload.get("items")
 
+                elif evt_type == StreamEventType.TOOL_START.value:
+                    # 记录工具调用开始
+                    tc_id = payload.get("tool_call_id")
+                    if tc_id:
+                        self._tool_calls[tc_id] = {
+                            "tool_call_id": tc_id,
+                            "name": payload.get("name", "unknown"),
+                            "input": payload.get("input", {}),
+                            "status": "pending",
+                        }
+                        self._tool_call_start_times[tc_id] = loop.time()
+
                 elif evt_type == StreamEventType.TOOL_END.value:
                     self._saw_tool_end = True
                     tool_name = payload.get("name")
@@ -126,6 +142,19 @@ class ChatStreamOrchestrator:
                     self._last_tool_end_status = (
                         tool_status if isinstance(tool_status, str) else self._last_tool_end_status
                     )
+
+                    # 更新工具调用结果
+                    tc_id = payload.get("tool_call_id")
+                    if tc_id and tc_id in self._tool_calls:
+                        self._tool_calls[tc_id]["status"] = tool_status or "success"
+                        self._tool_calls[tc_id]["output"] = payload.get("output_preview")
+                        if payload.get("error"):
+                            self._tool_calls[tc_id]["error_message"] = payload.get("error")
+                        # 计算耗时
+                        start_time = self._tool_call_start_times.get(tc_id)
+                        if start_time:
+                            duration_ms = int((loop.time() - start_time) * 1000)
+                            self._tool_calls[tc_id]["duration_ms"] = duration_ms
 
                 elif evt_type == StreamEventType.ASSISTANT_FINAL.value:
                     # 以 final 为准，对齐最终状态
@@ -202,17 +231,33 @@ class ChatStreamOrchestrator:
             if self._products is not None:
                 products_json = json.dumps(self._products, ensure_ascii=False)
 
+            # 构建工具调用数据列表
+            tool_calls_data = list(self._tool_calls.values()) if self._tool_calls else None
+
+            # 构建 extra_metadata（含工具调用、推理等信息）
+            extra_metadata: dict[str, Any] = {}
+            if self._reasoning:
+                extra_metadata["reasoning"] = self._reasoning
+            if tool_calls_data:
+                extra_metadata["tool_calls_summary"] = [
+                    {"name": tc.get("name"), "status": tc.get("status")}
+                    for tc in tool_calls_data
+                ]
+
             await self._conversation_service.add_message(
                 conversation_id=self._conversation_id,
                 role="assistant",
                 content=self._full_content,
                 products=products_json,
                 message_id=self._assistant_message_id,
+                extra_metadata=extra_metadata if extra_metadata else None,
+                tool_calls_data=tool_calls_data,
             )
             logger.debug(
                 "已保存完整 assistant message",
                 message_id=self._assistant_message_id,
                 content_length=len(self._full_content),
+                tool_call_count=len(tool_calls_data) if tool_calls_data else 0,
             )
 
         except Exception as e:
