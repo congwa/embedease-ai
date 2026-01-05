@@ -64,7 +64,7 @@ async def list_products_by_category(
 
     返回某个分类下的商品列表，支持分页查询。
     适用于用户想浏览某个分类的商品时使用。
-    
+
     重要提示：每次调用只能查询一个分类。如需查询多个分类，请分多次调用本工具。
 
     Args:
@@ -133,7 +133,7 @@ async def list_products_by_category(
                 {"error": error_msg, "category_name": category_name},
                 ensure_ascii=False,
             )
-        
+
         # 校验通过，继续执行
         async with get_db_context() as session:
             # 查询该分类下的商品

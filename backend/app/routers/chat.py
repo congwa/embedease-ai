@@ -13,7 +13,7 @@ from app.core.logging import get_logger
 from app.models.conversation import HandoffState
 from app.schemas.chat import ChatRequest
 from app.services.chat_stream import ChatStreamOrchestrator
-from app.services.agent.agent import agent_service
+from app.services.agent.core.service import agent_service
 from app.services.conversation import ConversationService
 from app.services.support.handoff import HandoffService
 from app.services.support.gateway import support_gateway
@@ -157,6 +157,7 @@ async def chat(
             user_message_id=user_message.id,
             assistant_message_id=assistant_message_id,
             mode=request_data.effective_mode,
+            agent_id=request_data.agent_id,
         )
 
         try:

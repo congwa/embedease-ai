@@ -2,7 +2,7 @@
 
 使用方式：
     from app.services.agent.streams import StreamingResponseHandler
-    
+
     handler = StreamingResponseHandler(emitter=context.emitter, model=model)
     async for msg in agent.astream(...):
         await handler.handle_message(msg)
@@ -21,18 +21,18 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 
-from app.schemas.events import StreamEventType
 from app.core.logging import get_logger
+from app.schemas.events import StreamEventType
 
 logger = get_logger("streams.handler")
 
 
 def normalize_products_payload(payload: Any) -> list[dict[str, Any]] | None:
     """标准化商品数据格式
-    
+
     Args:
         payload: 原始商品数据（可能是 dict 或 list）
-    
+
     Returns:
         标准化后的商品列表，或 None
     """
@@ -40,7 +40,11 @@ def normalize_products_payload(payload: Any) -> list[dict[str, Any]] | None:
         return None
 
     candidate: Any = payload
-    if isinstance(candidate, dict) and "products" in candidate and isinstance(candidate.get("products"), list):
+    if (
+        isinstance(candidate, dict)
+        and "products" in candidate
+        and isinstance(candidate.get("products"), list)
+    ):
         candidate = candidate.get("products")
 
     if not isinstance(candidate, list):
@@ -63,12 +67,13 @@ def normalize_products_payload(payload: Any) -> list[dict[str, Any]] | None:
 @dataclass
 class StreamingResponseHandler:
     """流响应处理器（有状态）
-    
+
     Attributes:
         emitter: 事件发射器（需要有 aemit 方法）
         model: LLM 模型实例（用于多态的推理提取）
         conversation_id: 会话 ID（用于日志）
     """
+
     emitter: Any
     model: Any = None
     conversation_id: str = ""
@@ -86,7 +91,7 @@ class StreamingResponseHandler:
 
     async def handle_message(self, msg: Any) -> None:
         """处理单条消息（核心分发逻辑）
-        
+
         Args:
             msg: LangChain 消息对象
         """
@@ -183,7 +188,7 @@ class StreamingResponseHandler:
 
     async def finalize(self) -> dict[str, Any]:
         """发送最终事件，返回汇总数据
-        
+
         Returns:
             包含 content、reasoning、products 的字典
         """
@@ -220,7 +225,7 @@ class StreamingResponseHandler:
 
     def get_stats(self) -> dict[str, int]:
         """获取统计信息
-        
+
         Returns:
             统计字典
         """

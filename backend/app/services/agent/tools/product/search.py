@@ -25,16 +25,15 @@
 
 import json
 import uuid
-
 from typing import Annotated
 
 from langchain.tools import ToolRuntime, tool
 from pydantic import BaseModel, Field
 
 from app.core.logging import get_logger
-from app.services.agent.retriever import get_retriever
-from app.services.agent.enhanced_retriever import enhanced_search
 from app.schemas.events import StreamEventType
+from app.services.agent.retrieval.enhanced import enhanced_search
+from app.services.agent.retrieval.product import get_retriever
 
 logger = get_logger("tool.search_products")
 
@@ -63,14 +62,16 @@ class SearchProductsResponse(BaseModel):
 
 @tool
 async def search_products(
-    query: Annotated[str, Field(description="用户的搜索需求描述，必须是单一商品或品类，不能包含多个商品类型")],
+    query: Annotated[
+        str, Field(description="用户的搜索需求描述，必须是单一商品或品类，不能包含多个商品类型")
+    ],
     runtime: ToolRuntime,
 ) -> str:
     """根据用户需求搜索匹配的商品。
 
     使用增强检索策略（向量相似度 + 关键词过滤 + 相关性重排序）来找到最匹配的商品。
     默认返回最多 5 个最相关的商品。
-    
+
     重要提示：每次调用只能搜索一个商品或品类。如需搜索多个不同商品，请分多次调用本工具。
 
     Args:
@@ -131,7 +132,7 @@ async def search_products(
             )
             logger.info("└── 工具: search_products 结束 (参数校验失败) ──┘")
             return json.dumps({"error": error_msg, "query": query}, ensure_ascii=False)
-        
+
         # 校验通过，继续执行
         # 步骤 1 & 2: 使用增强检索或标准检索
         if USE_ENHANCED_RETRIEVAL:

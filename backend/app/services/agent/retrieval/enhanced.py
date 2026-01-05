@@ -1,7 +1,6 @@
 """增强的检索策略 - 混合检索 + 重排序"""
 
 import re
-from typing import Any
 
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStoreRetriever
@@ -9,7 +8,7 @@ from langchain_core.vectorstores import VectorStoreRetriever
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.rerank import rerank_documents
-from app.services.agent.retriever import get_retriever
+from app.services.agent.retrieval.product import get_retriever
 
 logger = get_logger("enhanced_retriever")
 settings = get_settings()
@@ -103,13 +102,13 @@ def filter_by_keywords(
         if match_count >= min_match:
             filtered.append(doc)
             logger.debug(
-                f"关键词匹配",
+                "关键词匹配",
                 product_id=doc.metadata.get("product_id"),
                 match_count=match_count,
                 keywords_matched=[kw for kw in keywords if kw.lower() in combined_text],
             )
 
-    logger.info(f"关键词过滤完成", original_count=len(docs), filtered_count=len(filtered))
+    logger.info("关键词过滤完成", original_count=len(docs), filtered_count=len(filtered))
     return filtered
 
 
@@ -269,7 +268,7 @@ async def enhanced_search(
         logger.warning("向量检索无结果")
         return []
 
-    logger.info(f"向量检索完成", doc_count=len(docs))
+    logger.info("向量检索完成", doc_count=len(docs))
 
     # 2. 提取关键词
     keywords = extract_keywords(query)

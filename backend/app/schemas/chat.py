@@ -19,6 +19,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="聊天模式：natural（商品推荐）、free（自由聊天）、strict（严格模式）",
     )
+    agent_id: str | None = Field(
+        default=None,
+        description="智能体 ID，为空时使用默认智能体",
+    )
 
     @property
     def effective_mode(self) -> ChatMode:

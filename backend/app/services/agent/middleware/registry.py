@@ -1,8 +1,14 @@
 """中间件注册表 - 声明式配置，顺序即执行顺序
 
 使用方式：
-    from app.services.agent.middleware.registry import build_middlewares
+    from app.services.agent.middleware.registry import build_middlewares, build_middlewares_for_agent
+
+    # 传统方式（兼容）
     middlewares = build_middlewares(mode="natural", model=model)
+
+    # 基于 Agent 配置（推荐）
+    from app.schemas.agent import AgentConfig
+    middlewares = build_middlewares_for_agent(config, model)
 
 扩展方式：
     在 _get_middleware_specs() 中添加新的 MiddlewareSpec 即可
@@ -21,7 +27,7 @@ logger = get_logger("middleware.registry")
 @dataclass
 class MiddlewareSpec:
     """中间件规格定义
-    
+
     Attributes:
         name: 中间件名称（用于日志）
         order: 执行顺序（数字越小越先执行）
@@ -29,6 +35,7 @@ class MiddlewareSpec:
         enabled: 是否启用（可以是 bool 或返回 bool 的 callable）
         dependencies: 依赖的中间件名称列表（向后扩展预留）
     """
+
     name: str
     order: int
     factory: Callable[..., Any | None]
@@ -69,11 +76,11 @@ class MiddlewareSpec:
 
 def _get_middleware_specs(mode: str, model: Any) -> list[MiddlewareSpec]:
     """获取中间件规格列表
-    
+
     Args:
         mode: 聊天模式（natural/free/strict）
         model: LLM 模型实例（部分中间件需要）
-    
+
     Returns:
         中间件规格列表
     """
@@ -82,12 +89,14 @@ def _get_middleware_specs(mode: str, model: Any) -> list[MiddlewareSpec]:
     from langchain.agents.middleware.tool_call_limit import ToolCallLimitMiddleware
     from langchain.agents.middleware.tool_retry import ToolRetryMiddleware
 
+    from app.services.agent.middleware.llm_call_sse import SSEMiddleware
     from app.services.agent.middleware.logging import LoggingMiddleware
     from app.services.agent.middleware.response_sanitization import ResponseSanitizationMiddleware
-    from app.services.agent.middleware.llm_call_sse import SSEMiddleware
     from app.services.agent.middleware.sequential_tools import SequentialToolExecutionMiddleware
     from app.services.agent.middleware.strict_mode import StrictModeMiddleware
-    from app.services.agent.middleware.summarization_broadcast import SummarizationBroadcastMiddleware
+    from app.services.agent.middleware.summarization_broadcast import (
+        SummarizationBroadcastMiddleware,
+    )
     from app.services.agent.middleware.todo_broadcast import TodoBroadcastMiddleware
     from app.services.memory.middleware.orchestration import MemoryOrchestrationMiddleware
 
@@ -126,6 +135,7 @@ def _get_middleware_specs(mode: str, model: Any) -> list[MiddlewareSpec]:
     def _build_strict_mode_middleware():
         """构建严格模式中间件"""
         from app.services.agent.policy import get_policy
+
         return StrictModeMiddleware(policy=get_policy(mode))
 
     # ========== 中间件规格列表（按 order 排序后依次构建） ==========
@@ -214,11 +224,11 @@ def _get_middleware_specs(mode: str, model: Any) -> list[MiddlewareSpec]:
 
 def build_middlewares(mode: str, model: Any) -> list[Any]:
     """构建中间件链（对外接口）
-    
+
     Args:
         mode: 聊天模式（natural/free/strict）
         model: LLM 模型实例
-    
+
     Returns:
         中间件实例列表（按 order 排序）
     """
@@ -240,3 +250,70 @@ def build_middlewares(mode: str, model: Any) -> list[Any]:
             logger.debug(f"✓ {spec.name} (order={spec.order})")
 
     return middlewares
+
+
+def build_middlewares_for_agent(config: "AgentConfig", model: Any) -> list[Any]:
+    """根据 Agent 配置构建中间件链
+
+    Args:
+        config: Agent 运行时配置
+        model: LLM 模型实例
+
+    Returns:
+        中间件实例列表（按 order 排序）
+    """
+    mode = config.mode
+    specs = _get_middleware_specs(mode, model)
+    middlewares: list[Any] = []
+
+    # 从 Agent 配置获取中间件覆盖
+    flags = config.middleware_flags
+
+    # 中间件名称到配置 key 的映射
+    FLAG_MAPPING = {
+        "MemoryOrchestration": "memory_enabled",
+        "TodoList": "todo_enabled",
+        "Summarization": "summarization_enabled",
+        "ToolRetry": "tool_retry_enabled",
+        "ToolCallLimit": "tool_limit_enabled",
+        "StrictMode": "strict_mode_enabled",
+    }
+
+    for spec in sorted(specs, key=lambda s: s.order):
+        # 1. 检查 Agent 配置是否覆盖了启用状态
+        override_key = FLAG_MAPPING.get(spec.name)
+        if flags and override_key:
+            override_value = getattr(flags, override_key, None)
+            if override_value is not None:
+                if not override_value:
+                    continue  # 配置禁用了此中间件
+                # 配置启用，继续检查
+        elif not spec.is_enabled():
+            continue
+
+        result = spec.create()
+        if result is None:
+            continue
+
+        if isinstance(result, list):
+            middlewares.extend(result)
+            logger.debug(
+                f"✓ {spec.name} (order={spec.order})",
+                agent_id=config.agent_id,
+                count=len(result),
+            )
+        else:
+            middlewares.append(result)
+            logger.debug(
+                f"✓ {spec.name} (order={spec.order})",
+                agent_id=config.agent_id,
+            )
+
+    return middlewares
+
+
+# 类型提示（避免循环导入）
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.schemas.agent import AgentConfig

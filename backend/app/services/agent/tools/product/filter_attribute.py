@@ -59,9 +59,7 @@ class ListProductsByAttributeResponse(BaseModel):
 
 @tool
 async def list_products_by_attribute(
-    keyword: Annotated[
-        str, Field(description="属性关键词，必须是单一关键词，如：简约")
-    ],
+    keyword: Annotated[str, Field(description="属性关键词，必须是单一关键词，如：简约")],
     runtime: ToolRuntime,
     limit: Annotated[int | None, Field(default=10, description="返回的商品数量上限")] = 10,
 ) -> str:
@@ -69,7 +67,7 @@ async def list_products_by_attribute(
 
     在商品名称、摘要和描述中搜索包含指定关键词的商品。
     适用于用户想按特定属性或特征筛选商品时使用。
-    
+
     重要提示：每次调用只能使用一个关键词。如需多个属性筛选，请分多次调用本工具。
 
     Args:
@@ -126,7 +124,7 @@ async def list_products_by_attribute(
             )
             logger.info("└── 工具: list_products_by_attribute 结束 (参数校验失败) ──┘")
             return json.dumps({"error": error_msg}, ensure_ascii=False)
-        
+
         # 校验关键词不为空
         keyword = keyword.strip()
         if not keyword:
@@ -144,7 +142,7 @@ async def list_products_by_attribute(
             )
             logger.info("└── 工具: list_products_by_attribute 结束 (无关键词) ──┘")
             return json.dumps({"error": error_msg}, ensure_ascii=False)
-        
+
         # 校验通过，继续执行
         keyword_list = [keyword]
         logger.info(
@@ -202,7 +200,9 @@ async def list_products_by_attribute(
             for product in products:
                 # 检查哪些关键词匹配
                 matched_keywords = []
-                product_text = f"{product.name or ''} {product.summary or ''} {product.description or ''}"
+                product_text = (
+                    f"{product.name or ''} {product.summary or ''} {product.description or ''}"
+                )
 
                 for keyword in keyword_list:
                     if keyword in product_text:

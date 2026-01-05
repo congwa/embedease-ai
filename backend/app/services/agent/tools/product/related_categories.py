@@ -104,7 +104,7 @@ async def suggest_related_categories(
 
     根据分类之间的关联关系，推荐用户可能感兴趣的其他分类。
     适用于用户想探索更多相关品类时使用。
-    
+
     重要提示：每次调用只能查询一个分类。如需查询多个分类的相关分类，请分多次调用本工具。
 
     Args:
@@ -164,7 +164,7 @@ async def suggest_related_categories(
                 {"error": error_msg, "source_category": category_name},
                 ensure_ascii=False,
             )
-        
+
         # 校验通过，继续执行
         # 查找预定义的相关分类
         related_map = CATEGORY_RELATIONS.get(category_name, {})
@@ -230,9 +230,7 @@ async def suggest_related_categories(
             async with get_db_context() as session:
                 related_categories = []
                 for related_name, reason in list(related_map.items())[:limit]:
-                    stmt = select(func.count(Product.id)).where(
-                        Product.category == related_name
-                    )
+                    stmt = select(func.count(Product.id)).where(Product.category == related_name)
                     result = await session.execute(stmt)
                     product_count = result.scalar() or 0
 

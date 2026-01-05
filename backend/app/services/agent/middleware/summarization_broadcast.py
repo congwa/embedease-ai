@@ -18,7 +18,7 @@ logger = get_logger("middleware.summarization_broadcast")
 
 class SummarizationBroadcastMiddleware(AgentMiddleware):
     """Summarization 广播中间件
-    
+
     包装 SummarizationMiddleware，在压缩发生时：
     1. 记录压缩前后的消息数量
     2. 通过 context.emitter 推送 context.summarized 事件给前端
@@ -29,7 +29,7 @@ class SummarizationBroadcastMiddleware(AgentMiddleware):
         summarization_middleware: SummarizationMiddleware,
     ) -> None:
         """初始化
-        
+
         Args:
             summarization_middleware: LangChain 的 SummarizationMiddleware 实例
         """
@@ -70,10 +70,8 @@ class SummarizationBroadcastMiddleware(AgentMiddleware):
         new_messages = result.get("messages", [])
         # 新消息列表可能包含 RemoveMessage 指令，需要过滤掉
         from langgraph.graph.message import RemoveMessage
-        actual_messages = [
-            m for m in new_messages 
-            if not isinstance(m, RemoveMessage)
-        ]
+
+        actual_messages = [m for m in new_messages if not isinstance(m, RemoveMessage)]
         count_after = self._count_messages(actual_messages)
         tokens_after = self._estimate_tokens(actual_messages)
 
@@ -128,10 +126,8 @@ class SummarizationBroadcastMiddleware(AgentMiddleware):
         # 压缩发生了
         new_messages = result.get("messages", [])
         from langgraph.graph.message import RemoveMessage
-        actual_messages = [
-            m for m in new_messages 
-            if not isinstance(m, RemoveMessage)
-        ]
+
+        actual_messages = [m for m in new_messages if not isinstance(m, RemoveMessage)]
         count_after = self._count_messages(actual_messages)
         tokens_after = self._estimate_tokens(actual_messages)
 

@@ -107,7 +107,7 @@ class ResponseSanitizationMiddleware(AgentMiddleware):
             # [{"name": "tool_name", "parameters": {...}, ...}]
             r'^\[\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"parameters"\s*:',
             # [uuid]:0{...}<|tool_calls_section_end|>
-            r'^\[[a-f0-9-]{30,}\]:\d+\{.*\}<\|',
+            r"^\[[a-f0-9-]{30,}\]:\d+\{.*\}<\|",
         ]
 
         for pattern in patterns:
@@ -125,20 +125,26 @@ class ResponseSanitizationMiddleware(AgentMiddleware):
         # [{"name": "xxx", "parameters": {...}, "id": "xxx"}]
         if content_stripped.startswith("[") and content_stripped.endswith("]"):
             # 检查是否包含工具调用的特征字段
-            if ('"name"' in content_stripped and 
-                '"parameters"' in content_stripped and
+            if (
+                '"name"' in content_stripped
+                and '"parameters"' in content_stripped
+                and
                 # 确保不是正常的商品列表等
-                '"id"' in content_stripped and
+                '"id"' in content_stripped
+                and
                 # 排除正常的产品数据（通常包含 title, description 等）
-                '"title"' not in content_stripped and
-                '"description"' not in content_stripped):
+                '"title"' not in content_stripped
+                and '"description"' not in content_stripped
+            ):
                 return True
 
         # 额外检测：包含特殊的工具调用标记
         # <|tool_calls_section_end|>, <|tool_sep|>, <|tool_start|> 等
-        if ("<|tool" in content_stripped or 
-            "|tool_" in content_stripped or
-            "tool_calls_section" in content_stripped):
+        if (
+            "<|tool" in content_stripped
+            or "|tool_" in content_stripped
+            or "tool_calls_section" in content_stripped
+        ):
             return True
 
         return False
@@ -256,4 +262,3 @@ class ResponseSanitizationMiddleware(AgentMiddleware):
         cls._total_responses = 0
         cls._malformed_count = 0
         logger.info("响应清洗统计已重置")
-

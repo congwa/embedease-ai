@@ -55,7 +55,7 @@ async def get_category_overview(
 
     返回某个分类的统计数据，包括商品数量、价格分布、热门关键词和代表商品。
     适用于用户想深入了解某个具体分类时使用。
-    
+
     重要提示：每次调用只能查询一个分类。如需查询多个分类，请分多次调用本工具。
 
     Args:
@@ -107,10 +107,8 @@ async def get_category_overview(
                 },
             )
             logger.info("└── 工具: get_category_overview 结束 (参数校验失败) ──┘")
-            return json.dumps(
-                {"error": error_msg}, ensure_ascii=False
-            )
-        
+            return json.dumps({"error": error_msg}, ensure_ascii=False)
+
         # 校验通过，继续执行
         async with get_db_context() as session:
             # 查询该分类的统计信息
@@ -137,9 +135,7 @@ async def get_category_overview(
                     },
                 )
                 logger.info("└── 工具: get_category_overview 结束 (无结果) ──┘")
-                return json.dumps(
-                    {"error": f"未找到分类：{category_name}"}, ensure_ascii=False
-                )
+                return json.dumps({"error": f"未找到分类：{category_name}"}, ensure_ascii=False)
 
             logger.info(
                 "│ [1] 查询到分类统计",
@@ -147,9 +143,9 @@ async def get_category_overview(
             )
 
             # 获取该分类的所有商品（用于提取关键词）
-            products_stmt = select(
-                Product.id, Product.name, Product.summary, Product.price
-            ).where(Product.category == category_name)
+            products_stmt = select(Product.id, Product.name, Product.summary, Product.price).where(
+                Product.category == category_name
+            )
 
             products_result = await session.execute(products_stmt)
             products = products_result.all()

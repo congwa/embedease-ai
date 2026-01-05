@@ -38,6 +38,7 @@ class ChatStreamOrchestrator:
         user_message_id: str,
         assistant_message_id: str,
         mode: str = "natural",
+        agent_id: str | None = None,
     ) -> None:
         self._conversation_service = conversation_service
         self._agent_service = agent_service
@@ -47,6 +48,7 @@ class ChatStreamOrchestrator:
         self._user_message_id = user_message_id
         self._assistant_message_id = assistant_message_id
         self._mode = mode
+        self._agent_id = agent_id
 
         self._seq = 0
         self._full_content = ""
@@ -98,6 +100,7 @@ class ChatStreamOrchestrator:
                     conversation_id=self._conversation_id,
                     user_id=self._user_id,
                     context=chat_context,
+                    agent_id=self._agent_id,
                 )
             )
 

@@ -8,9 +8,7 @@
 
 from __future__ import annotations
 
-import json
 import uuid
-
 from typing import Annotated, Any
 
 from langchain.tools import ToolRuntime, tool
@@ -39,13 +37,13 @@ def guide_user(
         str | None,
         Field(
             default=None,
-            description=(
-                "引导阶段，可选：missing_info / no_match / clarify_goal / fallback"
-            ),
+            description=("引导阶段，可选：missing_info / no_match / clarify_goal / fallback"),
         ),
     ] = None,
-    intent: Annotated[str | None, Field(default=None, description="可选：识别出的意图")]=None,
-    tool_name: Annotated[str | None, Field(default=None, description="可选：最近一次工具名称")]=None,
+    intent: Annotated[str | None, Field(default=None, description="可选：识别出的意图")] = None,
+    tool_name: Annotated[
+        str | None, Field(default=None, description="可选：最近一次工具名称")
+    ] = None,
     tool_status: Annotated[
         str | None,
         Field(default=None, description="可选：工具状态 success/empty/error"),

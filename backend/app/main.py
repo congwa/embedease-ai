@@ -12,10 +12,11 @@ from app.core.database import get_db_context, init_db
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
 from app.routers import admin, chat, conversations, crawler, support, users, ws
+from app.routers.agents import router as agents_router, knowledge_router, faq_router
 from app.scheduler import task_registry, task_scheduler
 from app.scheduler.routers import router as scheduler_router
 from app.scheduler.tasks import CrawlSiteTask
-from app.services.agent.agent import agent_service
+from app.services.agent.core.service import agent_service
 from app.services.crawler.site_initializer import init_config_sites
 from app.services.websocket.heartbeat import heartbeat_manager
 
@@ -135,7 +136,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     # 2. 关闭 Qdrant 客户端（仅清理已初始化的资源）
     try:
-        from app.services.agent.retriever import get_qdrant_client, get_vector_store
+        from app.services.agent.retrieval.product import get_qdrant_client, get_vector_store
         
         # 检查是否有缓存的实例
         if get_qdrant_client.cache_info().currsize > 0:
@@ -197,9 +198,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="商品推荐 Agent",
-    description="基于 LangChain v1.1 的智能商品推荐系统",
-    version="0.1.0",
+    title="多智能体系统",
+    description="基于 LangChain v1.1 的多 Agent 智能系统（商品推荐/FAQ/知识库）",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -214,6 +215,9 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(admin.router)
+app.include_router(agents_router)
+app.include_router(knowledge_router)
+app.include_router(faq_router)
 app.include_router(chat.router)
 app.include_router(conversations.router)
 app.include_router(crawler.router)
@@ -226,7 +230,7 @@ app.include_router(scheduler_router)
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": "0.2.0"}
 
 
 if __name__ == "__main__":

@@ -128,9 +128,7 @@ async def list_all_categories(
                     },
                 )
                 logger.info("└── 工具: list_all_categories 结束 (无结果) ──┘")
-                return json.dumps(
-                    {"error": "商品库中暂无分类信息"}, ensure_ascii=False
-                )
+                return json.dumps({"error": "商品库中暂无分类信息"}, ensure_ascii=False)
 
             # 构建分类列表
             categories = []
@@ -146,8 +144,7 @@ async def list_all_categories(
                 )
                 sample_result = await session.execute(sample_stmt)
                 sample_products = [
-                    {"id": p.id, "name": p.name, "price": p.price}
-                    for p in sample_result.all()
+                    {"id": p.id, "name": p.name, "price": p.price} for p in sample_result.all()
                 ]
 
                 category_info = {

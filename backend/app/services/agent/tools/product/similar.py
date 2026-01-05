@@ -27,10 +27,9 @@ from typing import Annotated
 from langchain.tools import ToolRuntime, tool
 from pydantic import BaseModel, Field
 
-from app.core.config import settings
 from app.core.logging import get_logger
-from app.services.agent.retriever import get_retriever
 from app.schemas.events import StreamEventType
+from app.services.agent.retrieval.product import get_retriever
 
 logger = get_logger("tool.find_similar_products")
 
@@ -65,7 +64,7 @@ async def find_similar_products(
 
     基于向量语义相似度，查找与给定商品相似或可替代的商品。
     适用于用户想看更多类似商品或寻找替代选项时使用。
-    
+
     重要提示：每次调用只能查询一个商品编号。如需查询多个商品的相似商品，请分多次调用本工具。
 
     Args:
@@ -121,10 +120,8 @@ async def find_similar_products(
                 },
             )
             logger.info("└── 工具: find_similar_products 结束 (参数校验失败) ──┘")
-            return json.dumps(
-                {"error": error_msg}, ensure_ascii=False
-            )
-        
+            return json.dumps({"error": error_msg}, ensure_ascii=False)
+
         # 校验通过，继续执行
         # 首先获取源商品信息
         retriever = get_retriever(k=10)
@@ -149,9 +146,7 @@ async def find_similar_products(
                 },
             )
             logger.info("└── 工具: find_similar_products 结束 (无结果) ──┘")
-            return json.dumps(
-                {"error": f"未找到商品 {product_id}"}, ensure_ascii=False
-            )
+            return json.dumps({"error": f"未找到商品 {product_id}"}, ensure_ascii=False)
 
         logger.info(
             "│ [1] 找到源商品",

@@ -38,9 +38,8 @@ from langchain.tools import ToolRuntime, tool
 from pydantic import BaseModel, Field
 
 from app.core.logging import get_logger
-from app.services.agent.retriever import get_retriever
-from app.services.streaming.context import ChatContext
 from app.schemas.events import StreamEventType
+from app.services.agent.retrieval.product import get_retriever
 
 logger = get_logger("tool.compare_products")
 

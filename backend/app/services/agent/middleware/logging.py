@@ -38,7 +38,7 @@ def _summarize_tool_calls(tool_calls: Any) -> dict[str, Any] | None:
         items: list[dict[str, Any]] = []
         for tc in tool_calls[:10]:
             item: dict[str, Any] = {}
-            
+
             # 处理字典格式的 tool_call
             if isinstance(tc, dict):
                 item["id"] = str(tc.get("id")) if tc.get("id") is not None else None
@@ -100,7 +100,7 @@ def _summarize_tool_calls(tool_calls: Any) -> dict[str, Any] | None:
                     item["repr"] = tc_str[:200] + "..." if len(tc_str) > 200 else tc_str
                 except Exception:
                     item["repr"] = None
-            
+
             items.append(item)
 
         result = {
@@ -149,20 +149,20 @@ def _summarize_additional_kwargs(kwargs: Any) -> dict[str, Any] | None:
 
 def _ensure_serializable(obj: Any, *, _max_depth: int = 10) -> Any:
     """确保对象可以被日志系统安全序列化，避免深层嵌套被截断。
-    
+
     将嵌套结构转换为基本类型（str, int, float, bool, None, list, dict），
     确保日志系统能够正确显示内容。
-    
+
     Args:
         obj: 要序列化的对象
         _max_depth: 最大递归深度，防止无限递归
     """
     if _max_depth <= 0:
         return "..."
-    
+
     if obj is None or isinstance(obj, (str, int, float, bool)):
         return obj
-    
+
     if isinstance(obj, dict):
         # 对 tool_calls 字段进行特殊处理，确保 items 列表内容完整显示
         if "tool_calls" in obj:
@@ -172,21 +172,14 @@ def _ensure_serializable(obj: Any, *, _max_depth: int = 10) -> Any:
                 if isinstance(items, list):
                     # 确保 items 列表中的每个元素都是完全序列化的
                     tool_calls["items"] = [
-                        _ensure_serializable(item, _max_depth=_max_depth - 1)
-                        for item in items
+                        _ensure_serializable(item, _max_depth=_max_depth - 1) for item in items
                     ]
-        
-        return {
-            str(k): _ensure_serializable(v, _max_depth=_max_depth - 1)
-            for k, v in obj.items()
-        }
-    
+
+        return {str(k): _ensure_serializable(v, _max_depth=_max_depth - 1) for k, v in obj.items()}
+
     if isinstance(obj, (list, tuple)):
-        return [
-            _ensure_serializable(v, _max_depth=_max_depth - 1)
-            for v in obj
-        ]
-    
+        return [_ensure_serializable(v, _max_depth=_max_depth - 1) for v in obj]
+
     # 其他类型转换为字符串
     return str(obj)
 
@@ -194,17 +187,19 @@ def _ensure_serializable(obj: Any, *, _max_depth: int = 10) -> Any:
 def _serialize_message(msg: BaseMessage) -> dict[str, Any]:
     """序列化消息用于日志"""
     content = getattr(msg, "content", None)
-    content_text = content if isinstance(content, str) else str(content) if content is not None else ""
+    content_text = (
+        content if isinstance(content, str) else str(content) if content is not None else ""
+    )
     additional = getattr(msg, "additional_kwargs", None)
     reasoning_text = ""
     if isinstance(additional, dict):
         rc = additional.get("reasoning_content")
         reasoning_text = rc if isinstance(rc, str) else str(rc) if rc is not None else ""
-    
+
     # 序列化 tool_calls，确保它是完全可序列化的结构
     tool_calls_summary = _summarize_tool_calls(getattr(msg, "tool_calls", None))
     tool_calls_serialized = _ensure_serializable(tool_calls_summary) if tool_calls_summary else None
-    
+
     return {
         "type": type(msg).__name__,
         "content": _truncate_text(getattr(msg, "content", None), limit=1200),
@@ -299,11 +294,13 @@ class LoggingMiddleware(AgentMiddleware):
             # "messages": _serialize_messages(effective_messages), # 无用 暂时不记录
             "message_count": len(effective_messages),
             # "prompt": _build_prompt_preview(effective_messages),
-            "additional_kwargs": _summarize_additional_kwargs(getattr(effective_messages, "additional_kwargs", None)),
-            "tools": [_serialize_tool(t) for t in request.tools], # tools的完整信息
-            "tools_types": [type(t).__name__ for t in request.tools], # tools的类型
+            "additional_kwargs": _summarize_additional_kwargs(
+                getattr(effective_messages, "additional_kwargs", None)
+            ),
+            "tools": [_serialize_tool(t) for t in request.tools],  # tools的完整信息
+            "tools_types": [type(t).__name__ for t in request.tools],  # tools的类型
             "tool_count": len(request.tools),
-            "tool_choice": request.tool_choice, # 记录了模型选择的工具的配置
+            "tool_choice": request.tool_choice,  # 记录了模型选择的工具的配置
             # "response_format": _truncate_text(request.response_format, limit=200), # 无用 暂时不记录
             # "model_settings": request.model_settings, # 无用 暂时不记录
         }

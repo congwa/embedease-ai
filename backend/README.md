@@ -37,6 +37,12 @@ uv run python scripts/import_products.py
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
+### 6. 代码检查
+
+```bash
+uv run ruff check --fix
+```
+
 ## API 接口
 
 ### 健康检查

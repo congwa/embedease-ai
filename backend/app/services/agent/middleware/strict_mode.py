@@ -51,14 +51,16 @@ def _has_tool_calls(msg: AIMessage) -> bool:
 
 class StrictModeMiddleware(AgentMiddleware):
     """严格模式中间件
-    
+
     基于工具策略（ToolPolicy）执行工具调用约束：
     - 如果策略要求必须调用工具但模型没有调用，则替换为受控失败消息
     - 如果策略允许直接回答，则正常放行
     - 支持配置回退工具和最小工具调用次数
     """
 
-    def __init__(self, policy: ToolPolicy | None = None, custom_fallback_message: str | None = None):
+    def __init__(
+        self, policy: ToolPolicy | None = None, custom_fallback_message: str | None = None
+    ):
         self.policy = policy
         self.fallback_message = custom_fallback_message or STRICT_MODE_FALLBACK_MESSAGE
 
@@ -68,10 +70,10 @@ class StrictModeMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest], Awaitable[ModelResponse]],
     ) -> ModelResponse:
         mode = _get_mode_from_request(request)
-        
+
         # 获取当前模式的策略，如果没有传入策略则使用默认策略
         policy = self.policy or get_policy(mode)
-        
+
         logger.debug(
             "应用严格模式策略",
             mode=mode,
