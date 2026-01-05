@@ -16,7 +16,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.core.logging import get_logger
 
@@ -324,9 +324,6 @@ def _get_type_specific_tools(
 
     return tools
 
-
-# 类型提示（避免循环导入）
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.schemas.agent import AgentConfig

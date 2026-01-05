@@ -16,7 +16,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -311,9 +311,6 @@ def build_middlewares_for_agent(config: "AgentConfig", model: Any) -> list[Any]:
 
     return middlewares
 
-
-# 类型提示（避免循环导入）
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.schemas.agent import AgentConfig

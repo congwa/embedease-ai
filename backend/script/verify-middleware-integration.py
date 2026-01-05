@@ -35,7 +35,7 @@ async def verify_integration():
     print("\n2️⃣ 创建 Agent")
     try:
         agent_service = AgentService()
-        agent = await agent_service.get_agent(use_intent_recognition=True)
+        await agent_service.get_agent(use_intent_recognition=True)
         print("   ✅ Agent 创建成功")
     except Exception as e:
         print(f"   ❌ Agent 创建失败: {e}")

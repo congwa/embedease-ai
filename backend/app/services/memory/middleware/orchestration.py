@@ -268,7 +268,6 @@ class MemoryOrchestrationMiddleware(AgentMiddleware):
             return MemoryWriteResult()
 
         try:
-            total_start = time.perf_counter()
             # 构建对话上下文
             conversation = []
             for msg in messages:

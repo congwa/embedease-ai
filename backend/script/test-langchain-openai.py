@@ -128,7 +128,7 @@ async def main():
     print("\n" + "=" * 60)
 
     # 创建智能代理
-    agent = create_agent(
+    create_agent(
         model=siliconflow_model,
         tools=[get_weather, calculate_math, search_info],
         system_prompt="""你是一个智能助手，使用 SiliconFlow 的 AI 模型提供服务。

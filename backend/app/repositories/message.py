@@ -99,7 +99,7 @@ class MessageRepository(BaseRepository[Message]):
             .where(
                 and_(
                     Message.conversation_id == conversation_id,
-                    Message.is_delivered == False,
+                    Message.is_delivered.is_(False),
                     role_filter,
                 )
             )
@@ -164,7 +164,7 @@ class MessageRepository(BaseRepository[Message]):
             .where(
                 and_(
                     Message.conversation_id == conversation_id,
-                    Message.read_at == None,
+                    Message.read_at is None,
                     role_filter,
                 )
             )
