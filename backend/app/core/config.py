@@ -267,7 +267,7 @@ class Settings(BaseSettings):
             # 如果是字符串，按逗号分隔
             if isinstance(parsed, str):
                 return [origin.strip() for origin in parsed.split(",")]
-        
+
         # 回退到默认的逗号分隔处理
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
@@ -319,11 +319,11 @@ class Settings(BaseSettings):
             except json.JSONDecodeError:
                 # 环境变量解析失败，记录但不中断，继续尝试文件
                 pass
-        
+
         # 2. 尝试从 .env.json 目录加载
         if not self.ENV_JSON_DIR:
             return None
-            
+
         env_dir = Path(self.ENV_JSON_DIR)
         if not env_dir.is_absolute():
             project_root = get_project_root()
@@ -331,7 +331,7 @@ class Settings(BaseSettings):
         json_file = env_dir / f"{var_name}.json"
         if not json_file.exists():
             return None
-            
+
         try:
             content = json_file.read_text(encoding="utf-8")
             # 支持简单的注释剥离（仅支持 // 单行注释）

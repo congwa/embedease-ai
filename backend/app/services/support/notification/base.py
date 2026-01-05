@@ -91,11 +91,11 @@ class BaseNotificationChannel(ABC):
         lines = []
 
         if payload.type == NotificationType.NEW_MESSAGE:
-            lines.append(f"📩 新访客消息")
+            lines.append("📩 新访客消息")
         elif payload.type == NotificationType.WAITING_REMINDER:
-            lines.append(f"⏳ 访客等待提醒")
+            lines.append("⏳ 访客等待提醒")
         elif payload.type == NotificationType.HANDOFF_REQUEST:
-            lines.append(f"🙋 访客请求人工客服")
+            lines.append("🙋 访客请求人工客服")
         else:
             lines.append(f"📢 {payload.title or '通知'}")
 

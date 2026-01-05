@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.app_metadata import AppMetadata
 
-
 # 画像存储 Key 常量
 PROFILE_KEY_STATS = "catalog_profile.stats"
 PROFILE_KEY_PROMPT = "catalog_profile.prompt_short"
@@ -47,24 +46,24 @@ class CatalogProfileService:
             top_n = settings.CATALOG_PROFILE_TOP_CATEGORIES
 
         total = len(products)
-        
+
         # 统计类目
         category_counts: dict[str, int] = {}
         for p in products:
             cat = (p.get("category") or "").strip()
             if cat:
                 category_counts[cat] = category_counts.get(cat, 0) + 1
-        
+
         # 按数量排序取 Top N
         sorted_cats = sorted(category_counts.items(), key=lambda x: -x[1])
         top_categories = [{"name": name, "count": count} for name, count in sorted_cats[:top_n]]
-        
+
         # 统计价格
         prices = [p["price"] for p in products if p.get("price") is not None]
         priced_count = len(prices)
         min_price = min(prices) if prices else None
         max_price = max(prices) if prices else None
-        
+
         return {
             "total_products": total,
             "top_categories": top_categories,
@@ -93,7 +92,7 @@ class CatalogProfileService:
             cats_str = "、".join(c["name"] for c in top_cats)
         else:
             cats_str = "未知"
-        
+
         # 价格片段
         priced = profile.get("priced_count", 0)
         min_p = profile.get("min_price")
@@ -105,22 +104,22 @@ class CatalogProfileService:
             price_str = f"价位{min_s}-{max_s}"
         else:
             price_str = "价位未知"
-        
+
         # 行为约束（固定后缀）
         suffix = "未命中先问类目/预算/场景；仅基于检索结果推荐。"
-        
+
         # 组装
         prompt = f"库提示：主类目{cats_str}；{price_str}。{suffix}"
-        
+
         # 长度兜底：如果超 100 字，缩短类目
         if len(prompt) > 100 and len(top_cats) > 2:
             cats_str = "、".join(c["name"] for c in top_cats[:2])
             prompt = f"库提示：主类目{cats_str}；{price_str}。{suffix}"
-        
+
         # 仍超：去掉价格
         if len(prompt) > 100:
             prompt = f"库提示：主类目{cats_str}。{suffix}"
-        
+
         return prompt
 
     def compute_fingerprint(self, profile: dict[str, Any]) -> str:
@@ -154,7 +153,7 @@ class CatalogProfileService:
             fingerprint: 指纹
         """
         now = datetime.now(timezone.utc)
-        
+
         # Upsert 三条记录
         for key, value in [
             (PROFILE_KEY_STATS, json.dumps(stats, ensure_ascii=False)),
@@ -164,7 +163,7 @@ class CatalogProfileService:
             stmt = select(AppMetadata).where(AppMetadata.key == key)
             result = await self.session.execute(stmt)
             existing = result.scalar_one_or_none()
-            
+
             if existing:
                 existing.value = value
                 existing.updated_at = now
@@ -182,11 +181,11 @@ class CatalogProfileService:
             "prompt_short": None,
             "fingerprint": None,
         }
-        
+
         keys = [PROFILE_KEY_STATS, PROFILE_KEY_PROMPT, PROFILE_KEY_FINGERPRINT]
         stmt = select(AppMetadata).where(AppMetadata.key.in_(keys))
         rows = await self.session.execute(stmt)
-        
+
         for row in rows.scalars():
             if row.key == PROFILE_KEY_STATS:
                 result["stats"] = row.value
@@ -194,7 +193,7 @@ class CatalogProfileService:
                 result["prompt_short"] = row.value
             elif row.key == PROFILE_KEY_FINGERPRINT:
                 result["fingerprint"] = row.value
-        
+
         return result
 
     async def get_prompt_and_fingerprint(self) -> tuple[str, str]:

@@ -13,7 +13,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
 # ========== 协议版本 ==========
 WS_PROTOCOL_VERSION = 1
 
@@ -21,26 +20,26 @@ WS_PROTOCOL_VERSION = 1
 # ========== 错误码枚举 ==========
 class WSErrorCode(StrEnum):
     """WebSocket 错误码"""
-    
+
     # 认证相关
     AUTH_REQUIRED = "AUTH_REQUIRED"
     AUTH_FAILED = "AUTH_FAILED"
     AUTH_EXPIRED = "AUTH_EXPIRED"
-    
+
     # 权限相关
     PERMISSION_DENIED = "PERMISSION_DENIED"
     NOT_IN_HUMAN_MODE = "NOT_IN_HUMAN_MODE"
-    
+
     # 请求相关
     INVALID_ACTION = "INVALID_ACTION"
     INVALID_PAYLOAD = "INVALID_PAYLOAD"
     MISSING_FIELD = "MISSING_FIELD"
-    
+
     # 业务相关
     CONVERSATION_NOT_FOUND = "CONVERSATION_NOT_FOUND"
     MESSAGE_SEND_FAILED = "MESSAGE_SEND_FAILED"
     HANDOFF_FAILED = "HANDOFF_FAILED"
-    
+
     # 系统相关
     INTERNAL_ERROR = "INTERNAL_ERROR"
     RATE_LIMITED = "RATE_LIMITED"
@@ -57,7 +56,7 @@ class WSRole(StrEnum):
 # ========== Action 常量定义 ==========
 class WSAction(StrEnum):
     """WebSocket Action 枚举"""
-    
+
     # System
     SYSTEM_PING = "system.ping"
     SYSTEM_PONG = "system.pong"
@@ -65,13 +64,13 @@ class WSAction(StrEnum):
     SYSTEM_ERROR = "system.error"
     SYSTEM_CONNECTED = "system.connected"
     SYSTEM_DISCONNECTED = "system.disconnected"
-    
+
     # Client User
     CLIENT_USER_SEND_MESSAGE = "client.user.send_message"
     CLIENT_USER_TYPING = "client.user.typing"
     CLIENT_USER_READ = "client.user.read"
     CLIENT_USER_REQUEST_HANDOFF = "client.user.request_handoff"
-    
+
     # Client Agent
     CLIENT_AGENT_SEND_MESSAGE = "client.agent.send_message"
     CLIENT_AGENT_TYPING = "client.agent.typing"
@@ -79,7 +78,7 @@ class WSAction(StrEnum):
     CLIENT_AGENT_START_HANDOFF = "client.agent.start_handoff"
     CLIENT_AGENT_END_HANDOFF = "client.agent.end_handoff"
     CLIENT_AGENT_TRANSFER = "client.agent.transfer"
-    
+
     # Server Push
     SERVER_MESSAGE = "server.message"
     SERVER_TYPING = "server.typing"
@@ -108,7 +107,7 @@ class WSMessageBase(BaseModel):
     ts: int = Field(..., description="时间戳（毫秒）")
     action: str = Field(..., description="动作类型")
     payload: dict[str, Any] = Field(default_factory=dict, description="载荷")
-    
+
     conversation_id: str | None = Field(None, description="会话 ID")
     reply_to: str | None = Field(None, description="响应的原消息 ID")
     error: WSError | None = Field(None, description="错误信息")
@@ -263,13 +262,13 @@ ACTION_PAYLOAD_MAP: dict[str, type[BaseModel]] = {
     WSAction.SYSTEM_ACK: AckPayload,
     WSAction.SYSTEM_ERROR: ErrorPayload,
     WSAction.SYSTEM_CONNECTED: ConnectedPayload,
-    
+
     # Client User
     WSAction.CLIENT_USER_SEND_MESSAGE: UserSendMessagePayload,
     WSAction.CLIENT_USER_TYPING: TypingPayload,
     WSAction.CLIENT_USER_READ: ReadReceiptPayload,
     WSAction.CLIENT_USER_REQUEST_HANDOFF: RequestHandoffPayload,
-    
+
     # Client Agent
     WSAction.CLIENT_AGENT_SEND_MESSAGE: AgentSendMessagePayload,
     WSAction.CLIENT_AGENT_TYPING: TypingPayload,
@@ -277,7 +276,7 @@ ACTION_PAYLOAD_MAP: dict[str, type[BaseModel]] = {
     WSAction.CLIENT_AGENT_START_HANDOFF: StartHandoffPayload,
     WSAction.CLIENT_AGENT_END_HANDOFF: EndHandoffPayload,
     WSAction.CLIENT_AGENT_TRANSFER: TransferPayload,
-    
+
     # Server Push
     WSAction.SERVER_MESSAGE: ServerMessagePayload,
     WSAction.SERVER_TYPING: ServerTypingPayload,

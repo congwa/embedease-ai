@@ -46,9 +46,6 @@ if reasoning:
 
 from __future__ import annotations
 
-# 统一入口（外部只需使用这个）
-from app.core.chat_models.registry import create_chat_model
-
 # 基类和统一结构（供扩展使用）
 from app.core.chat_models.base import (
     BaseReasoningChatModel,
@@ -58,6 +55,9 @@ from app.core.chat_models.base import (
 
 # SiliconFlow 实现（供调试使用）
 from app.core.chat_models.providers.reasoning_content import SiliconFlowReasoningChatModel
+
+# 统一入口（外部只需使用这个）
+from app.core.chat_models.registry import create_chat_model
 
 __all__ = [
     # 统一入口

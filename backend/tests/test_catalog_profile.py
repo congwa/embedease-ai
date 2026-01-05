@@ -1,6 +1,5 @@
 """商品库画像服务测试"""
 
-import pytest
 
 from app.services.catalog_profile import CatalogProfileService
 
@@ -12,7 +11,7 @@ class TestBuildProfile:
         """空商品列表"""
         service = CatalogProfileService(session=None)  # build_profile 不需要 session
         profile = service.build_profile_from_products([], top_n=3)
-        
+
         assert profile["total_products"] == 0
         assert profile["top_categories"] == []
         assert profile["category_count"] == 0
@@ -32,10 +31,10 @@ class TestBuildProfile:
         ]
         service = CatalogProfileService(session=None)
         profile = service.build_profile_from_products(products, top_n=3)
-        
+
         assert profile["total_products"] == 6
         assert profile["category_count"] == 3  # 手机、耳机、路由器
-        
+
         # Top 类目按数量排序
         top_cats = profile["top_categories"]
         assert len(top_cats) == 3
@@ -53,7 +52,7 @@ class TestBuildProfile:
         ]
         service = CatalogProfileService(session=None)
         profile = service.build_profile_from_products(products, top_n=3)
-        
+
         assert profile["priced_count"] == 3
         assert profile["unpriced_count"] == 1
         assert profile["min_price"] == 100
@@ -67,7 +66,7 @@ class TestBuildProfile:
         ]
         service = CatalogProfileService(session=None)
         profile = service.build_profile_from_products(products, top_n=3)
-        
+
         assert profile["priced_count"] == 0
         assert profile["min_price"] is None
         assert profile["max_price"] is None
@@ -89,7 +88,7 @@ class TestRenderPrompt:
         }
         service = CatalogProfileService(session=None)
         prompt = service.render_prompt(profile)
-        
+
         assert len(prompt) <= 100
         assert "手机" in prompt
         assert "耳机" in prompt
@@ -107,7 +106,7 @@ class TestRenderPrompt:
         }
         service = CatalogProfileService(session=None)
         prompt = service.render_prompt(profile)
-        
+
         assert len(prompt) <= 100
         assert "未知" in prompt
 
@@ -121,7 +120,7 @@ class TestRenderPrompt:
         }
         service = CatalogProfileService(session=None)
         prompt = service.render_prompt(profile)
-        
+
         assert len(prompt) <= 100
         assert "价位未知" in prompt
 
@@ -139,7 +138,7 @@ class TestRenderPrompt:
         }
         service = CatalogProfileService(session=None)
         prompt = service.render_prompt(profile)
-        
+
         # 必须保证不超过 100 字
         assert len(prompt) <= 100
         # 必须包含行为约束
@@ -168,10 +167,10 @@ class TestFingerprint:
             "generated_at": "2025-12-31T23:59:59Z",  # 不同时间
         }
         service = CatalogProfileService(session=None)
-        
+
         fp1 = service.compute_fingerprint(profile1)
         fp2 = service.compute_fingerprint(profile2)
-        
+
         # 时间戳不影响指纹
         assert fp1 == fp2
 
@@ -188,8 +187,8 @@ class TestFingerprint:
             "priced_count": 8,
         }
         service = CatalogProfileService(session=None)
-        
+
         fp1 = service.compute_fingerprint(profile1)
         fp2 = service.compute_fingerprint(profile2)
-        
+
         assert fp1 != fp2

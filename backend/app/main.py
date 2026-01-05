@@ -8,11 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.crawler_database import get_crawler_db, init_crawler_db
-from app.core.database import get_db_context, init_db
+from app.core.database import init_db
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
 from app.routers import admin, chat, conversations, crawler, support, users, ws
-from app.routers.agents import router as agents_router, knowledge_router, faq_router
+from app.routers.agents import faq_router, knowledge_router
+from app.routers.agents import router as agents_router
 from app.scheduler import task_registry, task_scheduler
 from app.scheduler.routers import router as scheduler_router
 from app.scheduler.tasks import CrawlSiteTask
@@ -85,16 +86,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.CRAWLER_ENABLED:
         # 初始化爬虫独立数据库
         await init_crawler_db()
-        
+
         # 使用爬虫数据库会话初始化站点配置
         async with get_crawler_db() as crawler_session:
             imported_site_ids = await init_config_sites(crawler_session)
-            
+
             # 为每个配置站点注册调度任务
             if imported_site_ids:
                 from app.repositories.crawler import CrawlSiteRepository
                 site_repo = CrawlSiteRepository(crawler_session)
-                
+
                 for site_id in imported_site_ids:
                     site = await site_repo.get_by_id(site_id)
                     if site and site.cron_expression:
@@ -109,7 +110,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             else:
                 # 如果没有配置站点，注册默认任务（兼容旧逻辑）
                 task_registry.register(CrawlSiteTask())
-    
+
     # 启动调度器（即使没有任务也启动，方便后续动态注册）
     await task_scheduler.start()
     logger.info("任务调度器已启动", module="app", task_count=len(task_registry))
@@ -130,14 +131,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 1. 关闭任务调度器
     await task_scheduler.stop()
     logger.debug("任务调度器已关闭", module="app")
-    
+
     # 1. 关闭 Agent 服务（checkpointer 连接）
     await agent_service.close()
-    
+
     # 2. 关闭 Qdrant 客户端（仅清理已初始化的资源）
     try:
         from app.services.agent.retrieval.product import get_qdrant_client, get_vector_store
-        
+
         # 检查是否有缓存的实例
         if get_qdrant_client.cache_info().currsize > 0:
             try:
@@ -146,14 +147,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 logger.debug("Qdrant 客户端已关闭", module="app")
             except Exception:
                 pass
-        
+
         # 清理 LRU 缓存
         get_qdrant_client.cache_clear()
         get_vector_store.cache_clear()
         logger.debug("向量存储缓存已清理", module="app")
     except Exception as e:
         logger.warning("清理 Qdrant 资源时出错", module="app", error=str(e))
-    
+
     # 3. 关闭数据库引擎
     try:
         from app.core.database import engine
@@ -161,7 +162,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.debug("主数据库引擎已关闭", module="app")
     except Exception as e:
         logger.warning("关闭主数据库引擎时出错", module="app", error=str(e))
-    
+
     # 3.1 关闭爬虫数据库引擎
     if settings.CRAWLER_ENABLED:
         try:
@@ -170,11 +171,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.debug("爬虫数据库引擎已关闭", module="app")
         except Exception as e:
             logger.warning("关闭爬虫数据库引擎时出错", module="app", error=str(e))
-    
+
     # 4. 关闭 OpenAI 客户端（仅清理已初始化的资源）
     try:
-        from app.core.llm import get_embeddings, get_chat_model
-        
+        from app.core.llm import get_chat_model, get_embeddings
+
         # 只有在缓存中有实例时才关闭
         if get_embeddings.cache_info().currsize > 0:
             try:
@@ -186,14 +187,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 logger.debug("Embeddings 客户端已关闭", module="app")
             except Exception:
                 pass
-        
+
         # 清理 LRU 缓存
         get_embeddings.cache_clear()
         get_chat_model.cache_clear()
         logger.debug("LLM 缓存已清理", module="app")
     except Exception as e:
         logger.warning("关闭 OpenAI 客户端时出错", module="app", error=str(e))
-    
+
     logger.info("应用已关闭", module="app")
 
 

@@ -1,7 +1,5 @@
 """Rerank API 客户端 - 支持多提供商"""
 
-import asyncio
-from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field

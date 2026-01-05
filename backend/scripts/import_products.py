@@ -36,14 +36,14 @@ def normalize_product(raw: dict) -> dict:
     """
     product_id = str(raw.get("id", "")).strip()
     name = str(raw.get("name", "")).strip()
-    
+
     # category: 空串当 None
     cat = raw.get("category")
     if isinstance(cat, str):
         cat = cat.strip() or None
     else:
         cat = None
-    
+
     # price: 转 float，非法当 None
     price = raw.get("price")
     if price is not None:
@@ -51,25 +51,25 @@ def normalize_product(raw: dict) -> dict:
             price = float(price)
         except (ValueError, TypeError):
             price = None
-    
+
     # summary/description/url: 空串当 None
     def clean_str(val):
         if isinstance(val, str):
             return val.strip() or None
         return None
-    
+
     # 列表字段: 确保为 list 或 None
     def clean_list(val):
         if isinstance(val, list):
             return [str(v).strip() for v in val if v] or None
         return None
-    
+
     # 字典字段: 确保为 dict 或 None
     def clean_dict(val):
         if isinstance(val, dict):
             return val or None
         return None
-    
+
     return {
         "id": product_id,
         "name": name,
@@ -115,17 +115,17 @@ async def import_products(json_path: str) -> None:
             product = ProductCreate(**product_data)
             await product_service.create_or_update_product(product)
         print(f"[import] 已保存 {len(products_data)} 个商品到数据库")
-        
+
         # 2. 生成并保存商品库画像
         await generate_and_save_catalog_profile(session, products_data)
 
     # 创建 Qdrant 向量索引
     await create_vector_index(products_data)
-    
+
     # 关闭数据库连接
     from app.core.database import engine
     await engine.dispose()
-    
+
     print("[import] 导入完成!")
 
 
@@ -137,21 +137,21 @@ async def generate_and_save_catalog_profile(
     在导入时调用，基于标准化后的商品数据生成画像并入库
     """
     print("[import] 生成商品库画像...")
-    
+
     profile_service = CatalogProfileService(session)
-    
+
     # 1. 生成统计
     profile_stats = profile_service.build_profile_from_products(products_data)
-    
+
     # 2. 渲染短提示词
     prompt_short = profile_service.render_prompt(profile_stats)
-    
+
     # 3. 计算指纹
     fingerprint = profile_service.compute_fingerprint(profile_stats)
-    
+
     # 4. 保存到 metadata 表
     await profile_service.save_profile(profile_stats, prompt_short, fingerprint)
-    
+
     # 打印摘要
     top_cats = [c["name"] for c in profile_stats.get("top_categories", [])]
     print(f"[import] 画像统计: 商品总数={profile_stats['total_products']}, "
@@ -211,7 +211,7 @@ async def create_vector_index(products_data: list[dict]) -> None:
                 text_parts.append(f"分类: {product['category']}")
             if product.get("tags"):
                 text_parts.append(f"标签: {', '.join(product['tags'])}")
-            
+
             # 构建基础 metadata
             base_metadata = {
                 "product_id": product["id"],
@@ -225,7 +225,7 @@ async def create_vector_index(products_data: list[dict]) -> None:
                 "source_site_id": product.get("source_site_id"),
                 "extra_metadata": product.get("extra_metadata"),
             }
-            
+
             if product.get("description"):
                 # 如果描述太长，进行分块
                 description = product["description"]
@@ -270,7 +270,7 @@ async def create_vector_index(products_data: list[dict]) -> None:
             print(f"[import] 已添加 {min(i + batch_size, len(documents))}/{len(documents)} 个文档")
 
         print(f"[import] 向量索引创建完成，共 {len(documents)} 个向量")
-    
+
     finally:
         # 关闭 Qdrant 客户端连接
         try:
@@ -318,7 +318,7 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
-  
+
 
 
 if __name__ == "__main__":

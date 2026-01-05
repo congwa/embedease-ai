@@ -3,9 +3,8 @@
 提供任务调度的查询与控制接口。
 """
 
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 from app.scheduler import task_registry, task_scheduler

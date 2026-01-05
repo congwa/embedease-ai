@@ -1,10 +1,10 @@
 """测试响应清洗中间件"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from langchain.agents.middleware.types import ModelRequest, ModelResponse
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage
 
 from app.services.agent.middleware.response_sanitization import ResponseSanitizationMiddleware
 
@@ -62,7 +62,7 @@ class TestMalformedDetection:
         """测试检测 JSON 数组格式的工具调用"""
         content = '[{"name": "search_products", "parameters": {"query": "降噪耳机"}, "id": "search_products:0"}]'
         assert ResponseSanitizationMiddleware._is_malformed_function_call(content) is True
-        
+
     def test_detect_json_array_multiple_tools(self):
         """测试检测包含多个工具的 JSON 数组"""
         content = '[{"name": "tool1", "parameters": {}, "id": "1"}, {"name": "tool2", "parameters": {}, "id": "2"}]'
@@ -72,7 +72,7 @@ class TestMalformedDetection:
         """测试检测 UUID 格式的工具调用"""
         content = '[5d177dc5-a153-4f8a-9b89-b38b9e5231a0]:0{"query": "降噪耳机"}<|tool_calls_section_end|>'
         assert ResponseSanitizationMiddleware._is_malformed_function_call(content) is True
-        
+
     def test_detect_tool_calls_markers(self):
         """测试检测包含工具调用特殊标记的内容"""
         test_cases = [
@@ -109,12 +109,12 @@ class TestMiddlewareProcessing:
     async def test_disabled_middleware_passthrough(self, mock_request, mock_handler):
         """测试禁用时直接透传"""
         middleware = ResponseSanitizationMiddleware(enabled=False)
-        
+
         mock_response = MagicMock(spec=ModelResponse)
         mock_handler.return_value = mock_response
 
         result = await middleware.awrap_model_call(mock_request, mock_handler)
-        
+
         assert result == mock_response
         mock_handler.assert_called_once_with(mock_request)
 
@@ -195,7 +195,7 @@ class TestStatistics:
         """测试统计计数"""
         # 重置统计
         ResponseSanitizationMiddleware.reset_statistics()
-        
+
         stats = ResponseSanitizationMiddleware.get_statistics()
         assert stats["total_responses"] == 0
         assert stats["malformed_count"] == 0
@@ -206,10 +206,10 @@ class TestStatistics:
         # 手动设置一些值
         ResponseSanitizationMiddleware._total_responses = 100
         ResponseSanitizationMiddleware._malformed_count = 10
-        
+
         # 重置
         ResponseSanitizationMiddleware.reset_statistics()
-        
+
         stats = ResponseSanitizationMiddleware.get_statistics()
         assert stats["total_responses"] == 0
         assert stats["malformed_count"] == 0
@@ -222,7 +222,7 @@ class TestFallbackMessage:
         """测试默认降级消息"""
         middleware = ResponseSanitizationMiddleware()
         msg = middleware._get_fallback_message("original content")
-        
+
         assert "抱歉" in msg
         assert "技术问题" in msg
         assert "重试" in msg
@@ -232,6 +232,6 @@ class TestFallbackMessage:
         custom_msg = "自定义错误消息"
         middleware = ResponseSanitizationMiddleware(custom_fallback_message=custom_msg)
         msg = middleware._get_fallback_message("original content")
-        
+
         assert msg == custom_msg
 

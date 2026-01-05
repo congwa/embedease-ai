@@ -4,7 +4,7 @@ import time
 from typing import Any
 from uuid import uuid4
 
-from app.schemas.websocket import WSAction, WS_PROTOCOL_VERSION
+from app.schemas.websocket import WS_PROTOCOL_VERSION, WSAction
 
 
 def build_server_message(

@@ -3,12 +3,11 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.message import Message
-from app.models.tool_call import ToolCall
 from app.repositories.base import BaseRepository
 
 
@@ -94,7 +93,7 @@ class MessageRepository(BaseRepository[Message]):
             role_filter = Message.role.in_(["assistant", "human_agent", "system"])
         else:
             role_filter = Message.role == "user"
-        
+
         result = await self.session.execute(
             select(Message)
             .where(
@@ -159,7 +158,7 @@ class MessageRepository(BaseRepository[Message]):
             role_filter = Message.role.in_(["assistant", "human_agent", "system"])
         else:
             role_filter = Message.role == "user"
-        
+
         result = await self.session.execute(
             select(Message)
             .where(

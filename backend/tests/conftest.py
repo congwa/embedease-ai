@@ -1,8 +1,8 @@
 """Pytest 配置"""
 
 import os
-import pytest
 
+import pytest
 
 # 测试环境下为 Settings 提供必要的必填配置，避免导入 app.core.config 时报错。
 # 这些值仅用于单测，不会触发任何真实网络调用。

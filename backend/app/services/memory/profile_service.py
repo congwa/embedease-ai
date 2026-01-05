@@ -11,9 +11,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from app.core.config import settings
 from app.core.logging import get_logger
-from app.services.memory.models import Entity, Fact, KnowledgeGraph, Relation
+from app.services.memory.models import Fact, KnowledgeGraph
 
 logger = get_logger("memory.profile_service")
 

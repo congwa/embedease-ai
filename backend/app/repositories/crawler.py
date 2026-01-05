@@ -263,7 +263,7 @@ class CrawlPageRepository(BaseRepository[CrawlPage]):
 
         # 查找现有页面
         existing_page = await self.get_by_url_hash(site_id, url_hash)
-        
+
         if existing_page is None:
             # 新页面：创建记录
             page = CrawlPage(
@@ -279,7 +279,7 @@ class CrawlPageRepository(BaseRepository[CrawlPage]):
             )
             page = await self.create(page)
             return page, True, True
-        
+
         # 页面已存在，检查内容是否变化
         if existing_page.content_hash == new_content_hash:
             # 内容未变化：标记为重复跳过
@@ -296,7 +296,7 @@ class CrawlPageRepository(BaseRepository[CrawlPage]):
             # 重新获取更新后的页面
             await self.session.refresh(existing_page)
             return existing_page, False, False
-        
+
         # 内容已变化：更新页面，版本号 +1
         new_version = existing_page.version + 1
         await self.session.execute(

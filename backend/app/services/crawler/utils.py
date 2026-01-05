@@ -38,7 +38,7 @@ def normalize_domain(url: str) -> str:
     parsed = urlparse(url)
     # 提取域名并转小写，保留完整域名（包括子域名和端口）
     domain = parsed.netloc.lower()
-    
+
     return domain
 
 

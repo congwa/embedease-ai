@@ -1,17 +1,17 @@
 """WebSocket 路由端点"""
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.core.database import get_db_context
 from app.core.logging import get_logger
 from app.schemas.websocket import WSAction, WSRole
-from app.services.websocket.manager import ws_manager
-from app.services.websocket.router import ws_router
-from app.services.websocket.handlers.base import build_server_message
 from app.services.support.handoff import HandoffService
 
 # 确保 handlers 被注册
 from app.services.websocket import handlers  # noqa: F401
+from app.services.websocket.handlers.base import build_server_message
+from app.services.websocket.manager import ws_manager
+from app.services.websocket.router import ws_router
 
 logger = get_logger("router.ws")
 
@@ -26,12 +26,12 @@ async def _authenticate_user(token: str | None, conversation_id: str) -> tuple[b
     """
     if not token:
         return False, "", "缺少认证 token"
-    
+
     # TODO: 实现真实的 token 验证（JWT 等）
     # 这里简化处理，支持 "user_{user_id}" 格式或直接使用 token 作为 user_id
     if token.startswith("user_"):
         return True, token[5:], ""
-    
+
     return True, token, ""
 
 
@@ -43,11 +43,11 @@ async def _authenticate_agent(token: str | None) -> tuple[bool, str, str]:
     """
     if not token:
         return False, "", "缺少认证 token"
-    
+
     # TODO: 实现真实的 token 验证（企业微信 OAuth 等）
     if token.startswith("agent_"):
         return True, token[6:], ""
-    
+
     return True, token, ""
 
 
@@ -82,7 +82,7 @@ async def ws_user_endpoint(
     if not success:
         await websocket.close(code=4001, reason=error)
         return
-    
+
     # 2. 接受连接
     await websocket.accept()
     logger.info(
@@ -92,7 +92,7 @@ async def ws_user_endpoint(
         client=str(websocket.client),
         headers=dict(websocket.headers),
     )
-    
+
     # 3. 注册连接
     conn = await ws_manager.connect(
         websocket=websocket,
@@ -100,29 +100,29 @@ async def ws_user_endpoint(
         role=WSRole.USER,
         identity=user_id,
     )
-    
+
     try:
         async with get_db_context() as session:
             from app.repositories.conversation import ConversationRepository
             from app.repositories.message import MessageRepository
-            
+
             handoff_service = HandoffService(session)
             conv_repo = ConversationRepository(session)
             msg_repo = MessageRepository(session)
-            
+
             # 4. 获取当前 handoff 状态和在线状态
             handoff_state = await handoff_service.get_handoff_state(conversation_id) or "ai"
             online_status = await conv_repo.get_online_status(conversation_id)
-            
+
             # 5. 更新用户在线状态到数据库
             await conv_repo.set_user_online(conversation_id, True)
-            
+
             # 6. 获取未读消息数
             unread_count = await msg_repo.get_unread_count(conversation_id, "user")
-            
+
             # 7. 获取未送达消息并推送
             undelivered = await msg_repo.get_undelivered_messages(conversation_id, "user")
-        
+
         # 8. 发送连接成功消息
         peer_last_online = online_status.get("agent_last_online_at")
         connected_msg = build_server_message(
@@ -139,7 +139,7 @@ async def ws_user_endpoint(
             conversation_id=conversation_id,
         )
         await conn.send(connected_msg)
-        
+
         # 9. 推送未送达消息
         if undelivered:
             delivered_ids = []
@@ -160,13 +160,13 @@ async def ws_user_endpoint(
                 )
                 await conn.send(server_msg)
                 delivered_ids.append(msg.id)
-            
+
             # 标记为已送达
             if delivered_ids:
                 async with get_db_context() as session:
                     msg_repo = MessageRepository(session)
                     await msg_repo.mark_as_delivered(delivered_ids)
-        
+
         # 10. 通知客服端用户上线
         from datetime import datetime
         now = datetime.now()
@@ -181,7 +181,7 @@ async def ws_user_endpoint(
             conversation_id=conversation_id,
         )
         await ws_manager.send_to_role(conversation_id, WSRole.AGENT, online_msg)
-        
+
         logger.info(
             "用户 WebSocket 已连接",
             conn_id=conn.id,
@@ -189,7 +189,7 @@ async def ws_user_endpoint(
             conversation_id=conversation_id,
             undelivered_count=len(undelivered) if undelivered else 0,
         )
-        
+
         # 11. 消息循环
         while True:
             try:
@@ -210,15 +210,15 @@ async def ws_user_endpoint(
             except Exception as e:
                 logger.exception("处理用户消息失败", error=str(e))
                 break
-                
+
     finally:
         # 12. 清理 - 更新数据库在线状态
         async with get_db_context() as session:
             conv_repo = ConversationRepository(session)
             await conv_repo.set_user_online(conversation_id, False)
-        
+
         await ws_manager.disconnect(conn.id)
-        
+
         # 通知客服端用户下线
         from datetime import datetime
         now = datetime.now()
@@ -233,7 +233,7 @@ async def ws_user_endpoint(
             conversation_id=conversation_id,
         )
         await ws_manager.send_to_role(conversation_id, WSRole.AGENT, offline_msg)
-        
+
         logger.info("用户 WebSocket 断开", conn_id=conn.id, user_id=user_id)
 
 
@@ -270,10 +270,10 @@ async def ws_agent_endpoint(
     if not success:
         await websocket.close(code=4001, reason=error)
         return
-    
+
     # 2. 接受连接
     await websocket.accept()
-    
+
     # 3. 注册连接
     conn = await ws_manager.connect(
         websocket=websocket,
@@ -281,29 +281,29 @@ async def ws_agent_endpoint(
         role=WSRole.AGENT,
         identity=agent_id,
     )
-    
+
     try:
         async with get_db_context() as session:
             from app.repositories.conversation import ConversationRepository
             from app.repositories.message import MessageRepository
-            
+
             handoff_service = HandoffService(session)
             conv_repo = ConversationRepository(session)
             msg_repo = MessageRepository(session)
-            
+
             # 4. 获取当前 handoff 状态和在线状态
             handoff_state = await handoff_service.get_handoff_state(conversation_id) or "ai"
             online_status = await conv_repo.get_online_status(conversation_id)
-            
+
             # 5. 更新客服在线状态到数据库
             await conv_repo.set_agent_online(conversation_id, True, agent_id)
-            
+
             # 6. 获取未读消息数（发给客服的消息）
             unread_count = await msg_repo.get_unread_count(conversation_id, "agent")
-            
+
             # 7. 获取未送达消息并推送
             undelivered = await msg_repo.get_undelivered_messages(conversation_id, "agent")
-        
+
         # 8. 发送连接成功消息
         peer_last_online = online_status.get("user_last_online_at")
         connected_msg = build_server_message(
@@ -320,7 +320,7 @@ async def ws_agent_endpoint(
             conversation_id=conversation_id,
         )
         await conn.send(connected_msg)
-        
+
         # 9. 推送未送达消息
         if undelivered:
             delivered_ids = []
@@ -341,13 +341,13 @@ async def ws_agent_endpoint(
                 )
                 await conn.send(server_msg)
                 delivered_ids.append(msg.id)
-            
+
             # 标记为已送达
             if delivered_ids:
                 async with get_db_context() as session:
                     msg_repo = MessageRepository(session)
                     await msg_repo.mark_as_delivered(delivered_ids)
-        
+
         # 10. 通知用户端客服上线
         from datetime import datetime
         now = datetime.now()
@@ -361,7 +361,7 @@ async def ws_agent_endpoint(
             conversation_id=conversation_id,
         )
         await ws_manager.send_to_role(conversation_id, WSRole.USER, online_msg)
-        
+
         logger.info(
             "客服 WebSocket 已连接",
             conn_id=conn.id,
@@ -369,7 +369,7 @@ async def ws_agent_endpoint(
             conversation_id=conversation_id,
             undelivered_count=len(undelivered) if undelivered else 0,
         )
-        
+
         # 11. 消息循环
         while True:
             try:
@@ -390,15 +390,15 @@ async def ws_agent_endpoint(
             except Exception as e:
                 logger.exception("处理客服消息失败", error=str(e))
                 break
-                
+
     finally:
         # 12. 清理 - 更新数据库在线状态
         async with get_db_context() as session:
             conv_repo = ConversationRepository(session)
             await conv_repo.set_agent_online(conversation_id, False, None)
-        
+
         await ws_manager.disconnect(conn.id)
-        
+
         # 通知用户端客服下线
         from datetime import datetime
         now = datetime.now()
@@ -412,7 +412,7 @@ async def ws_agent_endpoint(
             conversation_id=conversation_id,
         )
         await ws_manager.send_to_role(conversation_id, WSRole.USER, offline_msg)
-        
+
         logger.info("客服 WebSocket 断开", conn_id=conn.id, agent_id=agent_id)
 
 

@@ -1,6 +1,6 @@
 """管理后台 API 路由"""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -48,7 +48,7 @@ async def get_dashboard_stats(
     total_crawl_sites = 0
     total_crawl_tasks = 0
     crawl_success_rate = 0.0
-    
+
     if settings.CRAWLER_ENABLED:
         total_crawl_sites = await crawler_session.scalar(select(func.count(CrawlSite.id)))
         total_crawl_tasks = await crawler_session.scalar(select(func.count(CrawlTask.id)))

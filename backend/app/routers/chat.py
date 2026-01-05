@@ -12,12 +12,12 @@ from app.core.dependencies import get_db_session
 from app.core.logging import get_logger
 from app.models.conversation import HandoffState
 from app.schemas.chat import ChatRequest
-from app.services.chat_stream import ChatStreamOrchestrator
 from app.services.agent.core.service import agent_service
+from app.services.chat_stream import ChatStreamOrchestrator
 from app.services.conversation import ConversationService
-from app.services.support.handoff import HandoffService
-from app.services.support.gateway import support_gateway
 from app.services.streaming.sse import encode_sse
+from app.services.support.gateway import support_gateway
+from app.services.support.handoff import HandoffService
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 logger = get_logger("chat")
@@ -79,10 +79,10 @@ async def chat(
     # 架构：发送消息立即返回，用户通过独立的 SSE 订阅接收客服消息
     if is_human_mode:
         # 通过 WebSocket 转发给客服（如果客服在线）
-        from app.services.websocket.manager import ws_manager
-        from app.services.websocket.handlers.base import build_server_message
         from app.schemas.websocket import WSAction, WSRole
-        
+        from app.services.websocket.handlers.base import build_server_message
+        from app.services.websocket.manager import ws_manager
+
         server_msg = build_server_message(
             action=WSAction.SERVER_MESSAGE,
             payload={
@@ -95,7 +95,7 @@ async def chat(
             conversation_id=request_data.conversation_id,
         )
         await ws_manager.send_to_role(request_data.conversation_id, WSRole.AGENT, server_msg)
-        
+
         # 同时通过 support_gateway 发送（兼容 SSE 模式）
         await support_gateway.send_to_agents(
             request_data.conversation_id,

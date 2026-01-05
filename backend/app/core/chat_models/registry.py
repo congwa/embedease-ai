@@ -89,11 +89,11 @@ def create_chat_model(
     # 提取 profile 信息
     if profile is None:
         profile = kwargs.pop("profile", {})
-    
+
     # 判断是否为推理模型
     is_reasoning_model = profile.get("reasoning_output", False) if profile else False
     provider_lower = provider.lower()
-    
+
     if not is_reasoning_model:
         # 普通模型，使用标准实现
         logger.info(
@@ -107,16 +107,16 @@ def create_chat_model(
             openai_api_key=api_key,
             **kwargs,
         )
-    
+
     # 推理模型：从注册表查找对应实现
     if provider_lower in REASONING_MODEL_REGISTRY:
         module_path, class_name = REASONING_MODEL_REGISTRY[provider_lower]
-        
+
         # 动态导入模型类
         import importlib
         module = importlib.import_module(module_path)
         model_class = getattr(module, class_name)
-        
+
         logger.info(
             "创建推理模型",
             model=model,
@@ -129,7 +129,7 @@ def create_chat_model(
             openai_api_key=api_key,
             **kwargs,
         )
-    
+
     # provider 不在注册表中，降级为标准模型
     logger.warning(
         "未找到推理模型实现，降级为标准模型",

@@ -5,10 +5,10 @@ from typing import Any
 from app.core.database import get_db_context
 from app.core.logging import get_logger
 from app.schemas.websocket import WSAction, WSRole
+from app.services.support.handoff import HandoffService
+from app.services.websocket.handlers.base import build_server_message
 from app.services.websocket.manager import WSConnection, ws_manager
 from app.services.websocket.router import ws_router
-from app.services.websocket.handlers.base import build_server_message
-from app.services.support.handoff import HandoffService
 
 logger = get_logger("websocket.handlers.agent")
 
@@ -21,23 +21,23 @@ async def handle_agent_send_message(
 ) -> None:
     """处理客服发送消息"""
     from datetime import datetime
+
     from app.repositories.message import MessageRepository
-    from app.repositories.conversation import ConversationRepository
     from app.services.support.gateway import support_gateway
-    
+
     content = payload["content"]
-    
+
     async with get_db_context() as session:
         handoff_service = HandoffService(session)
         msg_repo = MessageRepository(session)
-        
+
         # 添加人工消息
         message = await handoff_service.add_human_message(
             conversation_id=conn.conversation_id,
             content=content,
             operator=conn.identity,
         )
-        
+
         if message:
             # 通过 support_gateway 发送给用户（SSE 订阅者）
             sse_sent = await support_gateway.send_to_user(
@@ -52,7 +52,7 @@ async def handle_agent_send_message(
                     },
                 },
             )
-            
+
             # 同时通过 WebSocket 发送给用户（如果有 WebSocket 连接）
             server_msg = build_server_message(
                 action=WSAction.SERVER_MESSAGE,
@@ -68,7 +68,7 @@ async def handle_agent_send_message(
                 conversation_id=conn.conversation_id,
             )
             ws_sent = await ws_manager.send_to_role(conn.conversation_id, WSRole.USER, server_msg)
-            
+
             # 如果任一渠道成功送达，更新消息状态
             if sse_sent > 0 or ws_sent > 0:
                 await msg_repo.mark_as_delivered([message.id])
@@ -119,14 +119,14 @@ async def handle_agent_read(
 ) -> None:
     """处理客服已读回执"""
     from app.repositories.message import MessageRepository
-    
+
     message_ids = payload["message_ids"]
-    
+
     # 更新数据库已读状态
     async with get_db_context() as session:
         msg_repo = MessageRepository(session)
         count, read_at = await msg_repo.mark_as_read(message_ids, conn.identity)
-    
+
     # 推送已读回执给用户端（包含已读时间）
     server_msg = build_server_message(
         action=WSAction.SERVER_READ_RECEIPT,
@@ -139,7 +139,7 @@ async def handle_agent_read(
         conversation_id=conn.conversation_id,
     )
     await ws_manager.send_to_role(conn.conversation_id, WSRole.USER, server_msg)
-    
+
     logger.info(
         "客服已读回执",
         conn_id=conn.id,
@@ -156,7 +156,7 @@ async def handle_agent_start_handoff(
 ) -> None:
     """处理客服主动介入"""
     reason = payload.get("reason", "")
-    
+
     async with get_db_context() as session:
         handoff_service = HandoffService(session)
         result = await handoff_service.start_handoff(
@@ -164,7 +164,7 @@ async def handle_agent_start_handoff(
             operator=conn.identity,
             reason=reason,
         )
-        
+
         success = result.get("success")
         error = result.get("error")
         # 幂等处理：如果会话已处于人工模式，则视为成功
@@ -185,7 +185,7 @@ async def handle_agent_start_handoff(
                 conversation_id=conn.conversation_id,
             )
             await ws_manager.send_to_role(conn.conversation_id, WSRole.USER, server_msg)
-            
+
             # 通知其他客服端
             state_msg = build_server_message(
                 action=WSAction.SERVER_CONVERSATION_STATE,
@@ -197,7 +197,7 @@ async def handle_agent_start_handoff(
                 state_msg,
                 exclude_conn_id=conn.id,
             )
-            
+
             logger.info(
                 "客服介入成功",
                 conn_id=conn.id,
@@ -221,7 +221,7 @@ async def handle_agent_end_handoff(
 ) -> None:
     """处理客服结束介入"""
     summary = payload.get("summary", "")
-    
+
     async with get_db_context() as session:
         handoff_service = HandoffService(session)
         result = await handoff_service.end_handoff(
@@ -229,7 +229,7 @@ async def handle_agent_end_handoff(
             operator=conn.identity,
             summary=summary,
         )
-        
+
         success = result.get("success")
         error = result.get("error")
         # 幂等处理：如果会话已是 AI 模式，则视为成功
@@ -249,7 +249,7 @@ async def handle_agent_end_handoff(
                 conversation_id=conn.conversation_id,
             )
             await ws_manager.send_to_role(conn.conversation_id, WSRole.USER, server_msg)
-            
+
             # 通知其他客服端
             state_msg = build_server_message(
                 action=WSAction.SERVER_CONVERSATION_STATE,
@@ -261,7 +261,7 @@ async def handle_agent_end_handoff(
                 state_msg,
                 exclude_conn_id=conn.id,
             )
-            
+
             logger.info(
                 "客服介入结束",
                 conn_id=conn.id,
@@ -286,17 +286,17 @@ async def handle_agent_transfer(
     """处理客服转接"""
     target_agent_id = payload["target_agent_id"]
     reason = payload.get("reason", "")
-    
+
     async with get_db_context() as session:
         handoff_service = HandoffService(session)
-        
+
         # 更新介入客服
         result = await handoff_service.start_handoff(
             conn.conversation_id,
             operator=target_agent_id,
             reason=f"转接自 {conn.identity}: {reason}",
         )
-        
+
         if result.get("success"):
             # 通知用户端
             server_msg = build_server_message(
@@ -308,7 +308,7 @@ async def handle_agent_transfer(
                 conversation_id=conn.conversation_id,
             )
             await ws_manager.send_to_role(conn.conversation_id, WSRole.USER, server_msg)
-            
+
             logger.info(
                 "客服转接成功",
                 conn_id=conn.id,

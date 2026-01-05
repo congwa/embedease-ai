@@ -70,7 +70,7 @@ class SupportGateway:
         """添加连接"""
         conn_id = str(uuid4())
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        
+
         conn = Connection(
             id=conn_id,
             conversation_id=conversation_id,

@@ -15,18 +15,18 @@
 - purchase: 购买链接
 """
 
-from app.services.agent.tools.product.search import search_products
-from app.services.agent.tools.product.details import get_product_details
-from app.services.agent.tools.product.compare import compare_products
-from app.services.agent.tools.product.filter_price import filter_by_price
-from app.services.agent.tools.product.filter_attribute import list_products_by_attribute
+from app.services.agent.tools.product.by_category import list_products_by_category
 from app.services.agent.tools.product.categories import list_all_categories
 from app.services.agent.tools.product.category_overview import get_category_overview
-from app.services.agent.tools.product.by_category import list_products_by_category
-from app.services.agent.tools.product.related_categories import suggest_related_categories
-from app.services.agent.tools.product.similar import find_similar_products
+from app.services.agent.tools.product.compare import compare_products
+from app.services.agent.tools.product.details import get_product_details
 from app.services.agent.tools.product.featured import list_featured_products
+from app.services.agent.tools.product.filter_attribute import list_products_by_attribute
+from app.services.agent.tools.product.filter_price import filter_by_price
 from app.services.agent.tools.product.purchase import get_product_purchase_links
+from app.services.agent.tools.product.related_categories import suggest_related_categories
+from app.services.agent.tools.product.search import search_products
+from app.services.agent.tools.product.similar import find_similar_products
 
 __all__ = [
     "search_products",

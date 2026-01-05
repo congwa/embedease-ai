@@ -7,8 +7,8 @@
 └── common/         # 通用工具（引导）
 """
 
-from app.services.agent.tools.registry import get_tools, get_tools_for_agent
 from app.services.agent.tools.product import search_products
+from app.services.agent.tools.registry import get_tools, get_tools_for_agent
 
 __all__ = [
     "get_tools",

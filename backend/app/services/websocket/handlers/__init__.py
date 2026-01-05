@@ -3,8 +3,6 @@
 导入此模块会自动注册所有 handler 到 ws_router
 """
 
-from app.services.websocket.handlers import user
-from app.services.websocket.handlers import agent
-from app.services.websocket.handlers import system
+from app.services.websocket.handlers import agent, system, user
 
 __all__ = ["user", "agent", "system"]

@@ -9,7 +9,7 @@ from datetime import datetime
 
 from app.core.logging import get_logger
 from app.scheduler.state.models import TaskExecutionRecord, TaskState, TaskStatus
-from app.scheduler.tasks.base import BaseTask, TaskResult, TaskResultStatus
+from app.scheduler.tasks.base import BaseTask, TaskResultStatus
 
 logger = get_logger("scheduler.runner")
 

@@ -3,7 +3,6 @@ SiliconFlow 硅基流动 OpenAI API 直接调用示例
 演示如何使用 SiliconFlow 的 API 进行 AI 模型推理
 """
 
-import os
 from openai import OpenAI
 
 
@@ -24,8 +23,8 @@ def main():
         print("✅ 客户端初始化完成")
 
         print("\n🤖 正在调用 SiliconFlow API...")
-        print(f"📋 使用的模型: moonshotai/Kimi-K2-Thinking")
-        print(f"🌐 API 端点: https://api.siliconflow.cn/v1")
+        print("📋 使用的模型: moonshotai/Kimi-K2-Thinking")
+        print("🌐 API 端点: https://api.siliconflow.cn/v1")
 
         # 调用 chat completions 接口
         response = client.chat.completions.create(
@@ -64,7 +63,7 @@ def main():
                 print(content_part, end="", flush=True)
                 full_response += content_part
 
-        print(f"\n\n✅ 调用完成！")
+        print("\n\n✅ 调用完成！")
         print(f"📊 响应总长度: {len(full_response)} 字符")
         if reasoning_content:
             print(f"🧠 推理内容长度: {len(reasoning_content)} 字符")

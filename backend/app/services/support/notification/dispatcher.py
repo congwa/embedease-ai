@@ -17,7 +17,7 @@ from app.services.support.notification.base import (
     NotificationResult,
     NotificationType,
 )
-from app.services.support.notification.channels import WeWorkChannel, WebhookChannel
+from app.services.support.notification.channels import WebhookChannel, WeWorkChannel
 
 logger = get_logger("notification.dispatcher")
 
@@ -58,7 +58,7 @@ class NotificationDispatcher:
             return
 
         self._channels = []
-        
+
         wework = WeWorkChannel()
         if wework.is_enabled():
             self._channels.append(wework)
@@ -158,7 +158,7 @@ class NotificationDispatcher:
         用户发送消息时调用，通知客服有新访客。
         """
         settings = get_settings()
-        
+
         if not console_url:
             console_url = getattr(settings, "SUPPORT_CONSOLE_URL", "")
             if console_url:

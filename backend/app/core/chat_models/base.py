@@ -58,7 +58,6 @@ from typing import Any
 
 from langchain_openai import ChatOpenAI
 
-
 # ============================================================
 # 统一数据结构
 # ============================================================
@@ -100,7 +99,7 @@ class BaseReasoningChatModel(ChatOpenAI, ABC):
     - `_normalize_reasoning_from_chunk(chunk, message)`: 从原始 chunk/message 提取推理
     - `provider_name`: 平台标识（用于 ReasoningChunk.provider）
     """
-    
+
     @property
     @abstractmethod
     def provider_name(self) -> str:
@@ -109,7 +108,7 @@ class BaseReasoningChatModel(ChatOpenAI, ABC):
         子类必须实现此属性，用于标识推理内容的来源平台。
         """
         ...
-    
+
     @abstractmethod
     def _normalize_reasoning_from_chunk(
         self,
@@ -144,7 +143,7 @@ class BaseReasoningChatModel(ChatOpenAI, ABC):
             ```
         """
         ...
-    
+
     def extract_reasoning(
         self, message: Any, *, raw_chunk: dict | None = None
     ) -> ReasoningChunk | None:

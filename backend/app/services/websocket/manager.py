@@ -25,18 +25,18 @@ logger = get_logger("websocket.manager")
 @dataclass
 class WSConnection:
     """WebSocket 连接实例"""
-    
+
     id: str
     websocket: WebSocket
     conversation_id: str
     role: WSRole
     identity: str  # user_id 或 agent_id
-    
+
     created_at: datetime = field(default_factory=datetime.now)
     last_ping_at: float = field(default_factory=lambda: datetime.now().timestamp())
     metadata: dict[str, Any] = field(default_factory=dict)
     is_alive: bool = True
-    
+
     async def send(self, message: dict[str, Any]) -> bool:
         """发送消息到此连接"""
         if not self.is_alive:
@@ -48,7 +48,7 @@ class WSConnection:
             logger.warning("发送消息失败", conn_id=self.id, error=str(e))
             self.is_alive = False
             return False
-    
+
     async def close(self, code: int = 1000, reason: str = "") -> None:
         """关闭连接"""
         self.is_alive = False
@@ -66,21 +66,21 @@ class ConnectionManager:
     - _connections_by_conversation: { conversation_id -> { conn_id -> WSConnection } }
     - _connections_by_identity: { identity -> { conn_id -> WSConnection } }
     """
-    
+
     _instance: "ConnectionManager | None" = None
-    
+
     def __new__(cls) -> "ConnectionManager":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._init_storage()
         return cls._instance
-    
+
     def _init_storage(self) -> None:
         self._lock = asyncio.Lock()
         self._connections_by_id: dict[str, WSConnection] = {}
         self._connections_by_conversation: dict[str, dict[str, WSConnection]] = defaultdict(dict)
         self._connections_by_identity: dict[str, dict[str, WSConnection]] = defaultdict(dict)
-    
+
     async def connect(
         self,
         websocket: WebSocket,
@@ -91,7 +91,7 @@ class ConnectionManager:
     ) -> WSConnection:
         """注册新连接"""
         conn_id = str(uuid4())
-        
+
         conn = WSConnection(
             id=conn_id,
             websocket=websocket,
@@ -100,12 +100,12 @@ class ConnectionManager:
             identity=identity,
             metadata=metadata or {},
         )
-        
+
         async with self._lock:
             self._connections_by_id[conn_id] = conn
             self._connections_by_conversation[conversation_id][conn_id] = conn
             self._connections_by_identity[identity][conn_id] = conn
-        
+
         logger.info(
             "WebSocket 连接已注册",
             conn_id=conn_id,
@@ -113,9 +113,9 @@ class ConnectionManager:
             role=role,
             identity=identity,
         )
-        
+
         return conn
-    
+
     async def disconnect(self, conn_id: str) -> WSConnection | None:
         """注销连接"""
         async with self._lock:
@@ -123,20 +123,20 @@ class ConnectionManager:
             if conn:
                 self._connections_by_conversation[conn.conversation_id].pop(conn_id, None)
                 self._connections_by_identity[conn.identity].pop(conn_id, None)
-                
+
                 # 清理空字典
                 if not self._connections_by_conversation[conn.conversation_id]:
                     del self._connections_by_conversation[conn.conversation_id]
                 if not self._connections_by_identity[conn.identity]:
                     del self._connections_by_identity[conn.identity]
-                
+
                 logger.info("WebSocket 连接已注销", conn_id=conn_id)
         return conn
-    
+
     def get_connection(self, conn_id: str) -> WSConnection | None:
         """获取连接"""
         return self._connections_by_id.get(conn_id)
-    
+
     def get_connections_by_conversation(
         self,
         conversation_id: str,
@@ -147,11 +147,11 @@ class ConnectionManager:
         if role:
             conns = [c for c in conns if c.role == role]
         return conns
-    
+
     def get_connections_by_identity(self, identity: str) -> list[WSConnection]:
         """获取某身份的所有连接"""
         return list(self._connections_by_identity.get(identity, {}).values())
-    
+
     async def send_to_connection(
         self,
         conn_id: str,
@@ -162,7 +162,7 @@ class ConnectionManager:
         if conn:
             return await conn.send(message)
         return False
-    
+
     async def broadcast_to_conversation(
         self,
         conversation_id: str,
@@ -173,19 +173,19 @@ class ConnectionManager:
     ) -> int:
         """广播消息到会话的所有连接"""
         conns = self.get_connections_by_conversation(conversation_id)
-        
+
         sent_count = 0
         for conn in conns:
             if exclude_role and conn.role == exclude_role:
                 continue
             if exclude_conn_id and conn.id == exclude_conn_id:
                 continue
-            
+
             if await conn.send(message):
                 sent_count += 1
-        
+
         return sent_count
-    
+
     async def send_to_role(
         self,
         conversation_id: str,
@@ -201,7 +201,7 @@ class ConnectionManager:
             target_count=len(conns),
             message_type=message.get("action"),
         )
-        
+
         sent_count = 0
         for conn in conns:
             success = await conn.send(message)
@@ -214,9 +214,9 @@ class ConnectionManager:
             )
             if success:
                 sent_count += 1
-        
+
         return sent_count
-    
+
     def get_stats(self) -> dict[str, Any]:
         """获取连接统计"""
         total = len(self._connections_by_id)
@@ -224,13 +224,13 @@ class ConnectionManager:
         for conn in self._connections_by_id.values():
             role_key = conn.role.value if isinstance(conn.role, WSRole) else str(conn.role)
             by_role[role_key] = by_role.get(role_key, 0) + 1
-        
+
         return {
             "total_connections": total,
             "by_role": by_role,
             "active_conversations": len(self._connections_by_conversation),
         }
-    
+
     def get_all_connections(self) -> dict[str, WSConnection]:
         """获取所有连接（用于心跳检测）"""
         return self._connections_by_id.copy()

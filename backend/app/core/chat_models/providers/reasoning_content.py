@@ -45,12 +45,12 @@ class SiliconFlowReasoningChatModel(BaseReasoningChatModel):
     Agent 层只需调用 `extract_reasoning(message)` 即可获取推理内容，
     无需关心 SiliconFlow 的具体字段名。
     """
-    
+
     @property
     def provider_name(self) -> str:
         """平台标识"""
         return "siliconflow"
-    
+
     def _convert_chunk_to_generation_chunk(
         self,
         chunk: dict,
@@ -79,18 +79,18 @@ class SiliconFlowReasoningChatModel(BaseReasoningChatModel):
         generation_chunk = super()._convert_chunk_to_generation_chunk(
             chunk, default_chunk_class, base_generation_info
         )
-        
+
         if generation_chunk is None:
             return None
-        
+
         # 从 raw chunk 提取推理内容
         reasoning = self._normalize_reasoning_from_chunk(chunk, generation_chunk.message)
         if reasoning:
             # 存储到 message 的自定义属性（不使用 additional_kwargs）
             generation_chunk.message._reasoning_chunk = reasoning
-        
+
         return generation_chunk
-    
+
     def _normalize_reasoning_from_chunk(
         self,
         chunk: dict | None,
@@ -110,30 +110,30 @@ class SiliconFlowReasoningChatModel(BaseReasoningChatModel):
         """
         if not isinstance(chunk, dict):
             return None
-        
+
         # 从 choices[0].delta.reasoning_content 提取
         choices = chunk.get("choices", [])
         if not choices:
             return None
-        
+
         choice = choices[0]
         if not isinstance(choice, dict):
             return None
-        
+
         delta = choice.get("delta", {})
         if not isinstance(delta, dict):
             return None
-        
+
         reasoning_content = delta.get("reasoning_content")
         if not isinstance(reasoning_content, str) or not reasoning_content:
             return None
-        
+
         return ReasoningChunk(
             delta=reasoning_content,
             provider=self.provider_name,
             source="chunk.delta.reasoning_content",
         )
-    
+
     def extract_reasoning(
         self, message: Any, *, raw_chunk: dict | None = None
     ) -> ReasoningChunk | None:
@@ -152,10 +152,10 @@ class SiliconFlowReasoningChatModel(BaseReasoningChatModel):
         """
         if message is None:
             return None
-        
+
         # 优先使用 raw_chunk（测试或特殊场景）
         if raw_chunk is not None:
             return self._normalize_reasoning_from_chunk(raw_chunk, message)
-        
+
         # 正常场景：从 message 的 _reasoning_chunk 属性读取
         return getattr(message, "_reasoning_chunk", None)

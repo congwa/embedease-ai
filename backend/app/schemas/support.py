@@ -1,7 +1,6 @@
 """客服支持相关 Schema"""
 
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, Field
 

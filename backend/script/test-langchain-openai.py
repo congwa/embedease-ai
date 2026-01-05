@@ -3,15 +3,16 @@ LangChain + SiliconFlow 硅基流动集成示例
 使用 SiliconFlow 的 API 构建智能代理
 """
 
-from langchain_openai import ChatOpenAI
 
 # from langchain.chat_models import init_chat_model
-from langchain.agents import create_agent
-from langchain.tools import tool
+import os
 
 # 导入我们的自定义模型
 import sys
-import os
+
+from langchain.agents import create_agent
+from langchain.tools import tool
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.core.chat_models import SiliconFlowReasoningChatModel
@@ -78,8 +79,8 @@ async def main():
     )
 
     print("🤖 初始化 SiliconFlow 模型完成")
-    print(f"📋 使用的模型: moonshotai/Kimi-K2-Thinking")
-    print(f"🌐 API 端点: https://api.siliconflow.cn/v1")
+    print("📋 使用的模型: moonshotai/Kimi-K2-Thinking")
+    print("🌐 API 端点: https://api.siliconflow.cn/v1")
     print()
 
     # 首先测试模型的流式功能（学习 2.py）
@@ -88,7 +89,7 @@ async def main():
     print(f"❓ 测试问题: {test_question}")
 
     try:
-        print(f"🤖 AI 回复：", end="", flush=True)
+        print("🤖 AI 回复：", end="", flush=True)
 
         full_response = ""
         reasoning_content = ""
@@ -115,7 +116,7 @@ async def main():
                 print(f"\n🧠 推理过程: {reasoning_part}", end="", flush=True)
                 reasoning_content += reasoning_part
 
-        print(f"\n\n✅ 模型流式测试完成！")
+        print("\n\n✅ 模型流式测试完成！")
         print(f"📊 响应总长度: {len(full_response)} 字符")
         if reasoning_content:
             print(f"🧠 推理内容长度: {len(reasoning_content)} 字符")
@@ -160,7 +161,7 @@ async def main():
 
         try:
             # 使用流式调用，学习 2.py 的 chunk 处理方式
-            print(f"🤖 AI 回复：", end="", flush=True)
+            print("🤖 AI 回复：", end="", flush=True)
 
             full_response = ""
             reasoning_content = ""
@@ -187,7 +188,7 @@ async def main():
                     print(f"\n🧠 推理过程: {reasoning_part}", end="", flush=True)
                     reasoning_content += reasoning_part
 
-            print(f"\n\n✅ 调用完成！")
+            print("\n\n✅ 调用完成！")
             print(f"📊 响应总长度: {len(full_response)} 字符")
             if reasoning_content:
                 print(f"🧠 推理内容长度: {len(reasoning_content)} 字符")

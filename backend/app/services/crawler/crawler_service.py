@@ -7,10 +7,8 @@ import asyncio
 import hashlib
 import json
 from datetime import datetime
-from typing import Any
-from urllib.parse import urljoin, urlparse
 
-from playwright.async_api import async_playwright, Browser, Page
+from playwright.async_api import Browser, Page, async_playwright
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -180,10 +178,10 @@ class CrawlerService:
 
             while queue and pages_crawled < max_pages:
                 url, depth = queue.pop(0)
-                
+
                 # 从已入队集合中移除（即将处理）
                 enqueued_urls.discard(url)
-                
+
                 logger.info(
                     "开始处理页面",
                     url=url,
@@ -290,7 +288,7 @@ class CrawlerService:
         async with get_crawler_db() as crawler_session:
             page_repo = CrawlPageRepository(crawler_session)
             task_repo = CrawlTaskRepository(crawler_session)
-            
+
             try:
                 # 保存页面（增量模式：检测内容变化）
                 page, is_new, content_changed = await page_repo.create_or_update_page(
@@ -581,7 +579,7 @@ class CrawlerService:
         # 使用主数据库的独立短事务
         async with get_db_context() as app_session:
             product_repo = ProductRepository(app_session)
-            
+
             # 检查是否存在
             existing = await product_repo.get_by_id(product_id)
             is_new = existing is None
@@ -639,7 +637,7 @@ class CrawlerService:
                 async with get_crawler_db() as crawler_session:
                     page_repo = CrawlPageRepository(crawler_session)
                     task_repo = CrawlTaskRepository(crawler_session)
-                    
+
                     await self._parse_and_save_product(
                         crawler_session=crawler_session,
                         page_repo=page_repo,

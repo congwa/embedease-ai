@@ -62,12 +62,12 @@ async def create_site(
 
     # 规范化域名
     domain = normalize_domain(site_data.start_url)
-    
+
     # 如果未提供 ID，根据域名自动生成
     site_id = site_data.id
     if not site_id:
         site_id = generate_site_id(domain)
-    
+
     # 检查 ID 是否已存在
     existing = await repo.get_by_id(site_id)
     if existing:
@@ -75,7 +75,7 @@ async def create_site(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"站点 ID 已存在: {site_id}",
         )
-    
+
     # 检查域名是否已存在
     existing_by_domain = await repo.get_by_domain(domain)
     if existing_by_domain:
@@ -207,7 +207,7 @@ async def delete_site(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"站点不存在: {site_id}",
         )
-    
+
     # 防止删除系统配置站点
     if site.is_system_site:
         raise HTTPException(
@@ -254,7 +254,7 @@ async def retry_site(
 
     deleted_pages = 0
     page_repo = CrawlPageRepository(session)
-    
+
     # 强制模式：清空所有页面
     if mode == RetryMode.FORCE:
         deleted_pages = await page_repo.delete_pages_by_site(site_id)
@@ -423,7 +423,7 @@ async def retry_task(
 
     deleted_pages = 0
     page_repo = CrawlPageRepository(session)
-    
+
     # 强制模式：清空所有页面
     if mode == RetryMode.FORCE:
         deleted_pages = await page_repo.delete_pages_by_site(site_id)

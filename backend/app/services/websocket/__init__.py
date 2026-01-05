@@ -16,9 +16,9 @@
     app.include_router(ws.router)
 """
 
-from app.services.websocket.manager import ws_manager, ConnectionManager, WSConnection
-from app.services.websocket.router import ws_router, MessageRouter
-from app.services.websocket.heartbeat import heartbeat_manager, HeartbeatManager
+from app.services.websocket.heartbeat import HeartbeatManager, heartbeat_manager
+from app.services.websocket.manager import ConnectionManager, WSConnection, ws_manager
+from app.services.websocket.router import MessageRouter, ws_router
 
 __all__ = [
     "ws_manager",

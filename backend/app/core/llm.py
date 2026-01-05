@@ -2,14 +2,13 @@
 
 from functools import lru_cache
 
-from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import OpenAIEmbeddings
 
+from app.core.chat_models import create_chat_model
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.models_dev import get_model_profile
-from app.core.chat_models import create_chat_model
 
 logger = get_logger("llm")
 
@@ -82,7 +81,7 @@ def get_chat_model(
         model_kwargs["temperature"] = temperature
     elif profile_arg and isinstance(profile_arg, dict) and "temperature" in profile_arg:
         model_kwargs["temperature"] = profile_arg["temperature"]
-    
+
     if profile_arg and isinstance(profile_arg, dict):
         if "max_tokens" in profile_arg:
             model_kwargs["max_tokens"] = profile_arg["max_tokens"]

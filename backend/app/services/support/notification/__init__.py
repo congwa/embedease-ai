@@ -15,12 +15,12 @@
     await dispatcher.notify_new_message(conversation_id, message_preview)
 """
 
-from app.services.support.notification.dispatcher import NotificationDispatcher
 from app.services.support.notification.base import (
     BaseNotificationChannel,
     NotificationPayload,
     NotificationResult,
 )
+from app.services.support.notification.dispatcher import NotificationDispatcher
 
 __all__ = [
     "NotificationDispatcher",

@@ -13,19 +13,19 @@
     logger.error("错误", exc_info=True)
 """
 
-import sys
 import asyncio
+import sys
 import traceback
 from enum import Enum
-from functools import lru_cache
+from pathlib import Path
 from typing import Any
-import structlog
+
 from loguru import logger as loguru_logger
 from rich.console import Console
 from rich.traceback import install as install_rich_traceback
+
 from app.core.config import settings
 from app.core.paths import get_project_root
-from pathlib import Path
 
 
 class LogLevel(str, Enum):
@@ -73,7 +73,7 @@ def _safe_for_logging(value: Any, *, _level: int = 0) -> Any:
                     _safe_for_logging(item, _level=_level)  # 保持当前层级
                     for item in items
                 ]
-        
+
         if _level >= 8:  # 增加嵌套层级限制从 4 到 8，给 tool_calls.items 更多空间
             return "{...}"
         return {str(k): _safe_for_logging(v, _level=_level + 1) for k, v in value.items()}
@@ -185,7 +185,7 @@ def format_detailed(record: dict) -> str:
         .replace("{", "{{")
         .replace("}", "}}")
     )
-    
+
     result = f"{header} {module_tag} {location}{context}\n    → {safe_message}\n"
 
     # 异常信息

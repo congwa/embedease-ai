@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db_session
 from app.core.logging import get_logger
-from app.models.conversation import HandoffState
 from app.schemas.support import (
     ConversationListItem,
     ConversationListResponse,
@@ -27,11 +26,11 @@ from app.schemas.support import (
     HumanMessageRequest,
     HumanMessageResponse,
 )
+from app.schemas.websocket import WSAction, WSRole
 from app.services.support.gateway import support_gateway
 from app.services.support.handoff import HandoffService
-from app.services.websocket.manager import ws_manager
 from app.services.websocket.handlers.base import build_server_message
-from app.schemas.websocket import WSAction, WSRole
+from app.services.websocket.manager import ws_manager
 
 router = APIRouter(prefix="/api/v1/support", tags=["support"])
 logger = get_logger("router.support")
@@ -66,7 +65,7 @@ async def start_handoff(
             conversation_id=conversation_id,
         )
         ws_sent = await ws_manager.send_to_role(conversation_id, WSRole.USER, ws_msg)
-        
+
         # 同时尝试 SSE 推送（兼容旧客户端）
         sse_sent = await support_gateway.send_to_user(
             conversation_id,
@@ -78,7 +77,7 @@ async def start_handoff(
                 },
             },
         )
-        
+
         logger.info(
             "客服介入通知已发送",
             conversation_id=conversation_id,
@@ -119,7 +118,7 @@ async def end_handoff(
             conversation_id=conversation_id,
         )
         ws_sent = await ws_manager.send_to_role(conversation_id, WSRole.USER, ws_msg)
-        
+
         # 同时尝试 SSE 推送（兼容旧客户端）
         sse_sent = await support_gateway.send_to_user(
             conversation_id,
@@ -130,7 +129,7 @@ async def end_handoff(
                 },
             },
         )
-        
+
         logger.info(
             "客服结束通知已发送",
             conversation_id=conversation_id,
@@ -235,7 +234,8 @@ async def list_conversations(
             offset=offset,
         )
     else:
-        from sqlalchemy import select, func
+        from sqlalchemy import select
+
         from app.models.conversation import Conversation
 
         stmt = (
