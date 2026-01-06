@@ -1,4 +1,5 @@
 export { AdminSidebar } from "./admin-sidebar";
+export { AgentSwitcher } from "./agent-switcher";
 export { StatCard } from "./stat-card";
 export { PageHeader } from "./page-header";
 export { DataTablePagination } from "./data-table-pagination";

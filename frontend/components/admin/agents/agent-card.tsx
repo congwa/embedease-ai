@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Bot, ChevronRight, Database, HelpCircle, Wrench } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bot, ChevronRight, Database, HelpCircle, Wrench, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { useAgentContext } from "@/contexts/agent-context";
 import type { Agent } from "@/lib/api/agents";
 import { cn } from "@/lib/utils";
 
@@ -21,18 +25,34 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, className }: AgentCardProps) {
+  const router = useRouter();
+  const { activeAgent, activateAgent } = useAgentContext();
+  const [isActivating, setIsActivating] = useState(false);
   const typeInfo = typeConfig[agent.type] || typeConfig.custom;
+  const isActive = activeAgent?.id === agent.id;
 
   const capabilities = [];
   if (agent.tool_categories?.includes("faq")) capabilities.push("faq");
   if (agent.tool_categories?.includes("search")) capabilities.push("search");
   if (agent.knowledge_config_id) capabilities.push("kb");
 
+  const handleActivate = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsActivating(true);
+    const success = await activateAgent(agent.id);
+    setIsActivating(false);
+    if (success) {
+      router.push(`/admin/agents/${agent.id}`);
+    }
+  };
+
   return (
     <Link href={`/admin/agents/${agent.id}`}>
       <Card
         className={cn(
           "group cursor-pointer transition-all hover:border-zinc-300 hover:shadow-sm dark:hover:border-zinc-700",
+          isActive && "border-green-300 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20",
           className
         )}
       >
@@ -47,7 +67,13 @@ export function AgentCard({ agent, className }: AgentCardProps) {
                   <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
                     {agent.name}
                   </h3>
-                  {agent.is_default && (
+                  {isActive && (
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
+                      <Zap className="mr-1 h-3 w-3" />
+                      激活
+                    </Badge>
+                  )}
+                  {agent.is_default && !isActive && (
                     <Badge variant="secondary" className="text-xs">
                       默认
                     </Badge>
@@ -72,16 +98,36 @@ export function AgentCard({ agent, className }: AgentCardProps) {
               />
             </div>
 
-            <div className="flex items-center gap-1 text-zinc-400">
-              {agent.knowledge_config_id && (
-                <Database className="h-4 w-4" />
+            <div className="flex items-center gap-1">
+              {!isActive && agent.status === "enabled" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleActivate}
+                  disabled={isActivating}
+                >
+                  {isActivating ? (
+                    <span className="animate-pulse">激活中...</span>
+                  ) : (
+                    <>
+                      <Zap className="mr-1 h-3 w-3" />
+                      设为激活
+                    </>
+                  )}
+                </Button>
               )}
-              {agent.tool_categories?.includes("faq") && (
-                <HelpCircle className="h-4 w-4" />
-              )}
-              {agent.tool_categories && agent.tool_categories.length > 0 && (
-                <Wrench className="h-4 w-4" />
-              )}
+              <div className="flex items-center gap-1 text-zinc-400 ml-2">
+                {agent.knowledge_config_id && (
+                  <Database className="h-4 w-4" />
+                )}
+                {agent.tool_categories?.includes("faq") && (
+                  <HelpCircle className="h-4 w-4" />
+                )}
+                {agent.tool_categories && agent.tool_categories.length > 0 && (
+                  <Wrench className="h-4 w-4" />
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

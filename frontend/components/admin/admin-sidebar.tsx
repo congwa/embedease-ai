@@ -13,31 +13,81 @@ import {
   HelpCircle,
   Database,
   Bot,
+  Wrench,
+  BarChart3,
+  FileText,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { AgentSwitcher } from "./agent-switcher";
+import { useAgentContext } from "@/contexts/agent-context";
 
-const navItems = [
+// 基础菜单（始终显示）
+const baseNavItems = [
   {
     title: "仪表盘",
     href: "/admin",
     icon: LayoutDashboard,
   },
+];
+
+// Agent 控制台菜单（根据当前激活 Agent 动态生成）
+const getAgentConsoleItems = (agentId: string, agentType: string) => {
+  const baseItems = [
+    {
+      title: "基础设置",
+      href: `/admin/agents/${agentId}`,
+      icon: Settings,
+    },
+    {
+      title: "工具配置",
+      href: `/admin/agents/${agentId}/tools`,
+      icon: Wrench,
+    },
+    {
+      title: "会话洞察",
+      href: `/admin/agents/${agentId}/conversations`,
+      icon: BarChart3,
+    },
+  ];
+
+  // 根据 Agent 类型添加特定菜单
+  if (agentType === "product") {
+    baseItems.push({
+      title: "商品数据",
+      href: "/admin/products",
+      icon: Package,
+    });
+  }
+
+  if (agentType === "faq") {
+    baseItems.push({
+      title: "FAQ 管理",
+      href: `/admin/agents/${agentId}/faq`,
+      icon: HelpCircle,
+    });
+  }
+
+  if (agentType === "kb" || agentType === "faq") {
+    baseItems.push({
+      title: "知识库",
+      href: `/admin/agents/${agentId}/knowledge`,
+      icon: Database,
+    });
+  }
+
+  return baseItems;
+};
+
+// 系统管理菜单
+const systemNavItems = [
   {
-    title: "Agent 中心",
+    title: "Agent 列表",
     href: "/admin/agents",
     icon: Bot,
-    badge: "核心",
-  },
-  {
-    title: "FAQ 管理",
-    href: "/admin/faq",
-    icon: HelpCircle,
-  },
-  {
-    title: "知识库管理",
-    href: "/admin/knowledge",
-    icon: Database,
   },
   {
     title: "爬虫管理",
@@ -55,11 +105,6 @@ const navItems = [
     icon: MessageSquare,
   },
   {
-    title: "商品管理",
-    href: "/admin/products",
-    icon: Package,
-  },
-  {
     title: "用户管理",
     href: "/admin/users",
     icon: Users,
@@ -71,8 +116,63 @@ const navItems = [
   },
 ];
 
+function NavItem({
+  item,
+  pathname,
+}: {
+  item: { title: string; href: string; icon: React.ElementType; children?: { title: string; href: string }[] };
+  pathname: string;
+}) {
+  const isActive =
+    pathname === item.href ||
+    pathname.startsWith(item.href + "/") ||
+    (item.children && item.children.some((child) => pathname === child.href));
+
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+          isActive
+            ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+            : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+        )}
+      >
+        <item.icon className="h-4 w-4" />
+        <span className="flex-1">{item.title}</span>
+      </Link>
+      {item.children && isActive && (
+        <ul className="ml-7 mt-1 space-y-1">
+          {item.children.map((child) => (
+            <li key={child.href}>
+              <Link
+                href={child.href}
+                className={cn(
+                  "block rounded-lg px-3 py-1.5 text-sm transition-colors",
+                  pathname === child.href
+                    ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+                )}
+              >
+                {child.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { activeAgent, isLoading } = useAgentContext();
+
+  // 根据当前激活 Agent 生成控制台菜单
+  const agentConsoleItems = activeAgent
+    ? getAgentConsoleItems(activeAgent.id, activeAgent.type)
+    : [];
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -81,7 +181,7 @@ export function AdminSidebar() {
         <div className="flex h-16 items-center justify-between border-b border-zinc-200 px-4 dark:border-zinc-800">
           <Link href="/admin" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 dark:bg-zinc-100">
-              <Settings className="h-4 w-4 text-white dark:text-zinc-900" />
+              <Zap className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
               管理后台
@@ -94,56 +194,57 @@ export function AdminSidebar() {
           </Link>
         </div>
 
+        {/* Agent 切换器 */}
+        <div className="border-b border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-zinc-500">当前 Agent</span>
+            {activeAgent && (
+              <Badge
+                variant="secondary"
+                className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+              >
+                激活中
+              </Badge>
+            )}
+          </div>
+          <AgentSwitcher />
+        </div>
+
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4">
+          {/* 基础菜单 */}
           <ul className="space-y-1">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.children &&
-                  item.children.some((child) => pathname === child.href));
+            {baseNavItems.map((item) => (
+              <NavItem key={item.href} item={item} pathname={pathname} />
+            ))}
+          </ul>
 
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                      isActive
-                        ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="flex-1">{item.title}</span>
-                    {item.badge && (
-                      <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                  {item.children && isActive && (
-                    <ul className="ml-7 mt-1 space-y-1">
-                      {item.children.map((child) => (
-                        <li key={child.href}>
-                          <Link
-                            href={child.href}
-                            className={cn(
-                              "block rounded-lg px-3 py-1.5 text-sm transition-colors",
-                              pathname === child.href
-                                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-                                : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
-                            )}
-                          >
-                            {child.title}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
+          {/* Agent 控制台菜单 */}
+          {activeAgent && agentConsoleItems.length > 0 && (
+            <>
+              <Separator className="my-4" />
+              <div className="mb-2 px-3">
+                <span className="text-xs font-medium text-zinc-500">
+                  {activeAgent.name} 控制台
+                </span>
+              </div>
+              <ul className="space-y-1">
+                {agentConsoleItems.map((item) => (
+                  <NavItem key={item.href} item={item} pathname={pathname} />
+                ))}
+              </ul>
+            </>
+          )}
+
+          {/* 系统管理菜单 */}
+          <Separator className="my-4" />
+          <div className="mb-2 px-3">
+            <span className="text-xs font-medium text-zinc-500">系统管理</span>
+          </div>
+          <ul className="space-y-1">
+            {systemNavItems.map((item) => (
+              <NavItem key={item.href} item={item} pathname={pathname} />
+            ))}
           </ul>
         </nav>
 
