@@ -181,7 +181,12 @@ class MemoryOrchestrationMiddleware(AgentMiddleware):
                     facts_str = "\n".join([f"- {f.content}" for f in facts])
                     context_parts.append(f"## 用户历史记忆\n{facts_str}")
             except Exception as e:
-                logger.warning("获取事实记忆失败", error=str(e), user_id=user_id)
+                logger.warning(
+                    "获取事实记忆失败（可能是 Qdrant 不可用）",
+                    error=str(e),
+                    user_id=user_id,
+                    dependency="qdrant",
+                )
 
         # 3. 相关图谱（从 GraphMemory）
         if self.inject_graph and settings.MEMORY_GRAPH_ENABLED:

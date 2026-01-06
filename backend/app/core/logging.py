@@ -217,11 +217,21 @@ def format_json(record: dict) -> str:
     except (ValueError, AttributeError, Exception):
         file_path = getattr(file_obj, "name", None)
 
+    # log_entry = {
+    #     "timestamp": record["time"].isoformat(),
+    #     "level": record["level"].name,
+    #     "message": record["message"],
+    #     "module": extra.get("module", "app"),
+    #     "file": file_path,
+    #     "line": record.get("line", 0),
+    #     "function": record.get("function", ""),
+    # }
+
     log_entry = {
-        "timestamp": record["time"].isoformat(),
         "level": record["level"].name,
-        "message": record["message"],
+        "timestamp": record["time"].isoformat(),
         "module": extra.get("module", "app"),
+        "message": record["message"],
         "file": file_path,
         "line": record.get("line", 0),
         "function": record.get("function", ""),
@@ -323,7 +333,7 @@ class Logger:
         rotation = getattr(settings, "LOG_FILE_ROTATION", "10 MB")
         retention = getattr(settings, "LOG_FILE_RETENTION", "7 days")
 
-        # 文件日志使用 JSON 格式（方便解析）
+        # 文件日志始终使用 JSON 格式（方便解析），无论控制台模式如何
         loguru_logger.add(
             str(log_path),
             format="{message}",

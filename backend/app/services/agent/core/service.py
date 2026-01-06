@@ -257,16 +257,40 @@ class AgentService:
             agent_id: 可选的 Agent ID
         """
         mode = getattr(context, "mode", "natural")
-
-        # 获取 Agent
-        agent = await self.get_agent(agent_id=agent_id, mode=mode)
-
-        # 获取模型实例
-        model = get_chat_model()
-
+        
         emitter = getattr(context, "emitter", None)
         if emitter is None or not hasattr(emitter, "aemit"):
             raise RuntimeError("chat_emit 需要 context.emitter.aemit()")
+
+        try:
+            # 获取 Agent
+            agent = await self.get_agent(agent_id=agent_id, mode=mode)
+
+            # 获取模型实例
+            model = get_chat_model()
+        except Exception as e:
+            # Agent 构建失败，通知前端
+            error_msg = "智能助手初始化失败，可能是依赖服务（如 Qdrant）不可用，请稍后再试"
+            logger.error(
+                "Agent 构建失败",
+                error=str(e),
+                agent_id=agent_id,
+                mode=mode,
+                conversation_id=conversation_id,
+            )
+            try:
+                await emitter.aemit(
+                    StreamEventType.ERROR.value,
+                    {
+                        "message": error_msg,
+                        "detail": str(e),
+                        "code": "agent_init_failed",
+                    }
+                )
+                await emitter.aemit("__end__", None)
+            except Exception:
+                pass
+            return
 
         # 使用流响应处理器
         handler = StreamingResponseHandler(

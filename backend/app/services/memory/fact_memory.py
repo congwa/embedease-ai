@@ -98,14 +98,20 @@ class FactMemoryService:
         )
         await self._conn.commit()
 
-        # 初始化 Qdrant 向量存储
+        # 初始化 Qdrant 向量存储（可能失败）
         self._vector_store = get_memory_vector_store()
+        if self._vector_store is None:
+            logger.warning(
+                "Qdrant 向量存储不可用，事实记忆将仅使用 SQLite（无语义检索）",
+                db_path=self.db_path,
+            )
 
         self._initialized = True
         logger.info(
             "FactMemoryService 初始化完成",
             db_path=self.db_path,
             qdrant_collection=settings.MEMORY_FACT_COLLECTION,
+            vector_store_available=self._vector_store is not None,
         )
 
     async def close(self) -> None:
@@ -323,17 +329,30 @@ class FactMemoryService:
 
             await self._conn.commit()
 
-            # 写入 Qdrant（向量）
-            doc = Document(
-                page_content=content,
-                metadata={
-                    "fact_id": fact_id,
-                    "user_id": user_id,
-                    "hash": content_hash,
-                    "created_at": now,
-                },
-            )
-            await asyncio.to_thread(self._vector_store.add_documents, [doc])
+            # 写入 Qdrant（向量）- 如果可用
+            if self._vector_store is not None:
+                try:
+                    doc = Document(
+                        page_content=content,
+                        metadata={
+                            "fact_id": fact_id,
+                            "user_id": user_id,
+                            "hash": content_hash,
+                            "created_at": now,
+                        },
+                    )
+                    await asyncio.to_thread(self._vector_store.add_documents, [doc])
+                except Exception as e:
+                    logger.warning(
+                        "向量存储写入失败，事实已保存到 SQLite",
+                        error=str(e),
+                        fact_id=fact_id[:8],
+                    )
+            else:
+                logger.debug(
+                    "向量存储不可用，跳过向量写入",
+                    fact_id=fact_id[:8],
+                )
 
             logger.info("添加新事实", fact_id=fact_id[:8], content_preview=content[:50])
 

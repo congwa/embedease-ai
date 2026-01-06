@@ -13,7 +13,7 @@ from langchain.agents.middleware.types import (
 from langchain_core.messages import AIMessage
 
 from app.core.logging import get_logger
-from app.services.agent.policy import ToolPolicy, get_policy
+from app.services.agent.core.policy import ToolPolicy, get_policy
 
 logger = get_logger("middleware.strict_mode")
 

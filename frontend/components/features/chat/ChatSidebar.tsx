@@ -109,11 +109,6 @@ interface GroupedConversations {
 export function groupConversationsByDate(
   conversations: Conversation[]
 ): GroupedConversations[] {
-  // 防御性检查：确保 conversations 是数组
-  if (!Array.isArray(conversations)) {
-    return [];
-  }
-
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);

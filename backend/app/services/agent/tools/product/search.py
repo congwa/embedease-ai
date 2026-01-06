@@ -141,6 +141,25 @@ async def search_products(
         else:
             logger.debug("│ [1] 使用标准向量检索...")
             retriever = get_retriever(k=5)
+            if retriever is None:
+                error_msg = "商品检索服务暂时不可用，请稍后再试或联系管理员检查 Qdrant 服务状态"
+                logger.error(
+                    "│ [检索失败] Qdrant 不可用",
+                    query=query,
+                    dependency="qdrant",
+                )
+                runtime.context.emitter.emit(
+                    StreamEventType.TOOL_END.value,
+                    {
+                        "tool_call_id": tool_call_id,
+                        "name": "search_products",
+                        "status": "error",
+                        "count": 0,
+                        "error": error_msg,
+                    },
+                )
+                logger.info("└── 工具: search_products 结束 (依赖不可用) ──┘")
+                return json.dumps({"error": error_msg, "query": query}, ensure_ascii=False)
             docs = retriever.invoke(query)
 
         logger.info(

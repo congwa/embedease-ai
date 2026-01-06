@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Conversation } from "@/types/conversation";
-import {
-  createConversation,
-  deleteConversation,
-  getConversations,
-} from "@/lib/api";
+import { getUserConversations, createConversation, deleteConversation } from "@/lib/api";
 
 export function useConversations(userId: string | null) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -19,7 +15,7 @@ export function useConversations(userId: string | null) {
     
     setIsLoading(true);
     try {
-      const data = await getConversations(userId);
+      const data = await getUserConversations(userId);
       setConversations(data);
       console.log("[conversations] 加载了", data.length, "个会话");
     } catch (error) {

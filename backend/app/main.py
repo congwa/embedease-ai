@@ -14,6 +14,7 @@ from app.core.errors import AppError, create_error_response
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
 from app.routers import admin, chat, conversations, crawler, support, users, ws
+from app.routers import health as health_router
 from app.routers.agents import faq_router, knowledge_router
 from app.routers.agents import router as agents_router
 from app.scheduler import task_registry, task_scheduler
@@ -133,6 +134,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 启动 WebSocket 心跳检测
     await heartbeat_manager.start()
+
+    # 运行依赖健康检查
+    try:
+        import app.core.health_checks  # noqa: F401 注册所有检查函数
+        from app.core.health_checks import run_startup_checks
+        health_summary = await run_startup_checks()
+        logger.info(
+            "依赖健康检查完成",
+            module="app",
+            overall=health_summary["overall"],
+            healthy=health_summary["healthy"],
+            unhealthy=health_summary["unhealthy"],
+        )
+    except Exception as e:
+        logger.warning("健康检查运行失败", module="app", error=str(e))
 
     logger.info("应用启动完成", module="app", host=settings.API_HOST, port=settings.API_PORT)
 
@@ -283,12 +299,7 @@ app.include_router(support.router)
 app.include_router(users.router)
 app.include_router(ws.router)
 app.include_router(scheduler_router)
-
-
-@app.get("/health")
-async def health_check():
-    """健康检查"""
-    return {"status": "ok", "version": "0.2.0"}
+app.include_router(health_router.router)
 
 
 if __name__ == "__main__":

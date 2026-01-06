@@ -134,7 +134,7 @@ def _get_middleware_specs(mode: str, model: Any) -> list[MiddlewareSpec]:
 
     def _build_strict_mode_middleware():
         """构建严格模式中间件"""
-        from app.services.agent.policy import get_policy
+        from app.services.agent.core.policy import get_policy
 
         return StrictModeMiddleware(policy=get_policy(mode))
 
