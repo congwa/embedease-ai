@@ -8,9 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.errors import AppError, create_error_response
 from app.core.crawler_database import get_crawler_db, init_crawler_db
 from app.core.database import init_db
+from app.core.errors import AppError, create_error_response
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
 from app.routers import admin, chat, conversations, crawler, support, users, ws

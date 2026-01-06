@@ -315,28 +315,60 @@ class Logger:
         log_file_configured = False
         if log_file:
             log_path = Path(log_file)
-            log_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            # 默认日志文件路径，确保启动阶段的错误也能落盘
+            log_path = Path("logs/app.log")
+        log_path.parent.mkdir(parents=True, exist_ok=True)
 
-            rotation = getattr(settings, "LOG_FILE_ROTATION", "10 MB")
-            retention = getattr(settings, "LOG_FILE_RETENTION", "7 days")
+        rotation = getattr(settings, "LOG_FILE_ROTATION", "10 MB")
+        retention = getattr(settings, "LOG_FILE_RETENTION", "7 days")
 
-            # 文件日志使用 JSON 格式（方便解析）
-            loguru_logger.add(
-                str(log_path),
-                format="{message}",
-                level=level.value,
-                rotation=rotation,
-                retention=retention,
-                compression="gz",  # 压缩旧日志
-                # serialize=True 时 loguru 会通过队列传递 record 对象，要求可 picklable；
-                # 这里禁用 enqueue，避免在包含复杂对象时触发 pickling 报错。
-                enqueue=False,
-                serialize=True,  # 自动序列化为 JSON
-            )
-            log_file_configured = True
+        # 文件日志使用 JSON 格式（方便解析）
+        loguru_logger.add(
+            str(log_path),
+            format="{message}",
+            level=level.value,
+            rotation=rotation,
+            retention=retention,
+            compression="gz",  # 压缩旧日志
+            # serialize=True 时 loguru 会通过队列传递 record 对象，要求可 picklable；
+            # 这里禁用 enqueue，避免在包含复杂对象时触发 pickling 报错。
+            enqueue=False,
+            serialize=True,  # 自动序列化为 JSON
+        )
+        log_file_configured = True
 
         # 标记为已配置（必须在记录日志之前设置，避免递归）
         self._configured = True
+
+        # 注册全局异常钩子，捕获导入期和运行时异常
+        def _global_excepthook(exc_type, exc, tb):
+            loguru_logger.bind(module="runtime").opt(exception=(exc_type, exc, tb)).critical(
+                "Uncaught exception"
+            )
+
+        sys.excepthook = _global_excepthook
+
+        # 尝试为 asyncio 事件循环设置异常处理器
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
+        if loop:
+            def _asyncio_exception_handler(loop, context):
+                msg = context.get("message", "Unhandled asyncio exception")
+                exception = context.get("exception")
+                if exception:
+                    loguru_logger.bind(module="asyncio").opt(exception=(type(exception), exception, exception.__traceback__)).critical(
+                        f"Asyncio error: {msg}"
+                    )
+                else:
+                    loguru_logger.bind(module="asyncio").critical(f"Asyncio error: {msg}")
+
+            loop.set_exception_handler(_asyncio_exception_handler)
 
         # 记录配置完成信息
         if log_file_configured:

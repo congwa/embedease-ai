@@ -6,11 +6,13 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.crawler_database import get_crawler_db_dep
 from app.core.database import get_db
+from app.core.errors import raise_service_unavailable
 from app.core.logging import get_logger
 from app.models.conversation import Conversation, HandoffState
 from app.models.crawler import CrawlPage, CrawlSite, CrawlTask, CrawlTaskStatus
@@ -308,7 +310,7 @@ async def list_products(
         total=total or 0,
         page=page,
         page_size=page_size,
-        total_pages=(total or 0 + page_size - 1) // page_size,
+        total_pages=((total or 0) + page_size - 1) // page_size,
     )
 
 
@@ -375,7 +377,7 @@ async def list_conversations(
         total=total or 0,
         page=page,
         page_size=page_size,
-        total_pages=(total or 0 + page_size - 1) // page_size,
+        total_pages=((total or 0) + page_size - 1) // page_size,
     )
 
 
@@ -425,7 +427,7 @@ async def list_users(
         total=total or 0,
         page=page,
         page_size=page_size,
-        total_pages=(total or 0 + page_size - 1) // page_size,
+        total_pages=((total or 0) + page_size - 1) // page_size,
     )
 
 
@@ -438,6 +440,9 @@ async def list_crawl_tasks(
     status: str | None = None,
 ):
     """获取爬取任务列表（从爬虫数据库 crawler.db）"""
+    if not settings.CRAWLER_ENABLED:
+        raise_service_unavailable("crawler", "爬虫模块未启用")
+
     query = select(CrawlTask, CrawlSite.name.label("site_name")).outerjoin(
         CrawlSite, CrawlTask.site_id == CrawlSite.id
     )
@@ -454,12 +459,18 @@ async def list_crawl_tasks(
         count_query = count_query.where(CrawlTask.site_id == site_id)
     if status:
         count_query = count_query.where(CrawlTask.status == status)
-    total = await crawler_session.scalar(count_query)
+    try:
+        total = await crawler_session.scalar(count_query)
+    except OperationalError as exc:
+        raise_service_unavailable("crawler", "爬虫数据库不可用", cause=exc)
 
     # 分页
     query = query.order_by(CrawlTask.created_at.desc())
     query = query.offset((page - 1) * page_size).limit(page_size)
-    result = await crawler_session.execute(query)
+    try:
+        result = await crawler_session.execute(query)
+    except OperationalError as exc:
+        raise_service_unavailable("crawler", "爬虫数据库不可用", cause=exc)
     rows = result.all()
 
     items = [
@@ -486,7 +497,7 @@ async def list_crawl_tasks(
         total=total or 0,
         page=page,
         page_size=page_size,
-        total_pages=(total or 0 + page_size - 1) // page_size,
+        total_pages=((total or 0) + page_size - 1) // page_size,
     )
 
 
@@ -500,6 +511,9 @@ async def list_crawl_pages(
     status: str | None = None,
 ):
     """获取爬取页面列表（从爬虫数据库 crawler.db）"""
+    if not settings.CRAWLER_ENABLED:
+        raise_service_unavailable("crawler", "爬虫模块未启用")
+
     query = select(CrawlPage)
 
     # 筛选条件
@@ -518,20 +532,26 @@ async def list_crawl_pages(
         count_query = count_query.where(CrawlPage.task_id == task_id)
     if status:
         count_query = count_query.where(CrawlPage.status == status)
-    total = await crawler_session.scalar(count_query)
+    try:
+        total = await crawler_session.scalar(count_query)
+    except OperationalError as exc:
+        raise_service_unavailable("crawler", "爬虫数据库不可用", cause=exc)
 
     # 分页
     query = query.order_by(CrawlPage.crawled_at.desc())
     query = query.offset((page - 1) * page_size).limit(page_size)
-    result = await crawler_session.execute(query)
-    items = result.scalars().all()
+    try:
+        result = await crawler_session.execute(query)
+        items = result.scalars().all()
+    except OperationalError as exc:
+        raise_service_unavailable("crawler", "爬虫数据库不可用", cause=exc)
 
     return PaginatedResponse(
         items=[CrawlPageListItem.model_validate(item) for item in items],
         total=total or 0,
         page=page,
         page_size=page_size,
-        total_pages=(total or 0 + page_size - 1) // page_size,
+        total_pages=((total or 0) + page_size - 1) // page_size,
     )
 
 

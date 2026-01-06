@@ -41,7 +41,7 @@ export default function CrawlerTasksPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState<string>("all");
 
   const loadData = useCallback(async () => {
     try {
@@ -50,7 +50,7 @@ export default function CrawlerTasksPage() {
       const result = await getCrawlTasks({
         page,
         page_size: 20,
-        status: status || undefined,
+        status: status === "all" ? undefined : status,
       });
       setData(result);
     } catch (e) {
@@ -92,12 +92,18 @@ export default function CrawlerTasksPage() {
 
       {/* 筛选栏 */}
       <div className="flex items-center gap-3">
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="全部状态" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">全部状态</SelectItem>
+            <SelectItem value="all">全部状态</SelectItem>
             <SelectItem value="pending">等待中</SelectItem>
             <SelectItem value="running">运行中</SelectItem>
             <SelectItem value="completed">已完成</SelectItem>

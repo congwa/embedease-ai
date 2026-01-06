@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.crawler_database import get_crawler_db_dep
+from app.core.errors import raise_service_unavailable
 from app.core.logging import get_logger
 from app.models.crawler import CrawlSite, CrawlTask
 from app.repositories.crawler import (
@@ -31,7 +32,6 @@ from app.schemas.crawler import (
     ExtractionConfig,
     RetryMode,
 )
-from app.core.errors import raise_service_unavailable
 from app.services.crawler import CrawlerService
 from app.services.crawler.utils import generate_site_id, normalize_domain
 

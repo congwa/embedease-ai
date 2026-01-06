@@ -72,7 +72,7 @@ export default function CrawlerSitesPage() {
     <div className="space-y-6">
       <PageHeader
         title="站点配置"
-        description={`共 ${sites.length} 个站点`}
+        description={error ? "站点配置管理" : `共 ${sites.length} 个站点`}
         actions={
           <Button variant="outline" size="icon" onClick={loadData} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
@@ -80,13 +80,12 @@ export default function CrawlerSitesPage() {
         }
       />
 
-      {/* 错误提示 */}
-      {error && (
+      {/* 错误状态 - 如果有错误则显示错误，否则显示表格 */}
+      {error ? (
         <ErrorState error={error} onRetry={loadData} />
-      )}
-
-      {/* 表格 */}
-      <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      ) : (
+        /* 表格 */
+        <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <Table>
           <TableHeader>
             <TableRow>
@@ -172,6 +171,7 @@ export default function CrawlerSitesPage() {
           </TableBody>
         </Table>
       </div>
+      )}
     </div>
   );
 }

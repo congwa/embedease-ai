@@ -91,11 +91,16 @@ def raise_bad_request(code: str, message: str, data: dict[str, Any] | None = Non
     )
 
 
-def raise_service_unavailable(service: str, message: str | None = None) -> None:
+def raise_service_unavailable(
+    service: str,
+    message: str | None = None,
+    *,
+    cause: Exception | None = None,
+) -> None:
     """抛出服务不可用错误"""
     raise AppError(
         code=f"{service}_unavailable",
         message=message or f"{service} 服务不可用",
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         data={"service": service},
-    )
+    ) from cause
