@@ -24,7 +24,7 @@ export function ChatApp() {
 
   // 当前会话标题
   const currentConversation = useMemo(
-    () => conversations.find((c) => c.id === currentConversationId),
+    () => Array.isArray(conversations) ? conversations.find((c) => c.id === currentConversationId) : undefined,
     [conversations, currentConversationId]
   );
 
