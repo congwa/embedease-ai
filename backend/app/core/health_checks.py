@@ -250,6 +250,33 @@ async def check_models_dev() -> bool:
 
 
 # ============================================================
+# Crawler 爬虫模块
+# ============================================================
+
+@dependency_registry.register(
+    "crawler",
+    category=DependencyCategory.EXTERNAL_API,
+    is_critical=False,
+    timeout=1.0,
+    fallback_message="爬虫模块未启用，请在环境变量中设置 CRAWLER_ENABLED=true",
+)
+async def check_crawler() -> bool:
+    """检查 Crawler 模块是否启用"""
+    if not settings.CRAWLER_ENABLED:
+        dependency_registry.set_status("crawler", DependencyStatus.DISABLED)
+        return True
+    
+    # 已启用，检查数据库是否可访问
+    try:
+        import aiosqlite
+        async with aiosqlite.connect(settings.CRAWLER_DATABASE_PATH) as db:
+            await db.execute("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+
+# ============================================================
 # 启动时初始化检查
 # ============================================================
 

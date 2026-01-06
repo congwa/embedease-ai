@@ -99,8 +99,8 @@ def raise_service_unavailable(
 ) -> None:
     """抛出服务不可用错误"""
     raise AppError(
-        code=f"{service}_unavailable",
+        code="feature_disabled",
         message=message or f"{service} 服务不可用",
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        data={"service": service},
+        data={"feature": service, "service": service},
     ) from cause

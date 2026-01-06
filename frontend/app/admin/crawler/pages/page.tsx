@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";
 import { PageHeader, DataTablePagination } from "@/components/admin";
 import { Button } from "@/components/ui/button";
+import { useFeatures } from "@/hooks/use-features";
+import { FeatureGuard } from "@/components/features/feature-guard";
 import {
   Select,
   SelectContent,
@@ -41,6 +43,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 };
 
 export default function CrawlerPagesPage() {
+  const { features, loading: featuresLoading } = useFeatures();
   const [data, setData] = useState<PaginatedResponse<CrawlPageListItem> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +52,12 @@ export default function CrawlerPagesPage() {
   const [status, setStatus] = useState<string>("");
 
   const loadData = useCallback(async () => {
+    // 只有在爬虫启用时才加载数据
+    if (!features.crawler.enabled) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -63,11 +72,13 @@ export default function CrawlerPagesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, status]);
+  }, [page, status, features.crawler.enabled]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!featuresLoading) {
+      loadData();
+    }
+  }, [loadData, featuresLoading]);
 
   const getStatusInfo = (s: string) => {
     return statusConfig[s] || statusConfig.pending;
@@ -79,7 +90,8 @@ export default function CrawlerPagesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <FeatureGuard features={features} requiredFeature="crawler">
+      <div className="space-y-6">
       <PageHeader
         title="页面数据"
         description={`共 ${data?.total || 0} 个页面`}
@@ -227,6 +239,7 @@ export default function CrawlerPagesPage() {
           />
         </div>
       )}
-    </div>
+      </div>
+    </FeatureGuard>
   );
 }
