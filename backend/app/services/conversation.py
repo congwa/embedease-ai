@@ -1,11 +1,16 @@
 """会话服务"""
 
+import re
 import uuid
+from datetime import datetime
+from string import Template
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
+from app.models.agent import Agent
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.tool_call import ToolCall
@@ -35,17 +40,151 @@ class ConversationService:
         """获取会话及其消息"""
         return await self.conversation_repo.get_with_messages(conversation_id)
 
-    async def create_conversation(self, user_id: str) -> Conversation:
-        """创建新会话"""
+    async def create_conversation(
+        self,
+        user_id: str,
+        agent_id: str | None = None,
+        channel: str = "web",
+    ) -> Conversation:
+        """创建新会话
+        
+        Args:
+            user_id: 用户 ID
+            agent_id: Agent ID（可选，用于获取开场白配置）
+            channel: 渠道标识（web/support/api）
+        """
         # 确保用户存在
         await self.user_repo.get_or_create(user_id)
 
         conversation_id = str(uuid.uuid4())
-        return await self.conversation_repo.create_conversation(
+        conversation = await self.conversation_repo.create_conversation(
             conversation_id=conversation_id,
             user_id=user_id,
             title="新对话",
+            agent_id=agent_id,
         )
+
+        # 处理开场白
+        if agent_id:
+            await self._handle_greeting(conversation, agent_id, channel)
+
+        return conversation
+
+    async def _handle_greeting(
+        self,
+        conversation: Conversation,
+        agent_id: str,
+        channel: str = "web",
+    ) -> Message | None:
+        """处理开场白消息
+        
+        Args:
+            conversation: 会话实例
+            agent_id: Agent ID
+            channel: 渠道标识
+            
+        Returns:
+            创建的开场白消息，如果不满足条件则返回 None
+        """
+        # 获取 Agent 配置
+        stmt = select(Agent).where(Agent.id == agent_id)
+        result = await self.session.execute(stmt)
+        agent = result.scalar_one_or_none()
+
+        if not agent or not agent.greeting_config:
+            return None
+
+        config = agent.greeting_config
+        if not config.get("enabled"):
+            return None
+
+        # 检查触发条件
+        trigger = config.get("trigger", "first_visit")
+        if trigger == "first_visit" and conversation.greeting_sent:
+            return None
+
+        # 获取渠道配置
+        channels = config.get("channels", {})
+        channel_config = channels.get(channel) or channels.get("default")
+        if not channel_config:
+            return None
+
+        # 渲染模板
+        body = channel_config.get("body", "")
+        title = channel_config.get("title", "")
+        subtitle = channel_config.get("subtitle", "")
+
+        # 变量替换
+        variables = {
+            "agent_name": agent.name,
+            "current_time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+        body = self._render_template(body, variables)
+        title = self._render_template(title, variables)
+        subtitle = self._render_template(subtitle, variables)
+
+        # 组装内容
+        content_parts = []
+        if title:
+            content_parts.append(f"**{title}**")
+        if subtitle:
+            content_parts.append(f"*{subtitle}*")
+        if body:
+            content_parts.append(body)
+        content = "\n\n".join(content_parts)
+
+        # 构建 extra_metadata
+        cta = channel_config.get("cta") or config.get("cta")
+        extra_metadata = {
+            "channel": channel,
+            "delay_ms": config.get("delay_ms", 1000),
+            "greeting_config": {
+                "title": title,
+                "subtitle": subtitle,
+                "body": body,
+            },
+        }
+        if cta:
+            extra_metadata["cta"] = cta
+
+        # 创建开场白消息
+        message = await self.add_message(
+            conversation_id=conversation.id,
+            role="system",
+            content=content,
+            message_type="greeting",
+            extra_metadata=extra_metadata,
+        )
+
+        # 标记已发送
+        if trigger == "first_visit":
+            await self.conversation_repo.set_greeting_sent(conversation.id, True)
+
+        logger.info(
+            "发送开场白消息",
+            conversation_id=conversation.id,
+            agent_id=agent_id,
+            channel=channel,
+        )
+
+        return message
+
+    def _render_template(self, template: str, variables: dict[str, str]) -> str:
+        """渲染模板变量
+        
+        支持 {{variable}} 格式的变量替换
+        """
+        if not template:
+            return template
+
+        # 将 {{var}} 转换为 $var 格式
+        pattern = r"\{\{(\w+)\}\}"
+        converted = re.sub(pattern, r"$\1", template)
+
+        try:
+            return Template(converted).safe_substitute(variables)
+        except Exception:
+            return template
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """删除会话"""

@@ -2,7 +2,7 @@
 
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Bot, RefreshCw, Zap, Power } from "lucide-react";
+import { ChevronLeft, Bot, RefreshCw, Zap, MessageSquareText } from "lucide-react";
 import { useAgentDetail } from "@/lib/hooks/use-agents";
 import { useAgentContext } from "@/contexts/agent-context";
 import { LoadingState, ErrorAlert, StatusBadge } from "@/components/admin";
@@ -33,6 +33,7 @@ const typeLabels: Record<string, string> = {
 // 基础 Tab（所有 Agent 都有）
 const baseTabs = [
   { id: "overview", label: "基础设置", href: "" },
+  { id: "greeting", label: "开场白", href: "/greeting" },
   { id: "tools", label: "工具配置", href: "/tools" },
   { id: "conversations", label: "会话洞察", href: "/conversations" },
 ];

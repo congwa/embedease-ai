@@ -4,6 +4,27 @@ import { apiRequest } from "./client";
 
 // ========== Types ==========
 
+export interface GreetingCTA {
+  text: string;
+  payload: string;
+}
+
+export interface GreetingChannel {
+  title?: string;
+  subtitle?: string;
+  body: string;
+  cta?: GreetingCTA;
+}
+
+export interface GreetingConfig {
+  enabled: boolean;
+  trigger: "first_visit" | "every_session";
+  delay_ms: number;
+  channels: Record<string, GreetingChannel>;
+  cta?: GreetingCTA;
+  variables?: string[];
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -18,6 +39,7 @@ export interface Agent {
   response_format: string | null;
   status: "enabled" | "disabled";
   is_default: boolean;
+  greeting_config: GreetingConfig | null;
   created_at: string;
   updated_at: string;
   knowledge_config: KnowledgeConfig | null;
@@ -150,6 +172,22 @@ export async function deleteAgent(agentId: string): Promise<void> {
 export async function refreshAgent(agentId: string): Promise<void> {
   await apiRequest(`/api/v1/admin/agents/${agentId}/refresh`, {
     method: "POST",
+  });
+}
+
+// ========== Greeting Config API ==========
+
+export async function getAgentGreeting(agentId: string): Promise<GreetingConfig | null> {
+  return apiRequest<GreetingConfig | null>(`/api/v1/admin/agents/${agentId}/greeting`);
+}
+
+export async function updateAgentGreeting(
+  agentId: string,
+  data: Partial<GreetingConfig>
+): Promise<GreetingConfig> {
+  return apiRequest<GreetingConfig>(`/api/v1/admin/agents/${agentId}/greeting`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });
 }
 

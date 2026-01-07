@@ -10,6 +10,8 @@ class ConversationCreate(BaseModel):
     """创建会话请求"""
 
     user_id: str = Field(..., description="用户 ID")
+    agent_id: str | None = Field(default=None, description="Agent ID（用于获取开场白配置）")
+    channel: str = Field(default="web", description="渠道标识（web/support/api）")
 
 
 class ConversationResponse(BaseModel):

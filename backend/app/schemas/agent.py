@@ -14,6 +14,54 @@ AgentTypeEnum = Literal["product", "faq", "kb", "custom"]
 KnowledgeTypeEnum = Literal["faq", "vector", "graph", "product", "http_api", "mixed"]
 AgentStatusEnum = Literal["enabled", "disabled"]
 ChatModeEnum = Literal["natural", "free", "strict"]
+GreetingTriggerEnum = Literal["first_visit", "every_session"]
+
+
+# ========== 开场白配置 ==========
+
+
+class GreetingCTASchema(BaseModel):
+    """开场白 CTA 按钮"""
+
+    text: str = Field(..., min_length=1, max_length=50, description="按钮文本")
+    payload: str = Field(..., max_length=200, description="点击后触发的消息/动作")
+
+
+class GreetingChannelSchema(BaseModel):
+    """单个渠道的开场白配置"""
+
+    title: str | None = Field(default=None, max_length=100, description="标题")
+    subtitle: str | None = Field(default=None, max_length=200, description="副标题")
+    body: str = Field(..., min_length=1, description="正文内容（Markdown）")
+    cta: GreetingCTASchema | None = Field(default=None, description="渠道专属 CTA")
+
+
+class GreetingConfigSchema(BaseModel):
+    """开场白完整配置"""
+
+    enabled: bool = Field(default=False, description="是否启用开场白")
+    trigger: GreetingTriggerEnum = Field(
+        default="first_visit", description="触发策略：首次访问/每次会话"
+    )
+    delay_ms: int = Field(default=1000, ge=0, le=10000, description="展示延迟（毫秒）")
+    channels: dict[str, GreetingChannelSchema] = Field(
+        default_factory=dict, description="渠道配置（web/support/api/default）"
+    )
+    cta: GreetingCTASchema | None = Field(default=None, description="默认 CTA")
+    variables: list[str] | None = Field(
+        default=None, description="自定义变量列表（如 product_name）"
+    )
+
+
+class GreetingConfigUpdate(BaseModel):
+    """更新开场白配置"""
+
+    enabled: bool | None = Field(default=None)
+    trigger: GreetingTriggerEnum | None = Field(default=None)
+    delay_ms: int | None = Field(default=None, ge=0, le=10000)
+    channels: dict[str, GreetingChannelSchema] | None = Field(default=None)
+    cta: GreetingCTASchema | None = Field(default=None)
+    variables: list[str] | None = Field(default=None)
 
 
 # ========== 工具策略 ==========
@@ -106,6 +154,7 @@ class AgentBase(BaseModel):
     response_format: str | None = Field(default=None)
     status: AgentStatusEnum = Field(default="enabled")
     is_default: bool = Field(default=False)
+    greeting_config: GreetingConfigSchema | None = Field(default=None, description="开场白配置")
 
 
 class AgentCreate(AgentBase):
@@ -129,6 +178,7 @@ class AgentUpdate(BaseModel):
     response_format: str | None = Field(default=None)
     status: AgentStatusEnum | None = Field(default=None)
     is_default: bool | None = Field(default=None)
+    greeting_config: GreetingConfigSchema | None = Field(default=None)
 
 
 class AgentResponse(AgentBase):

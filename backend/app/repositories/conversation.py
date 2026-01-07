@@ -41,14 +41,28 @@ class ConversationRepository(BaseRepository[Conversation]):
         conversation_id: str,
         user_id: str,
         title: str = "新对话",
+        agent_id: str | None = None,
     ) -> Conversation:
         """创建会话"""
         conversation = Conversation(
             id=conversation_id,
             user_id=user_id,
             title=title,
+            agent_id=agent_id,
         )
         return await self.create(conversation)
+
+    async def set_greeting_sent(
+        self,
+        conversation_id: str,
+        sent: bool = True,
+    ) -> Conversation | None:
+        """设置开场白已发送标记"""
+        conversation = await self.get_by_id(conversation_id)
+        if conversation:
+            conversation.greeting_sent = sent
+            await self.update(conversation)
+        return conversation
 
     async def update_title(self, conversation_id: str, title: str) -> Conversation | None:
         """更新会话标题"""

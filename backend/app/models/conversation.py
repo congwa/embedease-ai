@@ -95,6 +95,18 @@ class Conversation(Base):
         nullable=True,
     )  # 当前在线的客服 ID
 
+    # ========== 开场白相关 ==========
+    greeting_sent: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )  # 开场白是否已发送（用于 first_visit 触发策略）
+    agent_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+    )  # 关联的 Agent ID
+
     # 关联
     user: Mapped["User"] = relationship("User", back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(

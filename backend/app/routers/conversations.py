@@ -32,9 +32,17 @@ async def create_conversation(
     request: ConversationCreate,
     db: AsyncSession = Depends(get_db_session),
 ):
-    """创建新会话"""
+    """创建新会话
+    
+    Args:
+        request: 创建请求，包含 user_id、agent_id（可选）、channel（可选）
+    """
     service = ConversationService(db)
-    conversation = await service.create_conversation(request.user_id)
+    conversation = await service.create_conversation(
+        user_id=request.user_id,
+        agent_id=request.agent_id,
+        channel=request.channel,
+    )
     return conversation
 
 

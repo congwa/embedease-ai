@@ -8,3 +8,4 @@ export { TimelineContextSummarizedItem } from "./TimelineContextSummarizedItem";
 export { TimelineUserMessageItem } from "./TimelineUserMessageItem";
 export { TimelineErrorItem } from "./TimelineErrorItem";
 export { TimelineSupportEventItem } from "./TimelineSupportEventItem";
+export { TimelineGreetingItem } from "./greeting-item";

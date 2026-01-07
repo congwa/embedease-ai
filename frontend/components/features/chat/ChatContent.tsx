@@ -23,6 +23,7 @@ import {
   TimelineErrorItem,
   TimelineToolCallItem,
   TimelineSupportEventItem,
+  TimelineGreetingItem,
 } from "./timeline";
 
 interface ChatContentProps {  
@@ -118,6 +119,19 @@ export function ChatContent({
             className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
           >
             <TimelineSupportEventItem item={item} />
+          </Message>
+        );
+
+      case "greeting":
+        return (
+          <Message
+            key={item.id}
+            className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
+          >
+            <TimelineGreetingItem
+              item={item}
+              onCtaClick={(payload) => onSendMessage(payload)}
+            />
           </Message>
         );
 

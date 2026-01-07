@@ -97,3 +97,7 @@ frontend/docs
 
 # test_page_parser
 backend/tests/test_page_parser.py
+
+.pytest_cache
+.ruff_cache
+.venv

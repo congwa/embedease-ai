@@ -26,6 +26,8 @@ from app.schemas.agent import (
     FAQEntryUpdate,
     FAQImportRequest,
     FAQImportResponse,
+    GreetingConfigSchema,
+    GreetingConfigUpdate,
     KnowledgeConfigCreate,
     KnowledgeConfigResponse,
     KnowledgeConfigUpdate,
@@ -193,6 +195,77 @@ async def refresh_agent(agent_id: str):
     """刷新 Agent 缓存"""
     agent_service.invalidate_agent(agent_id)
     logger.info("刷新 Agent 缓存", agent_id=agent_id)
+
+
+# ========== Greeting Config ==========
+
+
+@router.get("/{agent_id}/greeting", response_model=GreetingConfigSchema | None)
+async def get_agent_greeting(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """获取 Agent 开场白配置"""
+    stmt = select(Agent).where(Agent.id == agent_id)
+    result = await db.execute(stmt)
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    if agent.greeting_config:
+        return GreetingConfigSchema.model_validate(agent.greeting_config)
+    return None
+
+
+@router.patch("/{agent_id}/greeting", response_model=GreetingConfigSchema)
+async def update_agent_greeting(
+    agent_id: str,
+    data: GreetingConfigUpdate,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """更新 Agent 开场白配置"""
+    stmt = select(Agent).where(Agent.id == agent_id)
+    result = await db.execute(stmt)
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    # 获取现有配置或创建默认配置
+    current_config = agent.greeting_config or {
+        "enabled": False,
+        "trigger": "first_visit",
+        "delay_ms": 1000,
+        "channels": {},
+        "cta": None,
+        "variables": None,
+    }
+
+    # 更新字段
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        if value is not None:
+            current_config[key] = value
+        elif key in current_config and value is None:
+            # 允许显式设置为 None
+            current_config[key] = None
+
+    # 校验：如果启用开场白，至少需要一个渠道配置
+    if current_config.get("enabled") and not current_config.get("channels"):
+        raise HTTPException(
+            status_code=400,
+            detail="启用开场白时至少需要配置一个渠道",
+        )
+
+    agent.greeting_config = current_config
+    await db.flush()
+
+    # 使缓存失效
+    agent_service.invalidate_agent(agent_id)
+
+    logger.info("更新 Agent 开场白配置", agent_id=agent_id, enabled=current_config.get("enabled"))
+    return GreetingConfigSchema.model_validate(current_config)
 
 
 # ========== Agent Tools ==========

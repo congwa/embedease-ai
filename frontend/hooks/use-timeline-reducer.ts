@@ -193,6 +193,23 @@ export interface SupportEventItem {
   ts: number;
 }
 
+/** 开场白消息 item */
+export interface GreetingItem {
+  type: "greeting";
+  id: string;
+  turnId: string;
+  title?: string;
+  subtitle?: string;
+  body: string;
+  cta?: {
+    text: string;
+    payload: string;
+  };
+  delayMs: number;
+  channel: string;
+  ts: number;
+}
+
 /** 时间线顶层 item 联合类型 */
 export type TimelineItem =
   | UserMessageItem
@@ -201,7 +218,8 @@ export type TimelineItem =
   | ErrorItem
   | FinalItem
   | MemoryEventItem
-  | SupportEventItem;
+  | SupportEventItem
+  | GreetingItem;
 
 // ==================== 兼容旧组件的类型别名 ====================
 
@@ -399,6 +417,34 @@ export function addUserMessage(
     id,
     turnId: id, // 用户消息的 turnId 就是自己
     content,
+    ts: Date.now(),
+  };
+  return insertItem(state, item);
+}
+
+/** 添加开场白消息 */
+export function addGreetingMessage(
+  state: TimelineState,
+  greeting: {
+    id: string;
+    title?: string;
+    subtitle?: string;
+    body: string;
+    cta?: { text: string; payload: string };
+    delayMs?: number;
+    channel?: string;
+  }
+): TimelineState {
+  const item: GreetingItem = {
+    type: "greeting",
+    id: greeting.id,
+    turnId: greeting.id,
+    title: greeting.title,
+    subtitle: greeting.subtitle,
+    body: greeting.body,
+    cta: greeting.cta,
+    delayMs: greeting.delayMs || 0,
+    channel: greeting.channel || "web",
     ts: Date.now(),
   };
   return insertItem(state, item);
@@ -814,9 +860,20 @@ export function endTurn(state: TimelineState): TimelineState {
 export function historyToTimeline(
   messages: Array<{
     id: string;
-    role: "user" | "assistant";
+    role: "user" | "assistant" | "system";
     content: string;
     products?: Product[];
+    message_type?: string;
+    extra_metadata?: {
+      greeting_config?: {
+        title?: string;
+        subtitle?: string;
+        body?: string;
+      };
+      cta?: { text: string; payload: string };
+      delay_ms?: number;
+      channel?: string;
+    };
   }>
 ): TimelineState {
   let state = createInitialState();
@@ -824,7 +881,19 @@ export function historyToTimeline(
   for (const msg of messages) {
     if (msg.role === "user") {
       state = addUserMessage(state, msg.id, msg.content);
-    } else {
+    } else if (msg.role === "system" && msg.message_type === "greeting") {
+      // 开场白消息
+      const meta = msg.extra_metadata;
+      state = addGreetingMessage(state, {
+        id: msg.id,
+        title: meta?.greeting_config?.title,
+        subtitle: meta?.greeting_config?.subtitle,
+        body: meta?.greeting_config?.body || msg.content,
+        cta: meta?.cta,
+        delayMs: meta?.delay_ms,
+        channel: meta?.channel,
+      });
+    } else if (msg.role === "assistant") {
       // assistant 消息：创建一个虚拟的 LLMCallCluster 来包含历史内容
       const children: LLMCallSubItem[] = [];
       const childIndexById: Record<string, number> = {};

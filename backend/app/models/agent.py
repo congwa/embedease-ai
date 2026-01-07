@@ -150,6 +150,10 @@ class Agent(Base, TimestampMixin):
     # 是否为默认 Agent
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # 开场白配置（JSON）
+    # 格式: {"enabled": true, "trigger": "first_visit", "delay_ms": 1500, "channels": {...}, "cta": {...}}
+    greeting_config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
     # 关联
     knowledge_config: Mapped["KnowledgeConfig | None"] = relationship(
         "KnowledgeConfig",
