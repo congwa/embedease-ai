@@ -17,6 +17,7 @@ import {
   BarChart3,
   FileText,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,11 @@ const baseNavItems = [
     title: "仪表盘",
     href: "/admin",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Quick Setup",
+    href: "/admin/quick-setup",
+    icon: Sparkles,
   },
 ];
 

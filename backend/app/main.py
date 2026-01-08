@@ -15,6 +15,7 @@ from app.core.logging import logger
 from app.core.models_dev import get_model_profile
 from app.routers import admin, chat, conversations, crawler, support, users, ws
 from app.routers import health as health_router
+from app.routers import quick_setup as quick_setup_router
 from app.routers import system as system_router
 from app.routers.agents import faq_router, knowledge_router
 from app.routers.agents import router as agents_router
@@ -302,6 +303,7 @@ app.include_router(ws.router)
 app.include_router(scheduler_router)
 app.include_router(health_router.router)
 app.include_router(system_router.router)
+app.include_router(quick_setup_router.router)
 
 
 if __name__ == "__main__":
