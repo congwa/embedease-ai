@@ -4,11 +4,39 @@
 
 ![演示动图](http://qiniu.biomed168.com/agent0.gif)
 
+## 🐳 Docker 一键部署（推荐）
+
+**不懂代码？3 分钟部署完成！**
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/你的账号/embedAi-agent.git
+cd embedAi-agent
+
+# 2. 运行安装脚本（自动配置所有环境）
+./install.sh
+
+# 3. 访问应用
+# 前端: http://localhost:3000
+# 后端: http://localhost:8000/docs
+```
+
+安装脚本会自动：
+- ✅ 检查 Docker 环境
+- ✅ 引导配置向量数据库（内置 Qdrant 或外部服务）
+- ✅ 引导配置 LLM 提供商（SiliconFlow / OpenAI / DeepSeek 等）
+- ✅ 生成配置文件并启动所有服务
+- ✅ 导入示例商品数据
+
+> 📖 详细文档请查看 [Docker 部署指南](./README_DOCKER.md)
+
+---
+
 ## 1. TL;DR
 
 | 我是谁 | 我能做什么 | 怎么跑起来 |
 | :---- | :--------- | :--------- |
-| 基于 **LangChain v1.1 + LangGraph** 的「商品推荐 Agent」一体化工程（后端 FastAPI，前端 Next.js 15） | 多 LLM Provider 推理、记忆系统、上下文压缩、SSE 时间线、Todo & 商品卡片混合流式展示 | 准备 `.env` → `uv sync && uvicorn`（后端）+ `pnpm dev`（前端）→ 打开 `http://localhost:3000` |
+| 基于 **LangChain v1.1 + LangGraph** 的「商品推荐 Agent」一体化工程（后端 FastAPI，前端 Next.js 15） | 多 LLM Provider 推理、记忆系统、上下文压缩、SSE 时间线、Todo & 商品卡片混合流式展示 | **Docker 部署**（推荐）：`./install.sh` → 访问 `http://localhost:3000` <br> **本地开发**：准备 `.env` → `uv sync && uvicorn`（后端）+ `pnpm dev`（前端）|
 
 ### 🚀 数据录入 & 爬虫怎么用？
 
@@ -64,7 +92,46 @@
 
 ---
 
-## 4. 5 分钟跑通（真的就三步）
+## 4. 快速开始
+
+### 方式一：Docker 一键部署（推荐，适合所有用户）
+
+> **前置依赖**：Docker Desktop 或 Docker Engine (20.10+)、LLM API Key
+
+```bash
+# ① Clone 项目
+git clone https://github.com/你的账号/embedAi-agent.git
+cd embedAi-agent
+
+# ② 运行安装脚本
+./install.sh
+
+# 按照提示选择：
+# - 向量数据库方案（推荐选 1：使用内置 Qdrant）
+# - LLM 提供商（推荐选 1：SiliconFlow，国内快且便宜）
+# - 输入你的 API Key
+# - 配置端口（默认即可）
+
+# ③ 等待服务启动（自动完成）
+# 脚本会自动拉取镜像、构建应用、启动服务、导入示例数据
+```
+
+浏览器打开 **http://localhost:3000**，就能看到时间线式的对话 + 商品推荐界面。
+
+**常用命令：**
+```bash
+./quick-start.sh                                    # 快速启动（已安装用户）
+docker compose -f docker-compose.prod.yml logs -f   # 查看日志
+docker compose -f docker-compose.prod.yml down      # 停止服务
+./scripts/backup.sh                                 # 备份数据
+./scripts/update.sh                                 # 更新应用
+```
+
+> 📖 详细说明请查看 [Docker 部署指南](./README_DOCKER.md)
+
+---
+
+### 方式二：本地开发部署（适合开发者）
 
 > **前置依赖**：Node ≥ 18、Python 3.13（项目使用 `uv`）、Qdrant（本地或远端）、LLM API Key
 
