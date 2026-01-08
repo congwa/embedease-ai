@@ -308,6 +308,33 @@ class FAQExportRequest(BaseModel):
     format: str = Field(default="json", description="导出格式: json, jsonl")
 
 
+class FAQCategoryStats(BaseModel):
+    """FAQ 分类统计"""
+
+    name: str
+    count: int
+
+
+class FAQRecentUpdate(BaseModel):
+    """FAQ 最近更新条目"""
+
+    id: str
+    question: str
+    source: str | None
+    updated_at: datetime
+
+
+class FAQStatsResponse(BaseModel):
+    """FAQ 统计响应"""
+
+    total: int = Field(description="FAQ 总数")
+    enabled: int = Field(description="启用数量")
+    disabled: int = Field(description="禁用数量")
+    unindexed: int = Field(description="未索引数量")
+    categories: list[FAQCategoryStats] = Field(description="分类分布")
+    recent_updates: list[FAQRecentUpdate] = Field(description="最近更新条目")
+
+
 # ========== 运行时配置（内部使用） ==========
 
 

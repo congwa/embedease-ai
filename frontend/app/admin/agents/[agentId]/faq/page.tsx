@@ -4,12 +4,12 @@
  * Agent 专属 FAQ 管理页面
  * 
  * 仅展示和管理当前 Agent 绑定的 FAQ 条目
+ * 包含统计视图、高级筛选、排序和来源展示
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  HelpCircle,
   Plus,
   Search,
   RefreshCw,
@@ -18,9 +18,13 @@ import {
   Check,
   X,
   Database,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
-import { PageHeader, DataTablePagination } from "@/components/admin";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,20 +52,99 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAgentDetail } from "@/lib/hooks/use-agents";
+import {
+  getFAQEntries,
+  getFAQStats,
+  type FAQEntry,
+  type FAQStatsResponse,
+  type FAQListParams,
+} from "@/lib/api/agents";
 
-interface FAQEntry {
-  id: string;
-  agent_id: string;
-  question: string;
-  answer: string;
-  category: string | null;
-  tags: string[] | null;
-  enabled: boolean;
-  priority: number;
-  vector_id: string | null;
-  created_at: string;
-  updated_at: string;
+// 来源标签解析
+function parseSource(source: string | null): string[] {
+  if (!source) return [];
+  return source.split(";").map((s) => s.trim()).filter(Boolean);
+}
+
+// 来源标签组件
+function SourceTags({ source }: { source: string | null }) {
+  const sources = parseSource(source);
+  if (sources.length === 0) {
+    return <span className="text-zinc-400">-</span>;
+  }
+
+  const displaySources = sources.slice(0, 2);
+  const remainingSources = sources.slice(2);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  return (
+    <TooltipProvider>
+      <div className="flex flex-wrap items-center gap-1">
+        {displaySources.map((s, i) => (
+          <Tooltip key={i}>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="outline"
+                className="cursor-pointer text-xs"
+                onClick={() => copyToClipboard(s)}
+              >
+                {s.length > 20 ? `${s.slice(0, 20)}...` : s}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">{s}</p>
+              <p className="text-xs text-zinc-400">点击复制</p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        {remainingSources.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Badge variant="secondary" className="cursor-pointer text-xs">
+                +{remainingSources.length}
+              </Badge>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-zinc-500 mb-2">所有来源</p>
+                {sources.map((s, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded bg-zinc-50 px-2 py-1 text-xs dark:bg-zinc-800"
+                  >
+                    <span className="truncate flex-1">{s}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 ml-1"
+                      onClick={() => copyToClipboard(s)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+    </TooltipProvider>
+  );
 }
 
 function StatusBadge({ enabled }: { enabled: boolean }) {
@@ -97,12 +180,19 @@ export default function AgentFAQPage() {
   const { agent } = useAgentDetail({ agentId });
 
   const [entries, setEntries] = useState<FAQEntry[]>([]);
+  const [stats, setStats] = useState<FAQStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // 筛选状态
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [enabledFilter, setEnabledFilter] = useState<string>("all");
+  const [priorityMin, setPriorityMin] = useState<string>("");
+  const [priorityMax, setPriorityMax] = useState<string>("");
+  const [orderBy, setOrderBy] = useState<FAQListParams["order_by"]>("updated_desc");
 
   // 编辑状态
   const [editingEntry, setEditingEntry] = useState<FAQEntry | null>(null);
@@ -119,40 +209,80 @@ export default function AgentFAQPage() {
     enabled: true,
   });
 
+  // 加载统计数据
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await getFAQStats(agentId);
+      setStats(data);
+    } catch (e) {
+      console.error("加载统计失败", e);
+    }
+  }, [agentId]);
+
+  // 加载 FAQ 列表
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/v1/admin/faq?agent_id=${agentId}`);
-      if (!response.ok) throw new Error("加载 FAQ 失败");
+      const params: FAQListParams = {
+        agent_id: agentId,
+        order_by: orderBy,
+      };
 
-      const data = await response.json();
+      if (selectedCategory !== "all") params.category = selectedCategory;
+      if (sourceFilter) params.source = sourceFilter;
+      if (enabledFilter === "true") params.enabled = true;
+      if (enabledFilter === "false") params.enabled = false;
+      if (priorityMin) params.priority_min = parseInt(priorityMin);
+      if (priorityMax) params.priority_max = parseInt(priorityMax);
+
+      const data = await getFAQEntries(params);
       setEntries(data || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
     } finally {
       setIsLoading(false);
     }
-  }, [agentId]);
+  }, [agentId, selectedCategory, sourceFilter, enabledFilter, priorityMin, priorityMax, orderBy]);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    loadStats();
+  }, [loadData, loadStats]);
 
-  // 获取分类列表
-  const categories = [...new Set(entries.map((e) => e.category).filter(Boolean))] as string[];
+  // 获取分类列表（从统计数据获取）
+  const categories = stats?.categories.map((c) => c.name) || [];
 
-  // 筛选数据
+  // 本地搜索过滤
   const filteredEntries = entries.filter((entry) => {
-    const matchesSearch =
-      !searchQuery ||
+    if (!searchQuery) return true;
+    return (
       entry.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.answer.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || entry.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+      entry.answer.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
+
+  // 点击统计卡片快捷筛选
+  const handleStatClick = (type: "unindexed" | "disabled") => {
+    if (type === "unindexed") {
+      setOrderBy("unindexed_first");
+    } else if (type === "disabled") {
+      setEnabledFilter("false");
+    }
+    setShowAdvancedFilters(true);
+  };
+
+  // 重置筛选
+  const resetFilters = () => {
+    setSelectedCategory("all");
+    setSourceFilter("");
+    setEnabledFilter("all");
+    setPriorityMin("");
+    setPriorityMax("");
+    setOrderBy("updated_desc");
+    setSearchQuery("");
+  };
 
   const handleCreate = () => {
     setIsCreating(true);
@@ -279,11 +409,11 @@ export default function AgentFAQPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold">{entries.length}</p>
+              <p className="text-2xl font-bold">{stats?.total ?? "-"}</p>
               <p className="text-xs text-zinc-500">FAQ 总数</p>
             </div>
           </CardContent>
@@ -292,26 +422,42 @@ export default function AgentFAQPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">
-                {entries.filter((e) => e.enabled).length}
+                {stats?.enabled ?? "-"}
               </p>
               <p className="text-xs text-zinc-500">已启用</p>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className="cursor-pointer hover:border-zinc-400 transition-colors"
+          onClick={() => handleStatClick("disabled")}
+        >
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">
-                {entries.filter((e) => e.vector_id).length}
+              <p className="text-2xl font-bold text-zinc-400">
+                {stats?.disabled ?? "-"}
               </p>
-              <p className="text-xs text-zinc-500">已索引</p>
+              <p className="text-xs text-zinc-500">已禁用</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card
+          className="cursor-pointer hover:border-amber-400 transition-colors"
+          onClick={() => handleStatClick("unindexed")}
+        >
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-amber-600">
+                {stats?.unindexed ?? "-"}
+              </p>
+              <p className="text-xs text-zinc-500">未索引</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold">{categories.length}</p>
+              <p className="text-2xl font-bold">{stats?.categories.length ?? "-"}</p>
               <p className="text-xs text-zinc-500">分类数</p>
             </div>
           </CardContent>
@@ -319,30 +465,108 @@ export default function AgentFAQPage() {
       </div>
 
       {/* 筛选栏 */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-          <Input
-            placeholder="搜索问题或答案..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      <div className="space-y-3">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <Input
+              placeholder="搜索问题或答案..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="选择分类" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部分类</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={orderBy} onValueChange={(v) => setOrderBy(v as FAQListParams["order_by"])}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="排序方式" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updated_desc">最近更新</SelectItem>
+              <SelectItem value="updated_asc">最早更新</SelectItem>
+              <SelectItem value="priority_desc">优先级 高→低</SelectItem>
+              <SelectItem value="priority_asc">优先级 低→高</SelectItem>
+              <SelectItem value="unindexed_first">未索引优先</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          >
+            <Filter className="mr-2 h-4 w-4" />
+            高级筛选
+            {showAdvancedFilters ? (
+              <ChevronUp className="ml-1 h-4 w-4" />
+            ) : (
+              <ChevronDown className="ml-1 h-4 w-4" />
+            )}
+          </Button>
         </div>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="选择分类" />
-          </SelectTrigger>
-          <SelectContent>
-            {/* SelectItem 不能使用空字符串作为 value，因为 Radix UI 使用空字符串来清空选择 */}
-            <SelectItem value="all">全部分类</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        {/* 高级筛选面板 */}
+        {showAdvancedFilters && (
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="grid gap-4 md:grid-cols-4">
+              <div>
+                <Label className="text-xs">来源关键字</Label>
+                <Input
+                  placeholder="如 conversation: 或 chat:"
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">启用状态</Label>
+                <Select value={enabledFilter} onValueChange={setEnabledFilter}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全部</SelectItem>
+                    <SelectItem value="true">已启用</SelectItem>
+                    <SelectItem value="false">已禁用</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">优先级范围</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    type="number"
+                    placeholder="最小"
+                    value={priorityMin}
+                    onChange={(e) => setPriorityMin(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="最大"
+                    value={priorityMax}
+                    onChange={(e) => setPriorityMax(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex items-end">
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  重置筛选
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 错误提示 */}
@@ -357,8 +581,9 @@ export default function AgentFAQPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[300px]">问题</TableHead>
+              <TableHead className="w-[280px]">问题</TableHead>
               <TableHead>分类</TableHead>
+              <TableHead>来源</TableHead>
               <TableHead>状态</TableHead>
               <TableHead>索引</TableHead>
               <TableHead>优先级</TableHead>
@@ -368,7 +593,7 @@ export default function AgentFAQPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center">
+                <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex items-center justify-center">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-900 border-t-transparent dark:border-zinc-100" />
                   </div>
@@ -376,7 +601,7 @@ export default function AgentFAQPage() {
               </TableRow>
             ) : filteredEntries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-zinc-500">
+                <TableCell colSpan={7} className="h-32 text-center text-zinc-500">
                   暂无 FAQ 数据
                 </TableCell>
               </TableRow>
@@ -399,13 +624,20 @@ export default function AgentFAQPage() {
                     )}
                   </TableCell>
                   <TableCell>
+                    <SourceTags source={entry.source} />
+                  </TableCell>
+                  <TableCell>
                     <StatusBadge enabled={entry.enabled} />
                   </TableCell>
                   <TableCell>
                     <VectorBadge vectorId={entry.vector_id} />
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{entry.priority}</Badge>
+                    {entry.priority > 50 ? (
+                      <Badge className="bg-orange-100 text-orange-700">{entry.priority}</Badge>
+                    ) : (
+                      <Badge variant="secondary">{entry.priority}</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">

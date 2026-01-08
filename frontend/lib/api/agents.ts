@@ -94,6 +94,40 @@ export interface FAQUpsertResponse extends FAQEntry {
   similarity_score: number | null;
 }
 
+export interface FAQCategoryStats {
+  name: string;
+  count: number;
+}
+
+export interface FAQRecentUpdate {
+  id: string;
+  question: string;
+  source: string | null;
+  updated_at: string;
+}
+
+export interface FAQStatsResponse {
+  total: number;
+  enabled: number;
+  disabled: number;
+  unindexed: number;
+  categories: FAQCategoryStats[];
+  recent_updates: FAQRecentUpdate[];
+}
+
+export interface FAQListParams {
+  skip?: number;
+  limit?: number;
+  agent_id?: string;
+  category?: string;
+  source?: string;
+  enabled?: boolean;
+  priority_min?: number;
+  priority_max?: number;
+  tags?: string;
+  order_by?: "priority_desc" | "priority_asc" | "updated_desc" | "updated_asc" | "unindexed_first";
+}
+
 export interface SettingsOverview {
   llm_provider: string;
   llm_model: string;
@@ -236,19 +270,24 @@ export async function deleteKnowledgeConfig(configId: string): Promise<void> {
 
 // ========== FAQ API ==========
 
-export async function getFAQEntries(params?: {
-  skip?: number;
-  limit?: number;
-  agent_id?: string;
-  category?: string;
-}): Promise<FAQEntry[]> {
+export async function getFAQEntries(params?: FAQListParams): Promise<FAQEntry[]> {
   const searchParams = new URLSearchParams();
   if (params?.skip) searchParams.set("skip", String(params.skip));
   if (params?.limit) searchParams.set("limit", String(params.limit));
   if (params?.agent_id) searchParams.set("agent_id", params.agent_id);
   if (params?.category) searchParams.set("category", params.category);
+  if (params?.source) searchParams.set("source", params.source);
+  if (params?.enabled !== undefined) searchParams.set("enabled", String(params.enabled));
+  if (params?.priority_min !== undefined) searchParams.set("priority_min", String(params.priority_min));
+  if (params?.priority_max !== undefined) searchParams.set("priority_max", String(params.priority_max));
+  if (params?.tags) searchParams.set("tags", params.tags);
+  if (params?.order_by) searchParams.set("order_by", params.order_by);
   const query = searchParams.toString();
   return apiRequest<FAQEntry[]>(`/api/v1/admin/faq${query ? `?${query}` : ""}`);
+}
+
+export async function getFAQStats(agentId: string): Promise<FAQStatsResponse> {
+  return apiRequest<FAQStatsResponse>(`/api/v1/admin/faq/stats?agent_id=${agentId}`);
 }
 
 export async function getFAQEntry(entryId: string): Promise<FAQEntry> {

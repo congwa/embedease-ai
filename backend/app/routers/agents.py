@@ -21,11 +21,14 @@ from app.schemas.agent import (
     AgentToolResponse,
     AgentToolUpdate,
     AgentUpdate,
+    FAQCategoryStats,
     FAQEntryCreate,
     FAQEntryResponse,
     FAQEntryUpdate,
     FAQImportRequest,
     FAQImportResponse,
+    FAQRecentUpdate,
+    FAQStatsResponse,
     FAQUpsertResponse,
     GreetingConfigSchema,
     GreetingConfigUpdate,
@@ -479,27 +482,147 @@ async def delete_knowledge_config(
 faq_router = APIRouter(prefix="/api/v1/admin/faq", tags=["faq"])
 
 
+@faq_router.get("/stats", response_model=FAQStatsResponse)
+async def get_faq_stats(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """获取 FAQ 统计信息
+
+    返回指定 Agent 的 FAQ 统计数据，包括：
+    - 总数、启用/禁用数量、未索引数量
+    - 分类分布
+    - 最近更新的条目
+    """
+    from sqlalchemy import func
+
+    # 基础统计
+    base_filter = FAQEntry.agent_id == agent_id
+
+    # 总数
+    total_stmt = select(func.count()).select_from(FAQEntry).where(base_filter)
+    total_result = await db.execute(total_stmt)
+    total = total_result.scalar() or 0
+
+    # 启用数量
+    enabled_stmt = select(func.count()).select_from(FAQEntry).where(
+        base_filter, FAQEntry.enabled == True  # noqa: E712
+    )
+    enabled_result = await db.execute(enabled_stmt)
+    enabled_count = enabled_result.scalar() or 0
+
+    # 未索引数量
+    unindexed_stmt = select(func.count()).select_from(FAQEntry).where(
+        base_filter, FAQEntry.vector_id.is_(None)
+    )
+    unindexed_result = await db.execute(unindexed_stmt)
+    unindexed_count = unindexed_result.scalar() or 0
+
+    # 分类分布
+    category_stmt = (
+        select(FAQEntry.category, func.count().label("count"))
+        .where(base_filter, FAQEntry.category.isnot(None))
+        .group_by(FAQEntry.category)
+        .order_by(func.count().desc())
+    )
+    category_result = await db.execute(category_stmt)
+    categories = [
+        FAQCategoryStats(name=row.category, count=row.count)
+        for row in category_result.fetchall()
+    ]
+
+    # 最近更新的条目
+    recent_stmt = (
+        select(FAQEntry)
+        .where(base_filter)
+        .order_by(FAQEntry.updated_at.desc())
+        .limit(5)
+    )
+    recent_result = await db.execute(recent_stmt)
+    recent_entries = recent_result.scalars().all()
+    recent_updates = [
+        FAQRecentUpdate(
+            id=e.id,
+            question=e.question[:100] if len(e.question) > 100 else e.question,
+            source=e.source,
+            updated_at=e.updated_at,
+        )
+        for e in recent_entries
+    ]
+
+    return FAQStatsResponse(
+        total=total,
+        enabled=enabled_count,
+        disabled=total - enabled_count,
+        unindexed=unindexed_count,
+        categories=categories,
+        recent_updates=recent_updates,
+    )
+
+
 @faq_router.get("", response_model=list[FAQEntryResponse])
 async def list_faq_entries(
     skip: int = 0,
     limit: int = 50,
     agent_id: str | None = None,
     category: str | None = None,
+    source: str | None = None,
+    enabled: bool | None = None,
+    priority_min: int | None = None,
+    priority_max: int | None = None,
+    tags: str | None = None,
+    order_by: str = "updated_desc",
     db: AsyncSession = Depends(get_db_session),
 ):
-    """获取 FAQ 条目列表"""
+    """获取 FAQ 条目列表
+
+    支持多条件筛选和排序：
+    - source: 来源关键字模糊匹配
+    - enabled: 启用状态过滤
+    - priority_min/priority_max: 优先级区间
+    - tags: 标签过滤（逗号分隔）
+    - order_by: 排序方式 (priority_desc, priority_asc, updated_desc, updated_asc, unindexed_first)
+    """
     stmt = select(FAQEntry)
 
+    # 筛选条件
     if agent_id:
         stmt = stmt.where(FAQEntry.agent_id == agent_id)
     if category:
         stmt = stmt.where(FAQEntry.category == category)
+    if source:
+        stmt = stmt.where(FAQEntry.source.ilike(f"%{source}%"))
+    if enabled is not None:
+        stmt = stmt.where(FAQEntry.enabled == enabled)
+    if priority_min is not None:
+        stmt = stmt.where(FAQEntry.priority >= priority_min)
+    if priority_max is not None:
+        stmt = stmt.where(FAQEntry.priority <= priority_max)
+    if tags:
+        # 标签过滤：检查是否包含任一指定标签
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        if tag_list:
+            from sqlalchemy import or_
+            tag_conditions = [FAQEntry.tags.contains([tag]) for tag in tag_list]
+            stmt = stmt.where(or_(*tag_conditions))
 
-    stmt = (
-        stmt.order_by(FAQEntry.priority.desc(), FAQEntry.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-    )
+    # 排序
+    if order_by == "priority_desc":
+        stmt = stmt.order_by(FAQEntry.priority.desc(), FAQEntry.updated_at.desc())
+    elif order_by == "priority_asc":
+        stmt = stmt.order_by(FAQEntry.priority.asc(), FAQEntry.updated_at.desc())
+    elif order_by == "updated_asc":
+        stmt = stmt.order_by(FAQEntry.updated_at.asc())
+    elif order_by == "unindexed_first":
+        # 未索引的排在前面
+        stmt = stmt.order_by(
+            FAQEntry.vector_id.is_(None).desc(),
+            FAQEntry.updated_at.desc()
+        )
+    else:  # updated_desc (default)
+        stmt = stmt.order_by(FAQEntry.updated_at.desc())
+
+    stmt = stmt.offset(skip).limit(limit)
 
     result = await db.execute(stmt)
     entries = result.scalars().all()
