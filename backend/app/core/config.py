@@ -74,10 +74,27 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION: str = "products"
 
-    # 数据库配置
+    # ========== 数据库后端配置 ==========
+    # 数据库类型：sqlite（默认，零配置）| postgres（推荐生产环境）
+    DATABASE_BACKEND: str = "sqlite"
+
+    # SQLite 配置（DATABASE_BACKEND=sqlite 时生效）
     DATABASE_PATH: str = "./data/app.db"
     CHECKPOINT_DB_PATH: str = "./data/checkpoints.db"
-    CRAWLER_DATABASE_PATH: str = "./data/crawler.db"  # 爬虫独立数据库
+    CRAWLER_DATABASE_PATH: str = "./data/crawler.db"
+
+    # PostgreSQL 配置（DATABASE_BACKEND=postgres 时生效）
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "embedai"
+    POSTGRES_PASSWORD: str = ""
+    POSTGRES_DB: str = "embedai"
+    POSTGRES_URL: str | None = None  # 直接指定完整 URL（优先级最高）
+
+    # 连接池配置（PostgreSQL 生效）
+    DATABASE_POOL_SIZE: int = 5
+    DATABASE_POOL_MAX_OVERFLOW: int = 10
+    DATABASE_POOL_TIMEOUT: int = 30
 
     # 文本处理配置
     CHUNK_SIZE: int = 800
@@ -308,13 +325,45 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """SQLite 数据库 URL"""
-        return f"sqlite+aiosqlite:///{self.DATABASE_PATH}"
+        """主数据库 URL（根据 DATABASE_BACKEND 自动选择）"""
+        if self.DATABASE_BACKEND == "sqlite":
+            return f"sqlite+aiosqlite:///{self.DATABASE_PATH}"
+        elif self.DATABASE_BACKEND == "postgres":
+            if self.POSTGRES_URL:
+                return self.POSTGRES_URL
+            return (
+                f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            )
+        msg = f"不支持的数据库后端: {self.DATABASE_BACKEND}"
+        raise ValueError(msg)
 
     @property
     def crawler_database_url(self) -> str:
-        """爬虫 SQLite 数据库 URL"""
-        return f"sqlite+aiosqlite:///{self.CRAWLER_DATABASE_PATH}"
+        """爬虫数据库 URL（根据 DATABASE_BACKEND 自动选择）"""
+        if self.DATABASE_BACKEND == "sqlite":
+            return f"sqlite+aiosqlite:///{self.CRAWLER_DATABASE_PATH}"
+        elif self.DATABASE_BACKEND == "postgres":
+            # PostgreSQL 模式下爬虫使用同一数据库，通过表名区分
+            return self.database_url
+        msg = f"不支持的数据库后端: {self.DATABASE_BACKEND}"
+        raise ValueError(msg)
+
+    @property
+    def checkpoint_connection_string(self) -> str:
+        """LangGraph Checkpoint 连接字符串"""
+        if self.DATABASE_BACKEND == "sqlite":
+            return self.CHECKPOINT_DB_PATH
+        elif self.DATABASE_BACKEND == "postgres":
+            # psycopg3 格式（不带 +asyncpg）
+            if self.POSTGRES_URL:
+                return self.POSTGRES_URL.replace("postgresql+asyncpg://", "postgresql://")
+            return (
+                f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            )
+        msg = f"不支持的数据库后端: {self.DATABASE_BACKEND}"
+        raise ValueError(msg)
 
     @property
     def cors_origins_list(self) -> list[str]:

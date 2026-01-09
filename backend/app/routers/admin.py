@@ -71,9 +71,12 @@ class SettingsOverview(BaseModel):
     # Crawler 配置
     crawler_enabled: bool
 
-    # 数据库路径
-    database_path: str
-    checkpoint_db_path: str
+    # 数据库配置
+    database_backend: str  # sqlite, postgres
+    database_path: str | None  # SQLite 路径（仅 sqlite）
+    database_host: str | None  # PostgreSQL 主机（仅 postgres）
+    database_pool_size: int | None  # 连接池大小（仅 postgres）
+    checkpoint_db_path: str | None  # Checkpoint 路径（仅 sqlite）
 
     # Qdrant 配置
     qdrant_host: str
@@ -132,8 +135,11 @@ async def get_settings_overview():
         agent_tool_retry_enabled=settings.AGENT_TOOL_RETRY_ENABLED,
         agent_summarization_enabled=settings.AGENT_SUMMARIZATION_ENABLED,
         crawler_enabled=settings.CRAWLER_ENABLED,
-        database_path=settings.DATABASE_PATH,
-        checkpoint_db_path=settings.CHECKPOINT_DB_PATH,
+        database_backend=settings.DATABASE_BACKEND,
+        database_path=settings.DATABASE_PATH if settings.DATABASE_BACKEND == "sqlite" else None,
+        database_host=settings.POSTGRES_HOST if settings.DATABASE_BACKEND == "postgres" else None,
+        database_pool_size=settings.DATABASE_POOL_SIZE if settings.DATABASE_BACKEND == "postgres" else None,
+        checkpoint_db_path=settings.CHECKPOINT_DB_PATH if settings.DATABASE_BACKEND == "sqlite" else None,
         qdrant_host=settings.QDRANT_HOST,
         qdrant_port=settings.QDRANT_PORT,
         qdrant_collection=settings.QDRANT_COLLECTION,

@@ -6,7 +6,7 @@
 from typing import Any
 
 from langchain.agents import create_agent
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from app.core.llm import get_chat_model
@@ -58,7 +58,7 @@ def get_response_format_for_type(agent_type: str) -> type | None:
 
 async def build_agent(
     config: AgentConfig,
-    checkpointer: AsyncSqliteSaver,
+    checkpointer: BaseCheckpointSaver,
     use_structured_output: bool = False,
 ) -> CompiledStateGraph:
     """从配置构建 Agent 实例

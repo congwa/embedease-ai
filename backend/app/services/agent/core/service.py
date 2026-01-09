@@ -19,9 +19,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-import aiosqlite
 from langchain_core.messages import AIMessage, HumanMessage
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy import select
 
@@ -58,9 +57,7 @@ class AgentService:
     _instance: "AgentService | None" = None
     _agents: dict[tuple[str, str], CompiledStateGraph]  # (agent_id, mode) -> agent
     _agent_configs: dict[tuple[str, str], CachedConfig]  # (agent_id, mode) -> cached config
-    _checkpointer: AsyncSqliteSaver | None = None
-    _conn: aiosqlite.Connection | None = None
-    _checkpoint_path: str | None = None
+    _checkpointer: BaseCheckpointSaver | None = None
     _default_agent_id: str | None = None
     _init_lock: asyncio.Lock | None = None
 
@@ -73,58 +70,28 @@ class AgentService:
             cls._instance._init_lock = asyncio.Lock()
         return cls._instance
 
-    async def _get_checkpointer(self) -> AsyncSqliteSaver:
-        """获取 checkpointer"""
-        if self._checkpointer is not None and self._conn is not None:
-            try:
-                await self._conn.execute("SELECT 1")
-                return self._checkpointer
-            except Exception:
-                self._checkpointer = None
-                if self._conn:
-                    try:
-                        await self._conn.close()
-                    except Exception:
-                        pass
-                self._conn = None
+    async def _get_checkpointer(self) -> BaseCheckpointSaver:
+        """获取 checkpointer（使用统一的 Checkpointer 工厂）"""
+        if self._checkpointer is not None:
+            return self._checkpointer
 
-        settings.ensure_data_dir()
-        self._checkpoint_path = settings.CHECKPOINT_DB_PATH
+        from app.core.db.checkpointer import get_checkpointer
 
-        self._conn = await aiosqlite.connect(
-            self._checkpoint_path,
-            isolation_level=None,
-        )
-
-        try:
-            if not hasattr(self._conn, "is_alive"):
-                import types
-
-                def is_alive(conn) -> bool:  # noqa: ARG001
-                    return True
-
-                bound_method = types.MethodType(is_alive, self._conn)
-                setattr(self._conn, "is_alive", bound_method)
-        except (AttributeError, TypeError):
-            pass
-
-        self._checkpointer = AsyncSqliteSaver(self._conn)
-        await self._checkpointer.setup()
-
+        self._checkpointer = await get_checkpointer()
         return self._checkpointer
 
     async def close(self) -> None:
         """关闭连接"""
-        if self._conn:
-            try:
-                await self._conn.close()
-            except Exception:
-                pass
-            finally:
-                self._conn = None
-                self._checkpointer = None
-                self._agents = {}
-                self._agent_configs = {}
+        from app.core.db.checkpointer import close_checkpointer
+
+        try:
+            await close_checkpointer()
+        except Exception:
+            pass
+        finally:
+            self._checkpointer = None
+            self._agents = {}
+            self._agent_configs = {}
 
     async def get_default_agent_id(self) -> str:
         """获取默认 Agent ID"""
