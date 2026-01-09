@@ -1,4 +1,4 @@
-# 🤖 EmbedAI Agent - 智能商品推荐助手
+# 🤖 EmbedAI Agent -一款开箱即用的 AI 智能客服系统，帮助用户快速找到心仪商品
 
 <div align="center">
 
