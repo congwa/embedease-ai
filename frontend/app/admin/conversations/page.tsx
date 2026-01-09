@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  getConversations,
+  getAdminConversations,
   type ConversationListItem,
   type PaginatedResponse,
 } from "@/lib/api/admin";
@@ -47,7 +47,7 @@ export default function ConversationsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const result = await getConversations({
+      const result = await getAdminConversations({
         page,
         page_size: 20,
         handoff_state: handoffState === "all" ? undefined : handoffState,

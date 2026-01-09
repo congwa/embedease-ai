@@ -12,22 +12,16 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import type { Conversation } from "@/types/conversation";
+import { useConversationStore } from "@/stores";
 
-interface ChatSidebarProps {
-  conversations: Conversation[];
-  currentConversationId: string | null;
-  onNewChat: () => void;
-  onSelectConversation: (id: string) => void;
-  onDeleteConversation: (id: string) => void;
-}
+export function ChatSidebar() {
+  // 从 Store 获取状态
+  const conversations = useConversationStore((s) => s.conversations);
+  const currentConversationId = useConversationStore((s) => s.currentConversationId);
+  const createNewConversation = useConversationStore((s) => s.createNewConversation);
+  const selectConversation = useConversationStore((s) => s.selectConversation);
+  const removeConversation = useConversationStore((s) => s.removeConversation);
 
-export function ChatSidebar({
-  conversations,
-  currentConversationId,
-  onNewChat,
-  onSelectConversation,
-  onDeleteConversation,
-}: ChatSidebarProps) {
   // 按日期分组会话
   const groupedConversations = groupConversationsByDate(conversations);
 
@@ -52,7 +46,7 @@ export function ChatSidebar({
           <Button
             variant="outline"
             className="mb-4 flex w-full items-center gap-2"
-            onClick={onNewChat}
+            onClick={createNewConversation}
           >
             <Plus className="h-4 w-4" />
             <span>新对话</span>
@@ -67,7 +61,7 @@ export function ChatSidebar({
                 <div key={conversation.id} className="group relative">
                   <SidebarMenuButton
                     isActive={conversation.id === currentConversationId}
-                    onClick={() => onSelectConversation(conversation.id)}
+                    onClick={() => selectConversation(conversation.id)}
                     className="pr-8"
                   >
                     <span className="truncate">{conversation.title}</span>
@@ -79,7 +73,7 @@ export function ChatSidebar({
                     className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDeleteConversation(conversation.id);
+                      removeConversation(conversation.id);
                     }}
                   >
                     <Trash2 className="h-3 w-3 text-zinc-400 hover:text-red-500" />

@@ -108,8 +108,8 @@ export async function getProducts(params: {
   );
 }
 
-// 获取会话列表
-export async function getConversations(params: {
+// 获取会话列表（管理端）
+export async function getAdminConversations(params: {
   page?: number;
   page_size?: number;
   handoff_state?: string;

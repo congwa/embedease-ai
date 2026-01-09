@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { useAgentContext } from "@/contexts/agent-context";
+import { useAgentStore } from "@/stores";
 import type { Agent } from "@/lib/api/agents";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +26,8 @@ interface AgentCardProps {
 
 export function AgentCard({ agent, className }: AgentCardProps) {
   const router = useRouter();
-  const { activeAgent, activateAgent } = useAgentContext();
+  const activeAgent = useAgentStore((s) => s.activeAgent());
+  const activateAgent = useAgentStore((s) => s.activateAgent);
   const [isActivating, setIsActivating] = useState(false);
   const typeInfo = typeConfig[agent.type] || typeConfig.custom;
   const isActive = activeAgent?.id === agent.id;

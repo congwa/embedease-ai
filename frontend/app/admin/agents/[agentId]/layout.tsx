@@ -4,7 +4,7 @@ import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Bot, RefreshCw, Zap, MessageSquareText } from "lucide-react";
 import { useAgentDetail } from "@/lib/hooks/use-agents";
-import { useAgentContext } from "@/contexts/agent-context";
+import { useAgentStore } from "@/stores";
 import { LoadingState, ErrorAlert, StatusBadge } from "@/components/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,8 @@ export default function AgentDetailLayout({
   const [isActivating, setIsActivating] = useState(false);
 
   const { agent, isLoading, error, refresh } = useAgentDetail({ agentId });
-  const { activateAgent, activeAgent } = useAgentContext();
+  const activateAgent = useAgentStore((s) => s.activateAgent);
+  const activeAgent = useAgentStore((s) => s.activeAgent());
 
   // 根据 Agent 类型动态生成 Tab
   const agentTabs = agent

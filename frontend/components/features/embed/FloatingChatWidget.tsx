@@ -5,8 +5,7 @@ import { MessageCircle, X, Trash2, Minus, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmbedChatContent } from "./EmbedChatContent";
-import { useUser } from "@/hooks/use-user";
-import { useChat } from "@/hooks/use-chat";
+import { useUserStore, useChatStore } from "@/stores";
 import { createConversation } from "@/lib/api";
 
 interface FloatingChatWidgetProps {
@@ -44,10 +43,22 @@ export function FloatingChatWidget({ className }: FloatingChatWidgetProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  const { userId, isLoading: isUserLoading } = useUser();
+  // 从 Store 获取状态
+  const userId = useUserStore((s) => s.userId);
+  const isUserLoading = useUserStore((s) => s.isLoading);
+  const initUser = useUserStore((s) => s.initUser);
+  
+  const timeline = useChatStore((s) => s.timelineState.timeline);
+  const isStreaming = useChatStore((s) => s.isStreaming);
+  const error = useChatStore((s) => s.error);
+  const sendMessageToStore = useChatStore((s) => s.sendMessage);
+  const clearMessages = useChatStore((s) => s.clearMessages);
+  const abortStream = useChatStore((s) => s.abortStream);
 
-  const { timeline, isStreaming, error, sendMessage, clearMessages, abortStream } =
-    useChat(userId, conversationId);
+  // 初始化用户
+  useEffect(() => {
+    initUser();
+  }, [initUser]);
 
   // 发送消息（自动创建会话）
   const handleSendMessage = useCallback(
@@ -68,9 +79,9 @@ export function FloatingChatWidget({ className }: FloatingChatWidgetProps) {
         }
       }
 
-      sendMessage(content, convId);
+      sendMessageToStore(content);
     },
-    [userId, conversationId, sendMessage]
+    [userId, conversationId, sendMessageToStore]
   );
 
   // 清空对话（创建新会话）

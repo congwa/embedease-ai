@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { AlertCircle, ArrowUp, Square, X } from "lucide-react";
 import {
   ChatContainerContent,
@@ -16,7 +16,7 @@ import { ScrollButton } from "@/components/prompt-kit/scroll-button";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import type { TimelineItem } from "@/hooks/use-timeline-reducer";
+import { useConversationStore, useChatStore, type TimelineItem } from "@/stores";
 import {
   LLMCallCluster,
   TimelineUserMessageItem,
@@ -36,23 +36,20 @@ import {
   ThemedSuggestionButton,
 } from "./themes";
 
-interface ChatContentProps {  
-  title: string;
-  timeline: TimelineItem[];
-  isStreaming: boolean;
-  error: string | null;
-  onSendMessage: (content: string) => void;
-  onAbortStream: () => void;
-}
-
-export function ChatContent({
-  title,
-  timeline,
-  isStreaming,
-  error,
-  onSendMessage,
-  onAbortStream,
-}: ChatContentProps) {
+export function ChatContent() {
+  // 从 Store 获取状态
+  const timeline = useChatStore((s) => s.timelineState.timeline);
+  const isStreaming = useChatStore((s) => s.isStreaming);
+  const error = useChatStore((s) => s.error);
+  const sendMessage = useChatStore((s) => s.sendMessage);
+  const abortStream = useChatStore((s) => s.abortStream);
+  
+  const currentConversation = useConversationStore((s) => 
+    s.conversations.find((c) => c.id === s.currentConversationId)
+  );
+  const createNewConversation = useConversationStore((s) => s.createNewConversation);
+  
+  const title = currentConversation?.title || "";
   const [prompt, setPrompt] = useState("");
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -64,10 +61,10 @@ export function ChatContent({
 
   const handleButtonClick = () => {
     if (isStreaming) {
-      onAbortStream();
+      abortStream();
     } else {
       if (!prompt.trim()) return;
-      onSendMessage(prompt.trim());
+      sendMessage(prompt.trim());
       setPrompt("");
     }
   };
@@ -144,7 +141,7 @@ export function ChatContent({
           >
             <TimelineGreetingItem
               item={item}
-              onCtaClick={(payload) => onSendMessage(payload)}
+              onCtaClick={(payload) => sendMessage(payload)}
             />
           </Message>
         );
@@ -206,7 +203,7 @@ export function ChatContent({
                         key={suggestion}
                         className="px-3 py-1.5 text-xs"
                         onClick={() => {
-                          onSendMessage(suggestion);
+                          sendMessage(suggestion);
                         }}
                         disabled={isStreaming}
                       >

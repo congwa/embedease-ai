@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AgentSwitcher } from "./agent-switcher";
-import { useAgentContext } from "@/contexts/agent-context";
+import { useAgentStore } from "@/stores";
 import { useSupportStats } from "@/hooks/use-support-stats";
 
 // 基础菜单（始终显示）
@@ -174,7 +174,8 @@ function NavItem({
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const { activeAgent, isLoading } = useAgentContext();
+  const activeAgent = useAgentStore((s) => s.activeAgent());
+  const isLoading = useAgentStore((s) => s.isLoading);
   const { stats: supportStats, hasNotification } = useSupportStats();
 
   // 根据当前激活 Agent 生成控制台菜单

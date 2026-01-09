@@ -46,7 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useAgentContext, Agent } from "@/contexts/agent-context";
+import { useAgentStore, type Agent } from "@/stores";
 
 const typeIcons: Record<string, React.ElementType> = {
   product: Package,
@@ -69,7 +69,10 @@ interface AgentSwitcherProps {
 
 export function AgentSwitcher({ className, collapsed }: AgentSwitcherProps) {
   const router = useRouter();
-  const { activeAgent, agents, activateAgent, isLoading } = useAgentContext();
+  const activeAgent = useAgentStore((s) => s.activeAgent());
+  const agents = useAgentStore((s) => s.agents);
+  const activateAgent = useAgentStore((s) => s.activateAgent);
+  const isLoading = useAgentStore((s) => s.isLoading);
   const [open, setOpen] = useState(false);
   const [confirmAgent, setConfirmAgent] = useState<Agent | null>(null);
   const [isActivating, setIsActivating] = useState(false);

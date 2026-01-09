@@ -56,6 +56,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "codehike": "^1.0.4",
+    "immer": "^11.1.3",
     "lucide-react": "^0.560.0",
     "marked": "^17.0.1",
     "motion": "^12.23.12",
@@ -71,7 +72,8 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "use-stick-to-bottom": "^1.1.1",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
