@@ -63,3 +63,11 @@ class ConversationWithMessages(ConversationResponse):
     """带消息的会话响应"""
 
     messages: list[MessageResponse] = []
+
+
+class PaginatedMessagesResponse(BaseModel):
+    """分页消息响应"""
+
+    messages: list[MessageResponse] = Field(default_factory=list, description="消息列表")
+    next_cursor: str | None = Field(None, description="下一页游标")
+    has_more: bool = Field(False, description="是否还有更多消息")

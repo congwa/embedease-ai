@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { ChatEvent, ImageAttachment } from "@/types/chat";
-import { getConversation } from "@/lib/api/conversations";
+import { getConversationMessages } from "@/lib/api/conversations";
 import { streamChat, type StreamChatController } from "@/lib/api/chat";
 import {
   type TimelineState,
@@ -24,15 +24,20 @@ import { useConversationStore } from "./conversation-store";
 interface ChatState {
   timelineState: TimelineState;
   isLoading: boolean;
+  isLoadingMore: boolean;
   error: string | null;
   isHumanMode: boolean;
   streamController: StreamChatController | null;
   isStreaming: boolean;
+  // 分页状态
+  nextCursor: string | null;
+  hasMore: boolean;
 
   timeline: () => TimelineItem[];
   currentTurnId: () => string | null;
 
   loadMessages: (conversationId: string) => Promise<void>;
+  loadMoreMessages: (conversationId: string) => Promise<void>;
   sendMessage: (content: string, images?: ImageAttachment[]) => Promise<void>;
   clearMessages: () => void;
   abortStream: () => void;
@@ -46,17 +51,20 @@ export const useChatStore = create<ChatState>()(
   subscribeWithSelector((set, get) => ({
     timelineState: createInitialState(),
     isLoading: false,
+    isLoadingMore: false,
     error: null,
     isHumanMode: false,
     streamController: null,
     isStreaming: false,
+    nextCursor: null,
+    hasMore: false,
 
     timeline: () => get().timelineState.timeline,
     currentTurnId: () => get().timelineState.activeTurn.turnId,
 
     loadMessages: async (conversationId: string) => {
       if (!conversationId) {
-        set({ timelineState: createInitialState() });
+        set({ timelineState: createInitialState(), nextCursor: null, hasMore: false });
         return;
       }
 
@@ -67,8 +75,8 @@ export const useChatStore = create<ChatState>()(
 
       set({ isLoading: true, error: null });
       try {
-        const conversation = await getConversation(conversationId);
-        const messages = conversation.messages.map((msg) => ({
+        const response = await getConversationMessages(conversationId, { limit: 50 });
+        const messages = response.messages.map((msg) => ({
           id: msg.id,
           role: msg.role as "user" | "assistant" | "system",
           content: msg.content,
@@ -78,12 +86,53 @@ export const useChatStore = create<ChatState>()(
 
         set({
           timelineState: newState,
-          isHumanMode: conversation.handoff_state === "human",
+          nextCursor: response.next_cursor,
+          hasMore: response.has_more,
           isLoading: false,
         });
       } catch (err) {
         console.error("[ChatStore] 加载消息失败:", err);
         set({ error: "加载消息失败", isLoading: false });
+      }
+    },
+
+    loadMoreMessages: async (conversationId: string) => {
+      const { nextCursor, hasMore, isLoadingMore, isStreaming } = get();
+      
+      if (!conversationId || !hasMore || !nextCursor || isLoadingMore || isStreaming) {
+        return;
+      }
+
+      set({ isLoadingMore: true });
+      try {
+        const response = await getConversationMessages(conversationId, {
+          cursor: nextCursor,
+          limit: 50,
+        });
+        
+        const olderMessages = response.messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role as "user" | "assistant" | "system",
+          content: msg.content,
+          products: msg.products ? JSON.parse(msg.products) : undefined,
+        }));
+        
+        // 将旧消息添加到现有 timeline 的前面
+        const currentTimeline = get().timelineState.timeline;
+        const olderTimeline = historyToTimeline(olderMessages).timeline;
+        
+        set((state) => ({
+          timelineState: {
+            ...state.timelineState,
+            timeline: [...olderTimeline, ...currentTimeline],
+          },
+          nextCursor: response.next_cursor,
+          hasMore: response.has_more,
+          isLoadingMore: false,
+        }));
+      } catch (err) {
+        console.error("[ChatStore] 加载更多消息失败:", err);
+        set({ isLoadingMore: false });
       }
     },
 
@@ -203,10 +252,13 @@ export const useChatStore = create<ChatState>()(
       set({
         timelineState: createInitialState(),
         isLoading: false,
+        isLoadingMore: false,
         error: null,
         isHumanMode: false,
         streamController: null,
         isStreaming: false,
+        nextCursor: null,
+        hasMore: false,
       });
     },
   }))

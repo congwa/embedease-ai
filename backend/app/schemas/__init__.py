@@ -1,6 +1,6 @@
 """Pydantic 模型"""
 
-from app.schemas.chat import ChatEvent, ChatRequest
+from app.schemas.chat import ChatRequest
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationResponse,
@@ -30,7 +30,6 @@ from app.schemas.product import (
 
 __all__ = [
     "ChatRequest",
-    "ChatEvent",
     "ConversationCreate",
     "ConversationResponse",
     "ConversationWithMessages",

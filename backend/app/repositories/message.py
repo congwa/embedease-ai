@@ -37,6 +37,53 @@ class MessageRepository(BaseRepository[Message]):
         result = await self.session.execute(query)
         return list(result.scalars().unique().all())
 
+    async def get_paginated(
+        self,
+        conversation_id: str,
+        limit: int = 50,
+        cursor: str | None = None,
+        include_tool_calls: bool = False,
+    ) -> tuple[list[Message], str | None, bool]:
+        """分页获取会话消息（基于游标，按时间倒序）
+        
+        Args:
+            conversation_id: 会话 ID
+            limit: 每页数量
+            cursor: 游标（上一页最后一条消息的 ID）
+            include_tool_calls: 是否预加载工具调用记录
+            
+        Returns:
+            (消息列表, 下一页游标, 是否还有更多)
+        """
+        query = select(Message).where(Message.conversation_id == conversation_id)
+
+        # 如果有游标，获取游标消息的创建时间作为分页基准
+        if cursor:
+            cursor_msg = await self.get_by_id(cursor)
+            if cursor_msg:
+                query = query.where(Message.created_at < cursor_msg.created_at)
+
+        if include_tool_calls:
+            query = query.options(selectinload(Message.tool_calls))
+
+        # 按时间倒序（最新消息在前），多取一条判断是否还有更多
+        query = query.order_by(Message.created_at.desc()).limit(limit + 1)
+        result = await self.session.execute(query)
+        messages = list(result.scalars().unique().all())
+
+        # 判断是否还有更多
+        has_more = len(messages) > limit
+        if has_more:
+            messages = messages[:limit]
+
+        # 返回时反转为正序（旧消息在前）
+        messages.reverse()
+
+        # 下一页游标为当前页最早一条消息的 ID
+        next_cursor = messages[0].id if messages and has_more else None
+
+        return messages, next_cursor, has_more
+
     async def create_message(
         self,
         message_id: str,

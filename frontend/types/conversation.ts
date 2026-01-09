@@ -24,3 +24,9 @@ export interface ConversationWithMessages extends Conversation {
 export interface CreateConversationRequest {
   user_id: string;
 }
+
+export interface PaginatedMessagesResponse {
+  messages: Message[];
+  next_cursor: string | null;
+  has_more: boolean;
+}

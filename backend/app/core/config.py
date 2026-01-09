@@ -63,7 +63,9 @@ class Settings(BaseSettings):
     # 合并规则：models.dev 作为基础，MODEL_PROFILES_JSON 作为强覆盖（env 优先）
     MODELS_DEV_ENABLED: bool = True  # 是否启用 models.dev 自动拉取
     MODELS_DEV_API_URL: str = "https://models.dev/api.json"  # API URL
-    MODELS_DEV_PROVIDER_ID: str | None = None  # provider ID（对应 api.json 中的顶层 key，默认使用 LLM_PROVIDER）
+    MODELS_DEV_PROVIDER_ID: str | None = (
+        None  # provider ID（对应 api.json 中的顶层 key，默认使用 LLM_PROVIDER）
+    )
     MODELS_DEV_TIMEOUT_SECONDS: float = 10.0  # 请求超时时间
     MODELS_DEV_CACHE_TTL_SECONDS: float = 86400.0  # 缓存 TTL（秒），0 表示每次都拉取
 
@@ -94,8 +96,12 @@ class Settings(BaseSettings):
     LOG_FILE_RETENTION: str = "7 days"  # 日志文件保留时间
 
     # ========== 响应清洗配置 ==========
-    RESPONSE_SANITIZATION_ENABLED: bool = True  # 是否启用响应清洗（检测并替换异常 function call 格式）
-    RESPONSE_SANITIZATION_CUSTOM_MESSAGE: str | None = None  # 自定义降级消息（可选，留空使用默认消息）
+    RESPONSE_SANITIZATION_ENABLED: bool = (
+        True  # 是否启用响应清洗（检测并替换异常 function call 格式）
+    )
+    RESPONSE_SANITIZATION_CUSTOM_MESSAGE: str | None = (
+        None  # 自定义降级消息（可选，留空使用默认消息）
+    )
 
     # ========== 聊天模式配置 ==========
     # natural: 商品推荐助手模式（默认），专注商品推荐，非商品问题引导回商品
@@ -108,6 +114,10 @@ class Settings(BaseSettings):
     CATALOG_PROFILE_ENABLED: bool = True  # 是否启用画像注入
     CATALOG_PROFILE_TTL_SECONDS: float = 600.0  # Agent 侧缓存 TTL（秒）
     CATALOG_PROFILE_TOP_CATEGORIES: int = 3  # 画像中展示的 Top 类目数量（建议 3，保证短）
+
+    # ========== Agent 缓存配置 ==========
+    # 缓存 TTL（秒），超过后触发版本校验，0 表示禁用 TTL（仅依赖手动失效）
+    AGENT_CACHE_TTL_SECONDS: float = 60.0
 
     # ========== Agent 工具执行配置 ==========
     # 工具串行执行：当模型一次返回多个 tool_calls 时，是否强制按顺序执行（而非并行）
@@ -282,11 +292,11 @@ class Settings(BaseSettings):
     def crawler_sites(self) -> list[dict[str, Any]]:
         """
         解析爬虫站点配置
-        
+
         支持两种加载方式：
         1. 从 .env 的 CRAWLER_SITES_JSON 环境变量加载（单行 JSON）
         2. 从 ENV_JSON_DIR/CRAWLER_SITES_JSON.json 文件加载（多行格式化 JSON）
-        
+
         优先级：环境变量 > 文件
         """
         parsed = self._load_json_from_env_or_file("CRAWLER_SITES_JSON", self.CRAWLER_SITES_JSON)
@@ -310,11 +320,11 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """
         CORS 允许的源列表
-        
+
         支持三种加载方式：
         1. 从 .env 的 CORS_ORIGINS 环境变量加载（逗号分隔字符串）
         2. 从 ENV_JSON_DIR/CORS_ORIGINS.json 文件加载（JSON 数组）
-        
+
         优先级：环境变量 > 文件
         """
         # 尝试从 JSON 加载
@@ -344,28 +354,28 @@ class Settings(BaseSettings):
     def _load_json_from_env_or_file(self, var_name: str, env_value: str) -> Any:
         """
         通用 JSON 配置加载函数，支持从环境变量或 .env.json 目录加载
-        
+
         加载优先级：
         1. 优先使用 .env 中的环境变量（env_value）
         2. 若环境变量为空，尝试从 ENV_JSON_DIR/<var_name>.json 加载
         3. 若都不存在，返回 None
-        
+
         Args:
             var_name: 环境变量名（如 "MODEL_PROFILES_JSON"）
             env_value: .env 中的环境变量值
-            
+
         Returns:
             解析后的 JSON 对象（dict/list），失败返回 None
-            
+
         示例：
             # .env 中设置
             ENV_JSON_DIR=.env.json
-            
+
             # .env.json/MODEL_PROFILES_JSON.json 内容
             {
               "model1": {"capability": "value"}
             }
-            
+
             # 调用
             result = self._load_json_from_env_or_file("MODEL_PROFILES_JSON", self.MODEL_PROFILES_JSON)
         """
@@ -392,6 +402,7 @@ class Settings(BaseSettings):
 
         try:
             content = json_file.read_text(encoding="utf-8")
+
             # 支持简单的注释剥离（仅支持 // 单行注释）
             def _strip_line_comments(text: str) -> str:
                 """移除行尾 // 注释，保留字符串内的内容"""
@@ -416,12 +427,7 @@ class Settings(BaseSettings):
                         cleaned_chars.append(ch)
                         i += 1
                         continue
-                    if (
-                        ch == "/"
-                        and not in_string
-                        and i + 1 < len(text)
-                        and text[i + 1] == "/"
-                    ):
+                    if ch == "/" and not in_string and i + 1 < len(text) and text[i + 1] == "/":
                         break
                     cleaned_chars.append(ch)
                     i += 1
@@ -487,11 +493,11 @@ class Settings(BaseSettings):
     def model_profiles(self) -> dict[str, dict[str, Any]]:
         """
         解析模型 profile JSON 配置
-        
+
         支持两种加载方式：
         1. 从 .env 的 MODEL_PROFILES_JSON 环境变量加载（单行 JSON）
         2. 从 ENV_JSON_DIR/MODEL_PROFILES_JSON.json 文件加载（多行格式化 JSON）
-        
+
         优先级：环境变量 > 文件
         """
         parsed = self._load_json_from_env_or_file("MODEL_PROFILES_JSON", self.MODEL_PROFILES_JSON)

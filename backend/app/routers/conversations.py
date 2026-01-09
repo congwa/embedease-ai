@@ -9,6 +9,7 @@ from app.schemas.conversation import (
     ConversationResponse,
     ConversationWithMessages,
     MessageResponse,
+    PaginatedMessagesResponse,
     ToolCallResponse,
 )
 from app.services.conversation import ConversationService
@@ -113,6 +114,83 @@ async def get_conversation(
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
         messages=messages,
+    )
+
+
+@router.get("/{conversation_id}/messages", response_model=PaginatedMessagesResponse)
+async def get_conversation_messages(
+    conversation_id: str,
+    cursor: str | None = None,
+    limit: int = 50,
+    include_tool_calls: bool = False,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """分页获取会话消息
+    
+    基于游标的分页，支持向上加载历史消息。
+    
+    Args:
+        conversation_id: 会话 ID
+        cursor: 游标（上一页最早一条消息的 ID），首次请求不传
+        limit: 每页数量，默认 50，最大 100
+        include_tool_calls: 是否包含工具调用详情
+    """
+    if limit > 100:
+        limit = 100
+
+    service = ConversationService(db)
+    
+    # 检查会话是否存在
+    conversation = await service.conversation_repo.get_by_id(conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    # 分页获取消息
+    messages, next_cursor, has_more = await service.message_repo.get_paginated(
+        conversation_id=conversation_id,
+        limit=limit,
+        cursor=cursor,
+        include_tool_calls=include_tool_calls,
+    )
+
+    # 转换消息格式
+    message_responses = []
+    for msg in messages:
+        tool_calls_resp = []
+        if include_tool_calls and hasattr(msg, "tool_calls") and msg.tool_calls:
+            tool_calls_resp = [
+                ToolCallResponse(
+                    id=tc.id,
+                    tool_call_id=tc.tool_call_id,
+                    tool_name=tc.tool_name,
+                    tool_input=tc.tool_input,
+                    tool_output=tc.tool_output,
+                    status=tc.status,
+                    error_message=tc.error_message,
+                    duration_ms=tc.duration_ms,
+                    created_at=tc.created_at,
+                )
+                for tc in msg.tool_calls
+            ]
+
+        message_responses.append(
+            MessageResponse(
+                id=msg.id,
+                role=msg.role,
+                content=msg.content,
+                products=msg.products,
+                message_type=getattr(msg, "message_type", "text"),
+                extra_metadata=getattr(msg, "extra_metadata", None),
+                token_count=getattr(msg, "token_count", None),
+                tool_calls=tool_calls_resp,
+                created_at=msg.created_at,
+            )
+        )
+
+    return PaginatedMessagesResponse(
+        messages=message_responses,
+        next_cursor=next_cursor,
+        has_more=has_more,
     )
 
 

@@ -15,17 +15,21 @@
 """
 
 import asyncio
+import time
+from dataclasses import dataclass
 from typing import Any
 
 import aiosqlite
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
+from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.database import get_db_context
 from app.core.llm import get_chat_model
 from app.core.logging import get_logger
+from app.models.agent import Agent
 from app.schemas.agent import AgentConfig
 from app.schemas.events import StreamEventType
 from app.services.agent.core.config import AgentConfigLoader, get_or_create_default_agent
@@ -36,6 +40,15 @@ from app.services.streaming.context import ChatContext
 logger = get_logger("agent.service")
 
 
+@dataclass
+class CachedConfig:
+    """带元数据的缓存配置项"""
+
+    config: AgentConfig
+    cached_at: float  # 缓存时间戳
+    version: str  # 配置版本（用于校验）
+
+
 class AgentService:
     """Agent 服务 - 管理多 Agent 的生命周期
 
@@ -44,7 +57,7 @@ class AgentService:
 
     _instance: "AgentService | None" = None
     _agents: dict[tuple[str, str], CompiledStateGraph]  # (agent_id, mode) -> agent
-    _agent_configs: dict[tuple[str, str], AgentConfig]  # (agent_id, mode) -> config
+    _agent_configs: dict[tuple[str, str], CachedConfig]  # (agent_id, mode) -> cached config
     _checkpointer: AsyncSqliteSaver | None = None
     _conn: aiosqlite.Connection | None = None
     _checkpoint_path: str | None = None
@@ -147,12 +160,38 @@ class AgentService:
             agent_id = await self.get_default_agent_id()
 
         cache_key = (agent_id, mode)
+        now = time.time()
+        ttl = settings.AGENT_CACHE_TTL_SECONDS
 
         # 检查缓存
         if cache_key in self._agent_configs:
-            cached_config = self._agent_configs[cache_key]
-            # TODO: 检查版本是否过期
-            return cached_config
+            cached = self._agent_configs[cache_key]
+
+            # TTL 为 0 或未过期，直接返回
+            if ttl <= 0 or (now - cached.cached_at < ttl):
+                return cached.config
+
+            # TTL 过期，校验版本
+            current_version = await self._get_config_version(agent_id)
+            if current_version == cached.version:
+                # 版本未变，刷新 TTL
+                self._agent_configs[cache_key] = CachedConfig(
+                    config=cached.config,
+                    cached_at=now,
+                    version=cached.version,
+                )
+                return cached.config
+
+            # 版本已变，清除缓存
+            logger.info(
+                "配置版本已变更，清除缓存",
+                agent_id=agent_id,
+                mode=mode,
+                old_version=cached.version,
+                new_version=current_version,
+            )
+            self._agent_configs.pop(cache_key, None)
+            self._agents.pop(cache_key, None)
 
         # 从数据库加载
         async with get_db_context() as session:
@@ -162,9 +201,30 @@ class AgentService:
         if config is None:
             raise ValueError(f"Agent 不存在或已禁用: {agent_id}")
 
-        # 缓存配置
-        self._agent_configs[cache_key] = config
+        # 缓存配置（带版本和时间戳）
+        self._agent_configs[cache_key] = CachedConfig(
+            config=config,
+            cached_at=now,
+            version=config.config_version,
+        )
         return config
+
+    async def _get_config_version(self, agent_id: str) -> str:
+        """轻量级版本查询（仅查 updated_at，避免全量加载）
+
+        Args:
+            agent_id: Agent ID
+
+        Returns:
+            版本字符串（基于 updated_at 时间戳）
+        """
+        async with get_db_context() as session:
+            stmt = select(Agent.updated_at).where(Agent.id == agent_id)
+            result = await session.execute(stmt)
+            row = result.first()
+            if not row or row[0] is None:
+                return ""
+            return str(row[0].timestamp())
 
     async def get_agent(
         self,
@@ -257,7 +317,7 @@ class AgentService:
             agent_id: 可选的 Agent ID
         """
         mode = getattr(context, "mode", "natural")
-        
+
         emitter = getattr(context, "emitter", None)
         if emitter is None or not hasattr(emitter, "aemit"):
             raise RuntimeError("chat_emit 需要 context.emitter.aemit()")
@@ -285,7 +345,7 @@ class AgentService:
                         "message": error_msg,
                         "detail": str(e),
                         "code": "agent_init_failed",
-                    }
+                    },
                 )
                 await emitter.aemit("__end__", None)
             except Exception:

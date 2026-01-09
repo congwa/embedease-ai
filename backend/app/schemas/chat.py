@@ -1,6 +1,6 @@
 """聊天相关 Schema"""
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -57,14 +57,3 @@ class ChatRequest(BaseModel):
         return bool(self.images and len(self.images) > 0)
 
 
-class ChatEvent(BaseModel):
-    """聊天事件（SSE）"""
-
-    # legacy:
-    # 该 Schema 是旧版协议（text/products/done/error）。新版统一协议请使用：
-    # - `app.schemas.stream.StreamEvent`（对外 SSE）
-    # - `app.schemas.events.StreamEventType`（事件类型枚举）
-    type: Literal["text", "products", "done", "error"] = Field(..., description="事件类型")
-    content: str | None = Field(None, description="文本内容")
-    data: Any | None = Field(None, description="数据（商品列表等）")
-    message_id: str | None = Field(None, description="消息 ID")

@@ -4,6 +4,7 @@ import type {
   Conversation,
   ConversationWithMessages,
   CreateConversationRequest,
+  PaginatedMessagesResponse,
 } from "@/types/conversation";
 import { apiRequest } from "./client";
 
@@ -39,4 +40,18 @@ export async function deleteConversation(
       method: "DELETE",
     }
   );
+}
+
+export async function getConversationMessages(
+  conversationId: string,
+  options?: { cursor?: string; limit?: number }
+): Promise<PaginatedMessagesResponse> {
+  const params = new URLSearchParams();
+  if (options?.cursor) params.set("cursor", options.cursor);
+  if (options?.limit) params.set("limit", String(options.limit));
+  
+  const query = params.toString();
+  const url = `/api/v1/conversations/${conversationId}/messages${query ? `?${query}` : ""}`;
+  
+  return apiRequest<PaginatedMessagesResponse>(url);
 }
