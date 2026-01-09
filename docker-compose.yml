@@ -12,5 +12,25 @@ services:
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
 
+  # MinIO 对象存储（用于图片上传）
+  minio:
+    image: minio/minio:latest
+    container_name: embedai-minio
+    ports:
+      - "9000:9000"      # API 端口
+      - "9001:9001"      # Console 端口
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
 volumes:
   qdrant_data:
+  minio_data:

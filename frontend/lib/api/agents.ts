@@ -154,6 +154,12 @@ export interface SettingsOverview {
   qdrant_host: string;
   qdrant_port: number;
   qdrant_collection: string;
+  // MinIO 存储配置
+  minio_enabled: boolean;
+  minio_endpoint: string | null;
+  minio_bucket: string | null;
+  image_max_size_mb: number;
+  image_max_count: number;
 }
 
 export interface MiddlewareDefaults {

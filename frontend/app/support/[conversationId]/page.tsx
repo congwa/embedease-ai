@@ -12,6 +12,8 @@ import {
   Headphones,
   Circle,
   Plus,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,8 @@ import {
 import { FAQFormSheet } from "@/components/admin/faq/faq-form-sheet";
 import { createFAQEntry, getAgent, type Agent, type FAQEntry } from "@/lib/api/agents";
 import type { SupportMessage, ConversationState } from "@/types/websocket";
+import type { ImageAttachment } from "@/types/chat";
+import { uploadImage, type ImageUploadResponse } from "@/lib/api/upload";
 
 export default function SupportChatPage() {
   const params = useParams();
@@ -50,6 +54,11 @@ export default function SupportChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 图片上传相关状态
+  const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   // FAQ 相关状态
   const [faqAgent, setFaqAgent] = useState<Agent | null>(null);
@@ -108,12 +117,14 @@ export default function SupportChatPage() {
           setLocalHandoffState(data.handoff_state as "ai" | "pending" | "human");
         }
         
-        // 转换历史消息格式
+        // 转换历史消息格式（包含图片信息）
         const historyMessages: SupportMessage[] = data.messages.map((m) => ({
           id: m.id,
           role: m.role as SupportMessage["role"],
           content: m.content,
           created_at: m.created_at,
+          operator: m.extra_metadata?.operator,
+          images: m.extra_metadata?.images,
         }));
         setMessages(historyMessages);
 
@@ -162,16 +173,69 @@ export default function SupportChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 发送消息
+  // 处理图片选择
+  const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      for (const file of Array.from(files)) {
+        // 验证文件类型
+        if (!file.type.startsWith("image/")) {
+          setError(`文件 ${file.name} 不是图片`);
+          continue;
+        }
+        // 验证文件大小 (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          setError(`图片 ${file.name} 超过 10MB 限制`);
+          continue;
+        }
+
+        const result = await uploadImage(file, agentId);
+        const imageAttachment: ImageAttachment = {
+          id: result.id,
+          url: result.url,
+          thumbnail_url: result.thumbnail_url,
+          filename: result.filename,
+          size: result.size,
+          width: result.width,
+          height: result.height,
+          mime_type: result.mime_type,
+        };
+        setPendingImages((prev) => [...prev, imageAttachment]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "图片上传失败");
+    } finally {
+      setIsUploading(false);
+      // 清空 input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [agentId]);
+
+  // 移除待发送图片
+  const removePendingImage = useCallback((imageId: string) => {
+    setPendingImages((prev) => prev.filter((img) => img.id !== imageId));
+  }, []);
+
+  // 发送消息（支持图片）
   const handleSend = useCallback(() => {
-    if (!inputValue.trim()) return;
+    const hasContent = inputValue.trim().length > 0;
+    const hasImages = pendingImages.length > 0;
+
+    if (!hasContent && !hasImages) return;
     
     if (effectiveHandoffState !== "human") {
       setError("请先点击「接入」开始客服介入");
       return;
     }
     
-    sendMessage(inputValue.trim());
+    sendMessage(inputValue.trim(), hasImages ? pendingImages : undefined);
     
     // 本地立即显示（乐观更新）
     const localMessage: SupportMessage = {
@@ -180,10 +244,17 @@ export default function SupportChatPage() {
       content: inputValue.trim(),
       created_at: new Date().toISOString(),
       operator: agentId,
+      images: hasImages ? pendingImages.map((img) => ({
+        id: img.id,
+        url: img.url,
+        thumbnail_url: img.thumbnail_url || undefined,
+        filename: img.filename || undefined,
+      })) : undefined,
     };
     setMessages((prev) => [...prev, localMessage]);
     setInputValue("");
-  }, [inputValue, effectiveHandoffState, sendMessage, agentId]);
+    setPendingImages([]);
+  }, [inputValue, pendingImages, effectiveHandoffState, sendMessage, agentId]);
 
   // 开始介入
   const handleStartHandoff = useCallback(async () => {
@@ -275,7 +346,29 @@ export default function SupportChatPage() {
             isAgent && "bg-green-500 text-white"
           )}
         >
-          <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+          {/* 图片展示 */}
+          {message.images && message.images.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {message.images.map((img) => (
+                <a
+                  key={img.id}
+                  href={img.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <img
+                    src={img.thumbnail_url || img.url}
+                    alt={img.filename || "图片"}
+                    className="max-w-[200px] max-h-[150px] rounded-lg object-cover"
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+          {message.content && (
+            <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+          )}
           <div
             className={cn(
               "flex items-center gap-2 text-xs mt-1",
@@ -450,7 +543,46 @@ export default function SupportChatPage() {
       {/* 输入区域 */}
       <div className="shrink-0 border-t border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto max-w-3xl">
+          {/* 待发送图片预览 */}
+          {pendingImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {pendingImages.map((img) => (
+                <div key={img.id} className="relative group">
+                  <img
+                    src={img.thumbnail_url || img.url}
+                    alt={img.filename || "待发送图片"}
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                  <button
+                    onClick={() => removePendingImage(img.id)}
+                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
+            {/* 隐藏的文件输入 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            {/* 图片上传按钮 */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={effectiveHandoffState !== "human" || isUploading}
+              className="h-11 w-11 rounded-xl"
+            >
+              <ImagePlus className={cn("h-5 w-5", isUploading && "animate-pulse")} />
+            </Button>
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -472,7 +604,7 @@ export default function SupportChatPage() {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={!inputValue.trim() || effectiveHandoffState !== "human"}
+              disabled={(!inputValue.trim() && pendingImages.length === 0) || effectiveHandoffState !== "human"}
               className="h-11 w-11 rounded-xl bg-green-500 hover:bg-green-600"
             >
               <ArrowUp className="h-5 w-5" />

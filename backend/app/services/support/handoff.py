@@ -241,6 +241,7 @@ class HandoffService:
         content: str,
         *,
         operator: str,
+        images: list[dict[str, Any]] | None = None,
     ) -> Message | None:
         """添加人工客服消息
         
@@ -248,6 +249,7 @@ class HandoffService:
             conversation_id: 会话 ID
             content: 消息内容
             operator: 客服标识
+            images: 图片附件列表
             
         Returns:
             创建的消息，如果会话不在人工模式则返回 None
@@ -265,12 +267,18 @@ class HandoffService:
             )
             return None
 
+        # 准备图片元数据
+        message_type = "text_with_images" if images else "text"
+        extra_metadata = {"images": images, "operator": operator} if images else {"operator": operator}
+
         import uuid
         message = Message(
             id=str(uuid.uuid4()),
             conversation_id=conversation_id,
             role="human_agent",
             content=content,
+            message_type=message_type,
+            extra_metadata=extra_metadata,
             created_at=datetime.now(),
         )
         self.session.add(message)

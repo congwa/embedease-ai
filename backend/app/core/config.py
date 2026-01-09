@@ -144,6 +144,31 @@ class Settings(BaseSettings):
     # 用于生成摘要的最大 token 数（避免摘要请求过大）
     AGENT_SUMMARIZATION_TRIM_TOKENS: int = 4000
 
+    # ========== OCR 配置 ==========
+    # 总开关
+    OCR_ENABLED: bool = True
+
+    # 默认 OCR 处理器类型
+    # 可选值: rapid_ocr, mineru_ocr, mineru_official, paddlex_ocr
+    OCR_DEFAULT_PROVIDER: str = "rapid_ocr"
+
+    # RapidOCR 本地模型配置
+    OCR_MODEL_DIR: str | None = None  # 模型目录，需包含 SWHL/RapidOCR/PP-OCRv4/
+
+    # MinerU HTTP API 配置（自建服务）
+    MINERU_API_URL: str | None = None  # 自建 MinerU 服务地址
+    MINERU_API_KEY: str | None = None  # 自建服务 API Key（如需要）
+
+    # MinerU 官方云服务配置
+    MINERU_OFFICIAL_URL: str | None = None  # 官方 API 地址
+    MINERU_OFFICIAL_API_KEY: str | None = None  # 官方 API Key
+
+    # PaddleX PP-StructureV3 配置
+    PADDLEX_URI: str | None = None  # PP-StructureV3 服务地址
+
+    # OCR 处理超时（秒）
+    OCR_TIMEOUT: int = 300
+
     # ========== 记忆系统配置 ==========
     # 总开关
     MEMORY_ENABLED: bool = True
@@ -221,6 +246,22 @@ class Settings(BaseSettings):
     # - "skip": 若 Agent 已存在则跳过（保留人工修改）
     # - "update": 若 Agent 已存在则更新（配置优先）
     DEFAULT_AGENTS_OVERRIDE_POLICY: str = "skip"
+
+    # ========== MinIO 对象存储配置 ==========
+    # 用于图片上传等文件存储功能
+    MINIO_ENABLED: bool = False  # 是否启用 MinIO
+    MINIO_ENDPOINT: str = "localhost:9000"  # MinIO 服务地址
+    MINIO_ACCESS_KEY: str = "minioadmin"  # Access Key
+    MINIO_SECRET_KEY: str = "minioadmin123"  # Secret Key
+    MINIO_BUCKET_NAME: str = "chat-images"  # 默认 bucket 名称
+    MINIO_USE_SSL: bool = False  # 是否使用 SSL
+    MINIO_PUBLIC_URL: str = "http://localhost:9000"  # 公开访问 URL
+
+    # 图片上传限制
+    IMAGE_MAX_SIZE_MB: int = 10  # 最大图片大小（MB）
+    IMAGE_MAX_COUNT_PER_MESSAGE: int = 5  # 每条消息最多图片数
+    IMAGE_ALLOWED_TYPES: str = "image/jpeg,image/png,image/webp,image/gif"  # 允许的图片类型
+    IMAGE_THUMBNAIL_SIZE: int = 300  # 缩略图最大尺寸（像素）
 
     # ========== 客服支持配置 ==========
     # 企业微信通知配置
@@ -501,6 +542,16 @@ class Settings(BaseSettings):
     def effective_crawler_base_url(self) -> str:
         """获取有效的爬取 Base URL"""
         return self.CRAWLER_BASE_URL or self.LLM_BASE_URL
+
+    @property
+    def image_allowed_types_list(self) -> list[str]:
+        """获取允许的图片类型列表"""
+        return [t.strip() for t in self.IMAGE_ALLOWED_TYPES.split(",")]
+
+    @property
+    def image_max_size_bytes(self) -> int:
+        """获取最大图片大小（字节）"""
+        return self.IMAGE_MAX_SIZE_MB * 1024 * 1024
 
 
 @lru_cache

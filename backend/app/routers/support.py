@@ -177,13 +177,27 @@ async def send_human_message(
 ):
     """客服发送消息
     
-    仅当会话处于人工模式时有效。
+    仅当会话处于人工模式时有效。支持发送图片。
     """
+    # 验证：必须有内容或图片
+    if not request.content.strip() and not request.has_images:
+        return HumanMessageResponse(
+            success=False,
+            error="发送失败：消息内容和图片不能同时为空",
+        )
+
     service = HandoffService(db)
+    
+    # 准备图片数据
+    images_data = None
+    if request.has_images:
+        images_data = [img.model_dump() for img in request.images]  # type: ignore
+    
     message = await service.add_human_message(
         conversation_id,
         content=request.content,
         operator=request.operator,
+        images=images_data,
     )
 
     if not message:
@@ -192,16 +206,21 @@ async def send_human_message(
             error="发送失败：会话不存在或未在人工模式",
         )
 
+    # 构建推送 payload
+    push_payload = {
+        "message_id": message.id,
+        "content": message.content,
+        "operator": request.operator,
+        "created_at": message.created_at.isoformat(),
+    }
+    if images_data:
+        push_payload["images"] = images_data
+
     await support_gateway.send_to_user(
         conversation_id,
         {
             "type": "support.human_message",
-            "payload": {
-                "message_id": message.id,
-                "content": message.content,
-                "operator": request.operator,
-                "created_at": message.created_at.isoformat(),
-            },
+            "payload": push_payload,
         },
     )
 

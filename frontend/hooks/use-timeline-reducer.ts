@@ -29,6 +29,7 @@ import type {
   FinalPayload,
   ErrorPayload,
   ContextSummarizedPayload,
+  ImageAttachment,
 } from "@/types/chat";
 import { isLLMCallInternalEvent } from "@/types/chat";
 
@@ -115,6 +116,7 @@ export interface UserMessageItem {
   id: string;
   turnId: string;
   content: string;
+  images?: ImageAttachment[];
   ts: number;
 }
 
@@ -410,13 +412,15 @@ function getLastSubItemOfType<T extends LLMCallSubItem>(
 export function addUserMessage(
   state: TimelineState,
   id: string,
-  content: string
+  content: string,
+  images?: ImageAttachment[]
 ): TimelineState {
   const item: UserMessageItem = {
     type: "user.message",
     id,
     turnId: id, // 用户消息的 turnId 就是自己
     content,
+    images,
     ts: Date.now(),
   };
   return insertItem(state, item);

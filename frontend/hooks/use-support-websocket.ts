@@ -16,6 +16,7 @@ import type {
   ReadReceiptPayload,
 } from "@/types/websocket";
 import { WS_PROTOCOL_VERSION } from "@/types/websocket";
+import type { ImageAttachment } from "@/types/chat";
 
 interface UseSupportWebSocketOptions {
   conversationId: string;
@@ -30,7 +31,7 @@ interface UseSupportWebSocketReturn {
   connectionId: string | null;
   conversationState: ConversationState;
   userTyping: boolean;
-  sendMessage: (content: string) => void;
+  sendMessage: (content: string, images?: ImageAttachment[]) => void;
   setTyping: (isTyping: boolean) => void;
   startHandoff: (reason?: string) => void;
   endHandoff: (summary?: string) => void;
@@ -127,6 +128,7 @@ export function useSupportWebSocket({
             content: payload.content,
             created_at: payload.created_at,
             operator: payload.operator,
+            images: payload.images,
             is_delivered: payload.is_delivered,
             delivered_at: payload.delivered_at,
             read_at: payload.read_at,
@@ -279,16 +281,17 @@ export function useSupportWebSocket({
     };
   }, [conversationId, agentId, connect]);
 
-  // 发送消息
+  // 发送消息（支持图片）
   const sendMessage = useCallback(
-    (content: string) => {
-      send(
-        buildMessage(
-          "client.agent.send_message",
-          { content, message_id: generateId() },
-          conversationId
-        )
-      );
+    (content: string, images?: ImageAttachment[]) => {
+      const payload: Record<string, unknown> = {
+        content,
+        message_id: generateId(),
+      };
+      if (images && images.length > 0) {
+        payload.images = images;
+      }
+      send(buildMessage("client.agent.send_message", payload, conversationId));
     },
     [send, conversationId]
   );

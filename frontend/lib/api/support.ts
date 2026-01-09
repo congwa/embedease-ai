@@ -1,6 +1,7 @@
 // 客服支持 API
 
 import { apiRequest } from "./client";
+import type { ImageAttachment } from "@/types/chat";
 
 export interface SupportConversation {
   id: string;
@@ -54,6 +55,16 @@ export interface MessageResponse {
   role: string;
   content: string;
   products: string | null;
+  message_type?: string;
+  extra_metadata?: {
+    images?: Array<{
+      id: string;
+      url: string;
+      thumbnail_url?: string;
+      filename?: string;
+    }>;
+    operator?: string;
+  } | null;
   created_at: string;
 }
 
@@ -140,17 +151,18 @@ export async function endHandoff(
   );
 }
 
-// 发送客服消息（REST 备用）
+// 发送客服消息（REST 备用，支持图片）
 export async function sendHumanMessage(
   conversationId: string,
   content: string,
-  operator: string
+  operator: string,
+  images?: ImageAttachment[]
 ): Promise<{ success: boolean; message_id?: string; error?: string }> {
   return apiRequest(
     `/api/v1/support/message/${conversationId}`,
     {
       method: "POST",
-      body: JSON.stringify({ content, operator }),
+      body: JSON.stringify({ content, operator, images }),
     }
   );
 }

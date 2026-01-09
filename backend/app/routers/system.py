@@ -42,4 +42,11 @@ async def get_features():
             "wework": get_feature_info("wework", bool(getattr(settings, "WEWORK_CORP_ID", None))),
             "webhook": get_feature_info("webhook", bool(getattr(settings, "NOTIFY_WEBHOOK_URL", None))),
         },
+        "storage": {
+            "enabled": settings.MINIO_ENABLED,
+            "endpoint": settings.MINIO_ENDPOINT if settings.MINIO_ENABLED else None,
+            "bucket": settings.MINIO_BUCKET_NAME if settings.MINIO_ENABLED else None,
+            "image_max_size_mb": settings.IMAGE_MAX_SIZE_MB,
+            "image_max_count": settings.IMAGE_MAX_COUNT_PER_MESSAGE,
+        },
     }

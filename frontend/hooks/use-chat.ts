@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "@/types/conversation";
 import { getConversation, streamChat, type StreamChatController } from "@/lib/api";
-import type { ChatEvent } from "@/types/chat";
+import type { ChatEvent, ImageAttachment } from "@/types/chat";
 import {
   type TimelineState,
   type TimelineItem,
@@ -176,18 +176,19 @@ export function useChat(
 
   // 发送消息
   const sendMessage = useCallback(
-    async (content: string, targetConversationId?: string) => {
+    async (content: string, targetConversationId?: string, images?: ImageAttachment[]) => {
       const convId = targetConversationId || conversationId;
 
-      if (!userId || !convId || !content.trim()) {
+      // 允许纯图片消息（无文本）
+      if (!userId || !convId || (!content.trim() && (!images || images.length === 0))) {
         return;
       }
 
       setError(null);
 
-      // 添加用户消息
+      // 添加用户消息（包含图片信息）
       const userMessageId = crypto.randomUUID();
-      setTimelineState((prev) => addUserMessage(prev, userMessageId, content.trim()));
+      setTimelineState((prev) => addUserMessage(prev, userMessageId, content.trim(), images));
 
       // 开始 assistant turn
       const assistantTurnId = crypto.randomUUID();
@@ -203,6 +204,7 @@ export function useChat(
             user_id: userId,
             conversation_id: convId,
             message: content.trim(),
+            images,
           },
           controller
         )) {

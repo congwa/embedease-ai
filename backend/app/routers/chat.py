@@ -53,11 +53,22 @@ async def chat(
     handoff_state = await handoff_service.get_handoff_state(request_data.conversation_id)
     is_human_mode = handoff_state == HandoffState.HUMAN.value
 
+    # 准备图片元数据
+    extra_metadata = None
+    message_type = "text"
+    if request_data.has_images:
+        message_type = "text_with_images"
+        extra_metadata = {
+            "images": [img.model_dump() for img in request_data.images]  # type: ignore
+        }
+
     # 保存用户消息
     user_message = await conversation_service.add_message(
         conversation_id=request_data.conversation_id,
         role="user",
         content=request_data.message,
+        message_type=message_type,
+        extra_metadata=extra_metadata,
     )
     logger.info(
         "保存用户消息",
@@ -158,6 +169,7 @@ async def chat(
             assistant_message_id=assistant_message_id,
             mode=request_data.effective_mode,
             agent_id=request_data.agent_id,
+            images=request_data.images,
         )
 
         try:

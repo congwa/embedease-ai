@@ -19,52 +19,72 @@ async def handle_agent_send_message(
     action: str,
     payload: dict[str, Any],
 ) -> None:
-    """处理客服发送消息"""
+    """处理客服发送消息（支持图片）"""
     from datetime import datetime
 
     from app.repositories.message import MessageRepository
     from app.services.support.gateway import support_gateway
 
-    content = payload["content"]
+    content = payload.get("content", "")
+    images = payload.get("images")  # 图片列表
+
+    # 验证：必须有内容或图片
+    if not content.strip() and not images:
+        logger.warning(
+            "客服消息发送失败：消息内容和图片不能同时为空",
+            conn_id=conn.id,
+            conversation_id=conn.conversation_id,
+        )
+        return
 
     async with get_db_context() as session:
         handoff_service = HandoffService(session)
         msg_repo = MessageRepository(session)
 
-        # 添加人工消息
+        # 添加人工消息（支持图片）
         message = await handoff_service.add_human_message(
             conversation_id=conn.conversation_id,
             content=content,
             operator=conn.identity,
+            images=images,
         )
 
         if message:
+            # 构建推送 payload
+            push_payload: dict[str, Any] = {
+                "message_id": message.id,
+                "content": content,
+                "operator": conn.identity,
+                "created_at": message.created_at.isoformat(),
+            }
+            if images:
+                push_payload["images"] = images
+
             # 通过 support_gateway 发送给用户（SSE 订阅者）
             sse_sent = await support_gateway.send_to_user(
                 conn.conversation_id,
                 {
                     "type": "support.human_message",
-                    "payload": {
-                        "message_id": message.id,
-                        "content": content,
-                        "operator": conn.identity,
-                        "created_at": message.created_at.isoformat(),
-                    },
+                    "payload": push_payload,
                 },
             )
 
             # 同时通过 WebSocket 发送给用户（如果有 WebSocket 连接）
+            ws_payload: dict[str, Any] = {
+                "message_id": message.id,
+                "role": "human_agent",
+                "content": content,
+                "created_at": message.created_at.isoformat(),
+                "operator": conn.identity,
+                "is_delivered": True,
+                "delivered_at": datetime.now().isoformat(),
+            }
+            if images:
+                ws_payload["images"] = images
+
             server_msg = build_server_message(
                 action=WSAction.SERVER_MESSAGE,
-                payload={
-                    "message_id": message.id,
-                    "role": "human_agent",
-                    "content": content,
-                    "created_at": message.created_at.isoformat(),
-                    "operator": conn.identity,
-                    "is_delivered": True,
-                    "delivered_at": datetime.now().isoformat(),
-                },
+                payload=ws_payload,
                 conversation_id=conn.conversation_id,
             )
             ws_sent = await ws_manager.send_to_role(conn.conversation_id, WSRole.USER, server_msg)
@@ -79,6 +99,7 @@ async def handle_agent_send_message(
                     message_id=message.id,
                     sse_sent=sse_sent,
                     ws_sent=ws_sent,
+                    has_images=bool(images),
                 )
             else:
                 # 消息未送达（用户离线），等用户上线时推送

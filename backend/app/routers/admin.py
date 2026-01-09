@@ -80,6 +80,13 @@ class SettingsOverview(BaseModel):
     qdrant_port: int
     qdrant_collection: str
 
+    # MinIO 存储配置
+    minio_enabled: bool
+    minio_endpoint: str | None
+    minio_bucket: str | None
+    image_max_size_mb: int
+    image_max_count: int
+
 
 class MiddlewareDefaultsResponse(BaseModel):
     """全局中间件默认值"""
@@ -130,6 +137,11 @@ async def get_settings_overview():
         qdrant_host=settings.QDRANT_HOST,
         qdrant_port=settings.QDRANT_PORT,
         qdrant_collection=settings.QDRANT_COLLECTION,
+        minio_enabled=settings.MINIO_ENABLED,
+        minio_endpoint=settings.MINIO_ENDPOINT if settings.MINIO_ENABLED else None,
+        minio_bucket=settings.MINIO_BUCKET_NAME if settings.MINIO_ENABLED else None,
+        image_max_size_mb=settings.IMAGE_MAX_SIZE_MB,
+        image_max_count=settings.IMAGE_MAX_COUNT_PER_MESSAGE,
     )
 
 

@@ -1,8 +1,11 @@
 """客服支持相关 Schema"""
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
+
+from app.schemas.chat import ImageAttachment
 
 
 class HandoffStartRequest(BaseModel):
@@ -35,8 +38,14 @@ class HandoffResponse(BaseModel):
 class HumanMessageRequest(BaseModel):
     """人工客服发送消息请求"""
 
-    content: str = Field(..., min_length=1, description="消息内容")
+    content: str = Field(default="", description="消息内容（可为空，但必须有图片）")
     operator: str = Field(..., description="客服标识")
+    images: list[ImageAttachment] | None = Field(default=None, description="图片附件列表")
+
+    @property
+    def has_images(self) -> bool:
+        """是否包含图片"""
+        return bool(self.images and len(self.images) > 0)
 
 
 class HumanMessageResponse(BaseModel):

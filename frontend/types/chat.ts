@@ -90,10 +90,22 @@ import type { Product } from "@/types/product";
  * }
  * ```
  */
+export interface ImageAttachment {
+  id: string;
+  url: string;
+  thumbnail_url?: string;
+  filename?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  mime_type?: string;
+}
+
 export interface ChatRequest {
   user_id: string;
   conversation_id: string;
   message: string;
+  images?: ImageAttachment[];
 }
 
 // ==================== 事件类型分类 ====================

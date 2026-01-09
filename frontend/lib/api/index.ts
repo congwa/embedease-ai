@@ -4,11 +4,8 @@ export * from "./client";
 export * from "./admin";
 export * from "./agents";
 export * from "./chat";
-export {
-  createConversation,
-  getConversation,
-  deleteConversation,
-  getConversations as getUserConversations,
-} from "./conversations";
-export * from "./users";
+export * from "./conversations";
+export * from "./quick-setup";
 export * from "./support";
+export * from "./upload";
+export * from "./users";

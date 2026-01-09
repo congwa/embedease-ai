@@ -311,6 +311,30 @@ export default function SettingsPage() {
             <ConfigItem label="数据库路径" value={settings.database_path} />
           </CardContent>
         </Card>
+
+        {/* 存储配置 (MinIO) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="h-4 w-4" />
+              图片存储 (MinIO)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-zinc-500">状态</span>
+              <StatusBadge enabled={settings.minio_enabled} />
+            </div>
+            {settings.minio_enabled && (
+              <>
+                <ConfigItem label="Endpoint" value={settings.minio_endpoint} />
+                <ConfigItem label="Bucket" value={settings.minio_bucket} />
+                <ConfigItem label="图片大小限制" value={`${settings.image_max_size_mb} MB`} />
+                <ConfigItem label="单消息图片数" value={settings.image_max_count} />
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* 中间件默认配置 */}

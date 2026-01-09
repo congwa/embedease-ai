@@ -88,6 +88,12 @@ export interface ServerMessagePayload {
   content: string;
   created_at: string;
   operator?: string;
+  images?: Array<{
+    id: string;
+    url: string;
+    thumbnail_url?: string;
+    filename?: string;
+  }>;
   is_delivered?: boolean;
   delivered_at?: string;
   read_at?: string;
@@ -152,6 +158,12 @@ export interface SupportMessage {
   content: string;
   created_at: string;
   operator?: string;
+  images?: Array<{
+    id: string;
+    url: string;
+    thumbnail_url?: string;
+    filename?: string;
+  }>;
   is_delivered?: boolean;
   delivered_at?: string;
   read_at?: string;

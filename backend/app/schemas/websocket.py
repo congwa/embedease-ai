@@ -201,6 +201,7 @@ class ServerMessagePayload(BaseModel):
     content: str
     created_at: str  # ISO 格式时间
     operator: str | None = None  # 客服标识（human_agent 时存在）
+    images: list[dict] | None = None  # 图片附件列表
     is_delivered: bool = False  # 是否已送达
     delivered_at: str | None = None  # 送达时间
     read_at: str | None = None  # 已读时间
