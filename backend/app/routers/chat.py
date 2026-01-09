@@ -170,6 +170,7 @@ async def chat(
             mode=request_data.effective_mode,
             agent_id=request_data.agent_id,
             images=request_data.images,
+            db=db,  # 传递数据库会话给工具使用
         )
 
         try:

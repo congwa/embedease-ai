@@ -2,12 +2,10 @@
 
 from typing import Any
 
-from app.core.database import get_db_context
+from app.core.dependencies import get_services
 from app.core.logging import get_logger
 from app.models.conversation import HandoffState
 from app.schemas.websocket import WSAction, WSRole
-from app.services.conversation import ConversationService
-from app.services.support.handoff import HandoffService
 from app.services.websocket.handlers.base import build_server_message
 from app.services.websocket.manager import WSConnection, ws_manager
 from app.services.websocket.router import ws_router
@@ -24,26 +22,18 @@ async def handle_user_send_message(
     """处理用户发送消息"""
     from datetime import datetime
 
-    from app.repositories.conversation import ConversationRepository
-    from app.repositories.message import MessageRepository
-
     content = payload["content"]
     client_message_id = payload.get("message_id")
 
-    async with get_db_context() as session:
-        conversation_service = ConversationService(session)
-        handoff_service = HandoffService(session)
-        conv_repo = ConversationRepository(session)
-        msg_repo = MessageRepository(session)
-
+    async with get_services() as services:
         # 检查 handoff 状态和客服在线状态
-        handoff_state = await handoff_service.get_handoff_state(conn.conversation_id)
-        online_status = await conv_repo.get_online_status(conn.conversation_id)
+        handoff_state = await services.handoff.get_handoff_state(conn.conversation_id)
+        online_status = await services.conversation_repo.get_online_status(conn.conversation_id)
         agent_online = online_status.get("agent_online", False)
 
         if handoff_state == HandoffState.HUMAN.value:
             # 人工模式：保存消息并转发给客服
-            message = await conversation_service.add_message(
+            message = await services.conversation.add_message(
                 conversation_id=conn.conversation_id,
                 role="user",
                 content=content,
@@ -69,7 +59,7 @@ async def handle_user_send_message(
 
             # 如果成功送达，更新消息状态
             if sent_count > 0:
-                await msg_repo.mark_as_delivered([message.id])
+                await services.message_repo.mark_as_delivered([message.id])
                 logger.info(
                     "用户消息已送达客服",
                     conn_id=conn.id,
@@ -87,7 +77,7 @@ async def handle_user_send_message(
 
         else:
             # AI 模式：保存消息，触发通知
-            message = await conversation_service.add_message(
+            message = await services.conversation.add_message(
                 conversation_id=conn.conversation_id,
                 role="user",
                 content=content,
@@ -96,7 +86,7 @@ async def handle_user_send_message(
 
             # 触发通知（异步，不阻塞）
             try:
-                await handoff_service.notify_new_message(
+                await services.handoff.notify_new_message(
                     conversation_id=conn.conversation_id,
                     user_id=conn.identity,
                     message_preview=content[:200],
@@ -134,14 +124,11 @@ async def handle_user_read(
     payload: dict[str, Any],
 ) -> None:
     """处理用户已读回执"""
-    from app.repositories.message import MessageRepository
-
     message_ids = payload["message_ids"]
 
     # 更新数据库已读状态
-    async with get_db_context() as session:
-        msg_repo = MessageRepository(session)
-        count, read_at = await msg_repo.mark_as_read(message_ids, conn.identity)
+    async with get_services() as services:
+        count, read_at = await services.message_repo.mark_as_read(message_ids, conn.identity)
 
     # 推送已读回执给客服端（包含已读时间）
     server_msg = build_server_message(

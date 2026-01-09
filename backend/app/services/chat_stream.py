@@ -40,6 +40,7 @@ class ChatStreamOrchestrator:
         mode: str = "natural",
         agent_id: str | None = None,
         images: list[Any] | None = None,
+        db: Any = None,  # 数据库会话（传递给 ChatContext，供工具使用）
     ) -> None:
         self._conversation_service = conversation_service
         self._agent_service = agent_service
@@ -51,6 +52,7 @@ class ChatStreamOrchestrator:
         self._mode = mode
         self._agent_id = agent_id
         self._images = images
+        self._db = db
 
         self._seq = 0
         self._full_content = ""
@@ -93,6 +95,7 @@ class ChatStreamOrchestrator:
                 assistant_message_id=self._assistant_message_id,
                 mode=self._mode,
                 emitter=emitter,
+                db=self._db,
             )
 
             # Agent 只负责把 domain events 写入 emitter；Orchestrator 是唯一对外 SSE 出口

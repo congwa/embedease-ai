@@ -2,10 +2,9 @@
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from app.core.database import get_db_context
+from app.core.dependencies import get_services
 from app.core.logging import get_logger
 from app.schemas.websocket import WSAction, WSRole
-from app.services.support.handoff import HandoffService
 
 # 确保 handlers 被注册
 from app.services.websocket import handlers  # noqa: F401
@@ -102,26 +101,19 @@ async def ws_user_endpoint(
     )
 
     try:
-        async with get_db_context() as session:
-            from app.repositories.conversation import ConversationRepository
-            from app.repositories.message import MessageRepository
-
-            handoff_service = HandoffService(session)
-            conv_repo = ConversationRepository(session)
-            msg_repo = MessageRepository(session)
-
+        async with get_services() as services:
             # 4. 获取当前 handoff 状态和在线状态
-            handoff_state = await handoff_service.get_handoff_state(conversation_id) or "ai"
-            online_status = await conv_repo.get_online_status(conversation_id)
+            handoff_state = await services.handoff.get_handoff_state(conversation_id) or "ai"
+            online_status = await services.conversation_repo.get_online_status(conversation_id)
 
             # 5. 更新用户在线状态到数据库
-            await conv_repo.set_user_online(conversation_id, True)
+            await services.conversation_repo.set_user_online(conversation_id, True)
 
             # 6. 获取未读消息数
-            unread_count = await msg_repo.get_unread_count(conversation_id, "user")
+            unread_count = await services.message_repo.get_unread_count(conversation_id, "user")
 
             # 7. 获取未送达消息并推送
-            undelivered = await msg_repo.get_undelivered_messages(conversation_id, "user")
+            undelivered = await services.message_repo.get_undelivered_messages(conversation_id, "user")
 
         # 8. 发送连接成功消息
         peer_last_online = online_status.get("agent_last_online_at")
@@ -163,9 +155,8 @@ async def ws_user_endpoint(
 
             # 标记为已送达
             if delivered_ids:
-                async with get_db_context() as session:
-                    msg_repo = MessageRepository(session)
-                    await msg_repo.mark_as_delivered(delivered_ids)
+                async with get_services() as svc:
+                    await svc.message_repo.mark_as_delivered(delivered_ids)
 
         # 10. 通知客服端用户上线
         from datetime import datetime
@@ -213,9 +204,8 @@ async def ws_user_endpoint(
 
     finally:
         # 12. 清理 - 更新数据库在线状态
-        async with get_db_context() as session:
-            conv_repo = ConversationRepository(session)
-            await conv_repo.set_user_online(conversation_id, False)
+        async with get_services() as svc:
+            await svc.conversation_repo.set_user_online(conversation_id, False)
 
         await ws_manager.disconnect(conn.id)
 
@@ -283,26 +273,19 @@ async def ws_agent_endpoint(
     )
 
     try:
-        async with get_db_context() as session:
-            from app.repositories.conversation import ConversationRepository
-            from app.repositories.message import MessageRepository
-
-            handoff_service = HandoffService(session)
-            conv_repo = ConversationRepository(session)
-            msg_repo = MessageRepository(session)
-
+        async with get_services() as services:
             # 4. 获取当前 handoff 状态和在线状态
-            handoff_state = await handoff_service.get_handoff_state(conversation_id) or "ai"
-            online_status = await conv_repo.get_online_status(conversation_id)
+            handoff_state = await services.handoff.get_handoff_state(conversation_id) or "ai"
+            online_status = await services.conversation_repo.get_online_status(conversation_id)
 
             # 5. 更新客服在线状态到数据库
-            await conv_repo.set_agent_online(conversation_id, True, agent_id)
+            await services.conversation_repo.set_agent_online(conversation_id, True, agent_id)
 
             # 6. 获取未读消息数（发给客服的消息）
-            unread_count = await msg_repo.get_unread_count(conversation_id, "agent")
+            unread_count = await services.message_repo.get_unread_count(conversation_id, "agent")
 
             # 7. 获取未送达消息并推送
-            undelivered = await msg_repo.get_undelivered_messages(conversation_id, "agent")
+            undelivered = await services.message_repo.get_undelivered_messages(conversation_id, "agent")
 
         # 8. 发送连接成功消息
         peer_last_online = online_status.get("user_last_online_at")
@@ -344,9 +327,8 @@ async def ws_agent_endpoint(
 
             # 标记为已送达
             if delivered_ids:
-                async with get_db_context() as session:
-                    msg_repo = MessageRepository(session)
-                    await msg_repo.mark_as_delivered(delivered_ids)
+                async with get_services() as svc:
+                    await svc.message_repo.mark_as_delivered(delivered_ids)
 
         # 10. 通知用户端客服上线
         from datetime import datetime
@@ -393,9 +375,8 @@ async def ws_agent_endpoint(
 
     finally:
         # 12. 清理 - 更新数据库在线状态
-        async with get_db_context() as session:
-            conv_repo = ConversationRepository(session)
-            await conv_repo.set_agent_online(conversation_id, False, None)
+        async with get_services() as svc:
+            await svc.conversation_repo.set_agent_online(conversation_id, False, None)
 
         await ws_manager.disconnect(conn.id)
 

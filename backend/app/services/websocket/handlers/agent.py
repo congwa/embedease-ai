@@ -2,10 +2,9 @@
 
 from typing import Any
 
-from app.core.database import get_db_context
+from app.core.dependencies import get_services
 from app.core.logging import get_logger
 from app.schemas.websocket import WSAction, WSRole
-from app.services.support.handoff import HandoffService
 from app.services.websocket.handlers.base import build_server_message
 from app.services.websocket.manager import WSConnection, ws_manager
 from app.services.websocket.router import ws_router
@@ -22,7 +21,6 @@ async def handle_agent_send_message(
     """处理客服发送消息（支持图片）"""
     from datetime import datetime
 
-    from app.repositories.message import MessageRepository
     from app.services.support.gateway import support_gateway
 
     content = payload.get("content", "")
@@ -37,12 +35,9 @@ async def handle_agent_send_message(
         )
         return
 
-    async with get_db_context() as session:
-        handoff_service = HandoffService(session)
-        msg_repo = MessageRepository(session)
-
+    async with get_services() as services:
         # 添加人工消息（支持图片）
-        message = await handoff_service.add_human_message(
+        message = await services.handoff.add_human_message(
             conversation_id=conn.conversation_id,
             content=content,
             operator=conn.identity,
@@ -91,7 +86,7 @@ async def handle_agent_send_message(
 
             # 如果任一渠道成功送达，更新消息状态
             if sse_sent > 0 or ws_sent > 0:
-                await msg_repo.mark_as_delivered([message.id])
+                await services.message_repo.mark_as_delivered([message.id])
                 logger.info(
                     "客服消息已送达用户",
                     conn_id=conn.id,
@@ -139,14 +134,11 @@ async def handle_agent_read(
     payload: dict[str, Any],
 ) -> None:
     """处理客服已读回执"""
-    from app.repositories.message import MessageRepository
-
     message_ids = payload["message_ids"]
 
     # 更新数据库已读状态
-    async with get_db_context() as session:
-        msg_repo = MessageRepository(session)
-        count, read_at = await msg_repo.mark_as_read(message_ids, conn.identity)
+    async with get_services() as services:
+        count, read_at = await services.message_repo.mark_as_read(message_ids, conn.identity)
 
     # 推送已读回执给用户端（包含已读时间）
     server_msg = build_server_message(
@@ -178,9 +170,8 @@ async def handle_agent_start_handoff(
     """处理客服主动介入"""
     reason = payload.get("reason", "")
 
-    async with get_db_context() as session:
-        handoff_service = HandoffService(session)
-        result = await handoff_service.start_handoff(
+    async with get_services() as services:
+        result = await services.handoff.start_handoff(
             conn.conversation_id,
             operator=conn.identity,
             reason=reason,
@@ -243,9 +234,8 @@ async def handle_agent_end_handoff(
     """处理客服结束介入"""
     summary = payload.get("summary", "")
 
-    async with get_db_context() as session:
-        handoff_service = HandoffService(session)
-        result = await handoff_service.end_handoff(
+    async with get_services() as services:
+        result = await services.handoff.end_handoff(
             conn.conversation_id,
             operator=conn.identity,
             summary=summary,
@@ -308,11 +298,9 @@ async def handle_agent_transfer(
     target_agent_id = payload["target_agent_id"]
     reason = payload.get("reason", "")
 
-    async with get_db_context() as session:
-        handoff_service = HandoffService(session)
-
+    async with get_services() as services:
         # 更新介入客服
-        result = await handoff_service.start_handoff(
+        result = await services.handoff.start_handoff(
             conn.conversation_id,
             operator=target_agent_id,
             reason=f"转接自 {conn.identity}: {reason}",
