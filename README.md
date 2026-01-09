@@ -212,6 +212,9 @@ graph TD
     CrawlerMgmt --> ViewLogs[查看日志]
     
     SupportMgmt --> ConvList[会话列表]
+    SupportMgmt --> NotifyConfig[通知配置]
+    SupportMgmt --> OnlineStatus[在线状态管理]
+    
     ConvList --> HeatSort[热度排序]
     ConvList --> FilterConv[筛选会话]
     ConvList --> ViewConv[查看对话]
@@ -220,6 +223,48 @@ graph TD
     ViewConv --> EditMsg[编辑消息]
     ViewConv --> RecallMsg[撤回消息]
     ViewConv --> Regenerate[重新生成]
+    
+    TakeOver --> ManualTakeOver{接管方式}
+    ManualTakeOver -->|手动接管| ClickTakeOver[点击接管按钮]
+    ManualTakeOver -->|自动接管| AutoHandoff[触发自动转接]
+    
+    ClickTakeOver --> SendNotify[发送通知]
+    AutoHandoff --> SendNotify
+    
+    SendNotify --> WechatNotify[企业微信通知]
+    SendNotify --> WebhookNotify[Webhook 通知]
+    SendNotify --> WSBroadcast[WebSocket 广播]
+    
+    WSBroadcast --> UpdateUserUI[更新用户界面]
+    WSBroadcast --> UpdateSupportUI[更新客服界面]
+    
+    UpdateUserUI --> ShowHandoffMsg[显示转接提示]
+    UpdateSupportUI --> ShowNewConv[显示新会话]
+    
+    ShowNewConv --> SupportReply[客服回复消息]
+    SupportReply --> WSPush[WebSocket 推送]
+    
+    WSPush --> UserReceive[用户接收消息]
+    WSPush --> UpdateMsgStatus[更新消息状态]
+    
+    UpdateMsgStatus --> DeliveredStatus[送达状态]
+    UpdateMsgStatus --> ReadStatus[已读状态]
+    
+    NotifyConfig --> ConfigWechat[配置企业微信]
+    NotifyConfig --> ConfigWebhook[配置 Webhook]
+    NotifyConfig --> ConfigAutoHandoff[配置自动转接规则]
+    
+    ConfigAutoHandoff --> SetKeywords[设置关键词触发]
+    ConfigAutoHandoff --> SetTimeout[设置超时转接]
+    ConfigAutoHandoff --> SetSentiment[设置情绪检测]
+    
+    OnlineStatus --> SetOnline[设置在线]
+    OnlineStatus --> SetOffline[设置离线]
+    OnlineStatus --> SetBusy[设置忙碌]
+    
+    SetOnline --> ReceiveNotify[接收新会话通知]
+    SetOffline --> PauseNotify[暂停通知]
+    SetBusy --> LimitNotify[限制通知数量]
     
     SystemMgmt --> Settings[系统设置]
     SystemMgmt --> Health[健康检查]
