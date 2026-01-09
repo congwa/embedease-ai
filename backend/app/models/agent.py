@@ -5,12 +5,15 @@
 - KnowledgeConfig: 知识源配置（FAQ/向量/图谱等）
 - AgentTool: Agent 工具白名单（可选精细化）
 - FAQEntry: FAQ 条目存储
+- SuggestedQuestion: 推荐问题
 """
 
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -169,6 +172,11 @@ class Agent(Base, TimestampMixin):
         back_populates="agent",
         cascade="all, delete-orphan",
     )
+    suggested_questions: Mapped[list["SuggestedQuestion"]] = relationship(
+        "SuggestedQuestion",
+        back_populates="agent",
+        cascade="all, delete-orphan",
+    )
 
 
 class AgentTool(Base):
@@ -234,6 +242,58 @@ class FAQEntry(Base, TimestampMixin):
 
     # 关联
     agent: Mapped["Agent | None"] = relationship("Agent", back_populates="faq_entries")
+
+
+class SuggestedQuestion(Base, TimestampMixin):
+    """推荐问题表
+
+    存储每个 Agent 的推荐问题，支持手动配置和热门统计。
+    展示在聊天界面的欢迎区和输入框上方。
+    """
+
+    __tablename__ = "suggested_questions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+
+    # 绑定到 Agent
+    agent_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # 问题文本
+    question: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    # 来源类型：manual(手动) / auto(自动统计) / faq(从FAQ导入)
+    source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
+
+    # 关联的 FAQ ID（可选）
+    faq_entry_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("faq_entries.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # 排序权重（越大越靠前）
+    weight: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # 热度统计
+    click_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # 展示位置：welcome(欢迎区) / input(输入框上方) / both(两处都展示)
+    display_position: Mapped[str] = mapped_column(String(20), default="both", nullable=False)
+
+    # 是否启用
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # 生效时间范围（可选）
+    start_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # 关联
+    agent: Mapped["Agent"] = relationship("Agent", back_populates="suggested_questions")
 
 
 class AgentModeOverride(Base):

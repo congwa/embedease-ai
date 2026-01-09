@@ -4,13 +4,21 @@ import asyncio
 import uuid
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, Depends, Request
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db_session
 from app.core.logging import get_logger
+from app.models.agent import SuggestedQuestion
 from app.models.conversation import HandoffState
+from app.schemas.suggested_question import (
+    SuggestedQuestionPublicItem,
+    SuggestedQuestionsPublicResponse,
+)
 from app.schemas.chat import ChatRequest
 from app.services.agent.core.service import agent_service
 from app.services.chat_stream import ChatStreamOrchestrator
@@ -209,3 +217,83 @@ async def chat(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ========== Suggested Questions (Public) ==========
+
+
+@router.get("/agents/{agent_id}/suggested-questions", response_model=SuggestedQuestionsPublicResponse)
+async def get_public_suggested_questions(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """获取 Agent 的推荐问题（公开接口）
+
+    返回按展示位置分组的问题列表，用于前端展示。
+    自动过滤：
+    - 未启用的问题
+    - 不在生效时间范围内的问题
+    """
+    now = datetime.now(timezone.utc)
+
+    # 查询启用的问题
+    stmt = (
+        select(SuggestedQuestion)
+        .where(
+            SuggestedQuestion.agent_id == agent_id,
+            SuggestedQuestion.enabled == True,  # noqa: E712
+        )
+        .order_by(SuggestedQuestion.weight.desc(), SuggestedQuestion.click_count.desc())
+    )
+
+    result = await db.execute(stmt)
+    questions = result.scalars().all()
+
+    # 过滤时间范围
+    valid_questions = []
+    for q in questions:
+        # 检查开始时间
+        if q.start_time and q.start_time > now:
+            continue
+        # 检查结束时间
+        if q.end_time and q.end_time < now:
+            continue
+        valid_questions.append(q)
+
+    # 按展示位置分组
+    welcome_questions: list[SuggestedQuestionPublicItem] = []
+    input_questions: list[SuggestedQuestionPublicItem] = []
+
+    for q in valid_questions:
+        item = SuggestedQuestionPublicItem(id=q.id, question=q.question)
+        if q.display_position in ("welcome", "both"):
+            welcome_questions.append(item)
+        if q.display_position in ("input", "both"):
+            input_questions.append(item)
+
+    return SuggestedQuestionsPublicResponse(
+        welcome=welcome_questions[:6],  # 欢迎区最多6个
+        input=input_questions[:4],  # 输入框上方最多4个
+    )
+
+
+@router.post("/suggested-questions/{question_id}/click", status_code=204)
+async def record_question_click(
+    question_id: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """记录推荐问题点击
+
+    用于统计热门问题，优化推荐排序。
+    """
+    stmt = select(SuggestedQuestion).where(SuggestedQuestion.id == question_id)
+    result = await db.execute(stmt)
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(status_code=404, detail="推荐问题不存在")
+
+    question.click_count += 1
+    await db.flush()
+
+    logger.debug("记录推荐问题点击", question_id=question_id, click_count=question.click_count)

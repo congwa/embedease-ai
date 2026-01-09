@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState } from "react";
 import { AlertCircle, ArrowUp, Square, X } from "lucide-react";
 import {
   ChatContainerContent,
@@ -28,13 +28,15 @@ import {
 import {
   useChatThemeOptional,
   ThemeSwitcherIcon,
-  ThemedUserMessage,
   ThemedEmptyState,
   ThemedEmptyIcon,
   ThemedEmptyTitle,
   ThemedEmptyDescription,
   ThemedSuggestionButton,
 } from "./themes";
+import { QuickQuestionBar } from "./QuickQuestionBar";
+import { useSuggestedQuestions } from "@/lib/hooks/use-suggested-questions";
+import { useAgentStore } from "@/stores/agent-store";
 
 export function ChatContent() {
   // 从 Store 获取状态
@@ -47,7 +49,12 @@ export function ChatContent() {
   const currentConversation = useConversationStore((s) => 
     s.conversations.find((c) => c.id === s.currentConversationId)
   );
-  const createNewConversation = useConversationStore((s) => s.createNewConversation);
+  
+  // 获取当前 Agent 和推荐问题
+  const activeAgent = useAgentStore((s) => s.activeAgent());
+  const { questions: suggestedQuestions, trackClick } = useSuggestedQuestions({
+    agentId: activeAgent?.id,
+  });
   
   const title = currentConversation?.title || "";
   const [prompt, setPrompt] = useState("");
@@ -58,6 +65,14 @@ export function ChatContent() {
   // 主题系统
   const theme = useChatThemeOptional();
   const themeId = theme?.themeId || "default";
+
+  // 处理推荐问题点击
+  const handleSuggestionClick = (question: string, questionId?: string) => {
+    if (questionId) {
+      trackClick(questionId);
+    }
+    sendMessage(question);
+  };
 
   const handleButtonClick = () => {
     if (isStreaming) {
@@ -197,20 +212,19 @@ export function ChatContent() {
                   告诉我你想要什么，我来帮你找到最合适的商品
                 </ThemedEmptyDescription>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
-                  {["推荐一款降噪耳机", "有什么好的跑步鞋", "想买一台破壁机"].map(
-                    (suggestion) => (
-                      <ThemedSuggestionButton
-                        key={suggestion}
-                        className="px-3 py-1.5 text-xs"
-                        onClick={() => {
-                          sendMessage(suggestion);
-                        }}
-                        disabled={isStreaming}
-                      >
-                        {suggestion}
-                      </ThemedSuggestionButton>
-                    )
-                  )}
+                  {(suggestedQuestions.welcome.length > 0
+                    ? suggestedQuestions.welcome
+                    : [{id: "1", question: "推荐一款降噪耳机"}, {id: "2", question: "有什么好的跑步鞋"}, {id: "3", question: "想买一台破壁机"}]
+                  ).map((item) => (
+                    <ThemedSuggestionButton
+                      key={item.id}
+                      className="px-3 py-1.5 text-xs"
+                      onClick={() => handleSuggestionClick(item.question, item.id)}
+                      disabled={isStreaming}
+                    >
+                      {item.question}
+                    </ThemedSuggestionButton>
+                  ))}
                 </div>
               </ThemedEmptyState>
             )}
@@ -232,6 +246,14 @@ export function ChatContent() {
         themeId === "industrial" && "chat-industrial-input-area"
       )}>
         <div className="mx-auto max-w-3xl">
+          {/* 快捷问题栏 */}
+          {suggestedQuestions.input.length > 0 && (
+            <QuickQuestionBar
+              questions={suggestedQuestions.input}
+              onSelect={(question, id) => handleSuggestionClick(question, id)}
+              disabled={isStreaming}
+            />
+          )}
           {/* 错误提示 */}
           {error && isErrorVisible && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">

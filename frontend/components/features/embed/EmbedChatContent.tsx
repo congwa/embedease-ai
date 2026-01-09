@@ -24,6 +24,16 @@ import {
   TimelineSupportEventItem,
 } from "../chat/timeline";
 
+interface SuggestedQuestionItem {
+  id: string;
+  question: string;
+}
+
+interface SuggestedQuestions {
+  welcome: SuggestedQuestionItem[];
+  input: SuggestedQuestionItem[];
+}
+
 interface EmbedChatContentProps {
   timeline: TimelineItem[];
   isStreaming: boolean;
@@ -31,7 +41,15 @@ interface EmbedChatContentProps {
   error: string | null;
   onSendMessage: (content: string) => void;
   onAbortStream: () => void;
+  suggestedQuestions?: SuggestedQuestions;
+  onSuggestionClick?: (question: string, id: string) => void;
 }
+
+const DEFAULT_SUGGESTIONS: SuggestedQuestionItem[] = [
+  { id: "1", question: "推荐降噪耳机" },
+  { id: "2", question: "好的跑步鞋" },
+  { id: "3", question: "买破壁机" },
+];
 
 export function EmbedChatContent({
   timeline,
@@ -40,6 +58,8 @@ export function EmbedChatContent({
   error,
   onSendMessage,
   onAbortStream,
+  suggestedQuestions,
+  onSuggestionClick,
 }: EmbedChatContentProps) {
   const [prompt, setPrompt] = useState("");
   const [dismissedError, setDismissedError] = useState<string | null>(null);
@@ -143,20 +163,24 @@ export function EmbedChatContent({
                   告诉我你想要什么商品
                 </p>
                 <div className="flex flex-wrap justify-center gap-1.5">
-                  {["推荐降噪耳机", "好的跑步鞋", "买破壁机"].map(
-                    (suggestion) => (
-                      <Button
-                        key={suggestion}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7 px-2"
-                        onClick={() => onSendMessage(suggestion)}
-                        disabled={isStreaming}
-                      >
-                        {suggestion}
-                      </Button>
-                    )
-                  )}
+                  {(suggestedQuestions?.welcome.length
+                    ? suggestedQuestions.welcome
+                    : DEFAULT_SUGGESTIONS
+                  ).map((item) => (
+                    <Button
+                      key={item.id}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 px-2"
+                      onClick={() => {
+                        onSuggestionClick?.(item.question, item.id);
+                        onSendMessage(item.question);
+                      }}
+                      disabled={isStreaming}
+                    >
+                      {item.question}
+                    </Button>
+                  ))}
                 </div>
               </div>
             )}
@@ -172,6 +196,24 @@ export function EmbedChatContent({
 
       {/* 输入区域 */}
       <div className="shrink-0 border-t border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
+        {/* 快捷问题栏 */}
+        {suggestedQuestions && suggestedQuestions.input.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-thin">
+            {suggestedQuestions.input.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  onSuggestionClick?.(item.question, item.id);
+                  onSendMessage(item.question);
+                }}
+                disabled={isStreaming}
+                className="shrink-0 px-2 py-1 text-xs rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-orange-300 hover:bg-orange-50 dark:hover:border-orange-600 dark:hover:bg-orange-900/20 transition-colors whitespace-nowrap disabled:opacity-50"
+              >
+                {item.question}
+              </button>
+            ))}
+          </div>
+        )}
         {/* 错误提示 */}
         {error && isErrorVisible && (
           <div className="mb-2 flex items-center gap-2 rounded-lg bg-red-50 p-2 text-xs text-red-600 dark:bg-red-900/20 dark:text-red-400">

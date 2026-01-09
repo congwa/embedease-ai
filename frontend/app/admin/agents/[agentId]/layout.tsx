@@ -34,6 +34,7 @@ const typeLabels: Record<string, string> = {
 const baseTabs = [
   { id: "overview", label: "基础设置", href: "" },
   { id: "greeting", label: "开场白", href: "/greeting" },
+  { id: "suggested-questions", label: "推荐问题", href: "/suggested-questions" },
   { id: "tools", label: "工具配置", href: "/tools" },
   { id: "memory", label: "记忆与提示词", href: "/memory" },
   { id: "conversations", label: "会话洞察", href: "/conversations" },

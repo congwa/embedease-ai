@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import get_db_session
 from app.core.logging import get_logger
-from app.models.agent import Agent, AgentTool, FAQEntry, KnowledgeConfig
+from app.models.agent import Agent, AgentTool, FAQEntry, KnowledgeConfig, SuggestedQuestion
 from app.schemas.agent import (
     AgentCreate,
     AgentListResponse,
@@ -37,6 +37,16 @@ from app.schemas.agent import (
     KnowledgeConfigCreate,
     KnowledgeConfigResponse,
     KnowledgeConfigUpdate,
+)
+from app.schemas.suggested_question import (
+    SuggestedQuestionBatchCreate,
+    SuggestedQuestionCreate,
+    SuggestedQuestionImportFromFAQ,
+    SuggestedQuestionReorder,
+    SuggestedQuestionResponse,
+    SuggestedQuestionsPublicResponse,
+    SuggestedQuestionPublicItem,
+    SuggestedQuestionUpdate,
 )
 from app.services.agent.core.service import agent_service
 
@@ -1097,3 +1107,242 @@ async def export_faq_entries(
     )
 
     return [FAQEntryResponse.model_validate(e) for e in entries]
+
+
+# ========== Suggested Questions (Admin) ==========
+
+suggested_questions_router = APIRouter(
+    prefix="/api/v1/admin/agents/{agent_id}/suggested-questions",
+    tags=["suggested-questions"],
+)
+
+
+@suggested_questions_router.get("", response_model=list[SuggestedQuestionResponse])
+async def list_suggested_questions(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """获取 Agent 的推荐问题列表"""
+    stmt = (
+        select(SuggestedQuestion)
+        .where(SuggestedQuestion.agent_id == agent_id)
+        .order_by(SuggestedQuestion.weight.desc(), SuggestedQuestion.click_count.desc())
+    )
+    result = await db.execute(stmt)
+    questions = result.scalars().all()
+    return [SuggestedQuestionResponse.model_validate(q) for q in questions]
+
+
+@suggested_questions_router.post("", response_model=SuggestedQuestionResponse, status_code=status.HTTP_201_CREATED)
+async def create_suggested_question(
+    agent_id: str,
+    data: SuggestedQuestionCreate,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """创建推荐问题"""
+    # 验证 Agent 存在
+    agent_stmt = select(Agent).where(Agent.id == agent_id)
+    agent_result = await db.execute(agent_stmt)
+    if not agent_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    question = SuggestedQuestion(
+        id=str(uuid.uuid4()),
+        agent_id=agent_id,
+        question=data.question,
+        source=data.source,
+        faq_entry_id=data.faq_entry_id,
+        weight=data.weight,
+        display_position=data.display_position,
+        enabled=data.enabled,
+        start_time=data.start_time,
+        end_time=data.end_time,
+    )
+    db.add(question)
+    await db.flush()
+    await db.refresh(question)
+
+    logger.info("创建推荐问题", question_id=question.id, agent_id=agent_id)
+    return SuggestedQuestionResponse.model_validate(question)
+
+
+@suggested_questions_router.post("/batch", response_model=list[SuggestedQuestionResponse])
+async def batch_create_suggested_questions(
+    agent_id: str,
+    data: SuggestedQuestionBatchCreate,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """批量创建推荐问题"""
+    # 验证 Agent 存在
+    agent_stmt = select(Agent).where(Agent.id == agent_id)
+    agent_result = await db.execute(agent_stmt)
+    if not agent_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    questions = []
+    for i, q_text in enumerate(data.questions):
+        question = SuggestedQuestion(
+            id=str(uuid.uuid4()),
+            agent_id=agent_id,
+            question=q_text,
+            source="manual",
+            weight=len(data.questions) - i,  # 按顺序设置权重
+            display_position=data.display_position,
+            enabled=True,
+        )
+        db.add(question)
+        questions.append(question)
+
+    await db.flush()
+    for q in questions:
+        await db.refresh(q)
+
+    logger.info("批量创建推荐问题", count=len(questions), agent_id=agent_id)
+    return [SuggestedQuestionResponse.model_validate(q) for q in questions]
+
+
+@suggested_questions_router.post("/import-from-faq", response_model=list[SuggestedQuestionResponse])
+async def import_from_faq(
+    agent_id: str,
+    data: SuggestedQuestionImportFromFAQ,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """从 FAQ 导入热门问题"""
+    # 验证 Agent 存在
+    agent_stmt = select(Agent).where(Agent.id == agent_id)
+    agent_result = await db.execute(agent_stmt)
+    if not agent_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    # 查询 FAQ（按优先级排序）
+    faq_stmt = (
+        select(FAQEntry)
+        .where(FAQEntry.agent_id == agent_id, FAQEntry.enabled == True)  # noqa: E712
+    )
+    if data.category:
+        faq_stmt = faq_stmt.where(FAQEntry.category == data.category)
+
+    faq_stmt = faq_stmt.order_by(FAQEntry.priority.desc()).limit(data.limit)
+
+    faq_result = await db.execute(faq_stmt)
+    faq_entries = faq_result.scalars().all()
+
+    if not faq_entries:
+        raise HTTPException(status_code=404, detail="未找到符合条件的 FAQ")
+
+    questions = []
+    for i, faq in enumerate(faq_entries):
+        # 检查是否已存在
+        existing_stmt = select(SuggestedQuestion).where(
+            SuggestedQuestion.agent_id == agent_id,
+            SuggestedQuestion.faq_entry_id == faq.id,
+        )
+        existing_result = await db.execute(existing_stmt)
+        if existing_result.scalar_one_or_none():
+            continue
+
+        question = SuggestedQuestion(
+            id=str(uuid.uuid4()),
+            agent_id=agent_id,
+            question=faq.question[:200],  # 截断以符合长度限制
+            source="faq",
+            faq_entry_id=faq.id,
+            weight=len(faq_entries) - i,
+            display_position=data.display_position,
+            enabled=True,
+        )
+        db.add(question)
+        questions.append(question)
+
+    await db.flush()
+    for q in questions:
+        await db.refresh(q)
+
+    logger.info("从 FAQ 导入推荐问题", count=len(questions), agent_id=agent_id)
+    return [SuggestedQuestionResponse.model_validate(q) for q in questions]
+
+
+@suggested_questions_router.post("/reorder", status_code=status.HTTP_204_NO_CONTENT)
+async def reorder_suggested_questions(
+    agent_id: str,
+    data: SuggestedQuestionReorder,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """重新排序推荐问题"""
+    for i, question_id in enumerate(data.question_ids):
+        stmt = select(SuggestedQuestion).where(
+            SuggestedQuestion.id == question_id,
+            SuggestedQuestion.agent_id == agent_id,
+        )
+        result = await db.execute(stmt)
+        question = result.scalar_one_or_none()
+        if question:
+            question.weight = len(data.question_ids) - i
+
+    await db.flush()
+    logger.info("重新排序推荐问题", agent_id=agent_id, count=len(data.question_ids))
+
+
+# 单个问题操作路由
+suggested_question_item_router = APIRouter(
+    prefix="/api/v1/admin/suggested-questions",
+    tags=["suggested-questions"],
+)
+
+
+@suggested_question_item_router.get("/{question_id}", response_model=SuggestedQuestionResponse)
+async def get_suggested_question(
+    question_id: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """获取单个推荐问题"""
+    stmt = select(SuggestedQuestion).where(SuggestedQuestion.id == question_id)
+    result = await db.execute(stmt)
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(status_code=404, detail="推荐问题不存在")
+
+    return SuggestedQuestionResponse.model_validate(question)
+
+
+@suggested_question_item_router.patch("/{question_id}", response_model=SuggestedQuestionResponse)
+async def update_suggested_question(
+    question_id: str,
+    data: SuggestedQuestionUpdate,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """更新推荐问题"""
+    stmt = select(SuggestedQuestion).where(SuggestedQuestion.id == question_id)
+    result = await db.execute(stmt)
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(status_code=404, detail="推荐问题不存在")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(question, key, value)
+
+    await db.flush()
+    await db.refresh(question)
+
+    logger.info("更新推荐问题", question_id=question_id)
+    return SuggestedQuestionResponse.model_validate(question)
+
+
+@suggested_question_item_router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_suggested_question(
+    question_id: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """删除推荐问题"""
+    stmt = select(SuggestedQuestion).where(SuggestedQuestion.id == question_id)
+    result = await db.execute(stmt)
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(status_code=404, detail="推荐问题不存在")
+
+    await db.delete(question)
+    logger.info("删除推荐问题", question_id=question_id)

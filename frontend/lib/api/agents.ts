@@ -442,3 +442,141 @@ export async function getAgentUsers(
     `/api/v1/admin/agents/${agentId}/users${query ? `?${query}` : ""}`
   );
 }
+
+// ========== Suggested Questions API ==========
+
+export interface SuggestedQuestion {
+  id: string;
+  agent_id: string;
+  question: string;
+  source: "manual" | "auto" | "faq";
+  faq_entry_id: string | null;
+  weight: number;
+  click_count: number;
+  display_position: "welcome" | "input" | "both";
+  enabled: boolean;
+  start_time: string | null;
+  end_time: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SuggestedQuestionsPublicResponse {
+  welcome: Array<{ id: string; question: string }>;
+  input: Array<{ id: string; question: string }>;
+}
+
+export interface SuggestedQuestionCreate {
+  question: string;
+  source?: string;
+  display_position?: string;
+  weight?: number;
+  enabled?: boolean;
+  faq_entry_id?: string;
+  start_time?: string;
+  end_time?: string;
+}
+
+export interface SuggestedQuestionBatchCreate {
+  questions: string[];
+  display_position?: string;
+}
+
+export interface SuggestedQuestionImportFromFAQ {
+  category?: string;
+  limit?: number;
+  display_position?: string;
+}
+
+// 公开接口（用户端）
+export async function getPublicSuggestedQuestions(
+  agentId: string
+): Promise<SuggestedQuestionsPublicResponse> {
+  return apiRequest<SuggestedQuestionsPublicResponse>(
+    `/api/v1/agents/${agentId}/suggested-questions`
+  );
+}
+
+export async function recordSuggestedQuestionClick(questionId: string): Promise<void> {
+  await apiRequest(`/api/v1/suggested-questions/${questionId}/click`, {
+    method: "POST",
+  });
+}
+
+// 管理接口
+export async function getSuggestedQuestions(agentId: string): Promise<SuggestedQuestion[]> {
+  return apiRequest<SuggestedQuestion[]>(
+    `/api/v1/admin/agents/${agentId}/suggested-questions`
+  );
+}
+
+export async function createSuggestedQuestion(
+  agentId: string,
+  data: SuggestedQuestionCreate
+): Promise<SuggestedQuestion> {
+  return apiRequest<SuggestedQuestion>(
+    `/api/v1/admin/agents/${agentId}/suggested-questions`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function batchCreateSuggestedQuestions(
+  agentId: string,
+  data: SuggestedQuestionBatchCreate
+): Promise<SuggestedQuestion[]> {
+  return apiRequest<SuggestedQuestion[]>(
+    `/api/v1/admin/agents/${agentId}/suggested-questions/batch`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function importSuggestedQuestionsFromFAQ(
+  agentId: string,
+  data: SuggestedQuestionImportFromFAQ
+): Promise<SuggestedQuestion[]> {
+  return apiRequest<SuggestedQuestion[]>(
+    `/api/v1/admin/agents/${agentId}/suggested-questions/import-from-faq`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function updateSuggestedQuestion(
+  questionId: string,
+  data: Partial<SuggestedQuestionCreate>
+): Promise<SuggestedQuestion> {
+  return apiRequest<SuggestedQuestion>(
+    `/api/v1/admin/suggested-questions/${questionId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteSuggestedQuestion(questionId: string): Promise<void> {
+  await apiRequest(`/api/v1/admin/suggested-questions/${questionId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function reorderSuggestedQuestions(
+  agentId: string,
+  questionIds: string[]
+): Promise<void> {
+  await apiRequest(
+    `/api/v1/admin/agents/${agentId}/suggested-questions/reorder`,
+    {
+      method: "POST",
+      body: JSON.stringify({ question_ids: questionIds }),
+    }
+  );
+}
