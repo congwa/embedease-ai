@@ -1,12 +1,13 @@
 version: "3.8"
 
 # ============================================================
-# EmbedAI Agent - 统一 Docker Compose 配置
+# EmbedAI Agent - Docker Compose 配置
 # ============================================================
 # 启动命令示例：
-#   默认启动（SQLite）:     docker compose up -d
-#   启用 PostgreSQL:        docker compose --profile postgres up -d
-#   生产环境（含 Nginx）:   docker compose --profile postgres --profile production up -d
+#   开发环境（仅基础服务）:    docker compose up -d
+#   启用 PostgreSQL:           docker compose --profile postgres up -d
+#   生产环境（完整部署）:      docker compose --profile production up -d
+#   生产环境 + PostgreSQL:     docker compose --profile production --profile postgres up -d
 # ============================================================
 
 services:
@@ -52,6 +53,7 @@ services:
       - embedai-network
     profiles:
       - postgres
+      - production
 
   # ========== MinIO 对象存储（用于图片上传）==========
   minio:
@@ -89,6 +91,7 @@ services:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
       - DATABASE_PATH=/app/data/app.db
       - CHECKPOINT_DB_PATH=/app/data/checkpoints.db
       - MEMORY_STORE_DB_PATH=/app/data/memory_store.db
@@ -147,6 +150,7 @@ services:
       - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - frontend
       - backend
