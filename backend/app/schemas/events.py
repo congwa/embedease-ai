@@ -57,6 +57,7 @@ class DataEventType(StrEnum):
     ASSISTANT_PRODUCTS = "assistant.products"  # 商品数据
     ASSISTANT_TODOS = "assistant.todos"  # TODO 规划列表更新
     CONTEXT_SUMMARIZED = "context.summarized"  # 上下文压缩完成
+    CONTEXT_TRIMMED = "context.trimmed"  # 上下文滑动窗口裁剪
 
 
 class PostProcessEventType(StrEnum):
@@ -145,6 +146,7 @@ class StreamEventType(StrEnum):
     ASSISTANT_PRODUCTS = DataEventType.ASSISTANT_PRODUCTS.value
     ASSISTANT_TODOS = DataEventType.ASSISTANT_TODOS.value
     CONTEXT_SUMMARIZED = DataEventType.CONTEXT_SUMMARIZED.value
+    CONTEXT_TRIMMED = DataEventType.CONTEXT_TRIMMED.value
 
     # ========== 后处理事件 ==========
     MEMORY_EXTRACTION_START = PostProcessEventType.MEMORY_EXTRACTION_START.value
@@ -240,3 +242,10 @@ class ContextSummarizedPayload(TypedDict):
     messages_after: int  # 压缩后消息数
     tokens_before: NotRequired[int]  # 压缩前 token 数（可选）
     tokens_after: NotRequired[int]  # 压缩后 token 数（可选）
+
+
+class ContextTrimmedPayload(TypedDict):
+    """上下文滑动窗口裁剪事件 payload"""
+    messages_before: int  # 裁剪前消息数
+    messages_after: int  # 裁剪后消息数
+    strategy: str  # 裁剪策略："messages" | "tokens"

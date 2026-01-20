@@ -25,6 +25,36 @@ export interface GreetingConfig {
   variables?: string[];
 }
 
+export interface MiddlewareFlags {
+  // 基础开关
+  todo_enabled?: boolean | null;
+  tool_retry_enabled?: boolean | null;
+  tool_limit_enabled?: boolean | null;
+  memory_enabled?: boolean | null;
+  strict_mode_enabled?: boolean | null;
+
+  // 滑动窗口配置
+  sliding_window_enabled?: boolean | null;
+  sliding_window_strategy?: "messages" | "tokens" | null;
+  sliding_window_max_messages?: number | null;
+  sliding_window_max_tokens?: number | null;
+
+  // 上下文压缩配置
+  summarization_enabled?: boolean | null;
+  summarization_trigger_messages?: number | null;
+  summarization_trigger_tokens?: number | null;
+  summarization_keep_strategy?: "messages" | "tokens" | null;
+  summarization_keep_messages?: number | null;
+  summarization_keep_tokens?: number | null;
+  summarization_model?: string | null;
+
+  // 噪音过滤配置
+  noise_filter_enabled?: boolean | null;
+  noise_filter_max_chars?: number | null;
+  noise_filter_preserve_head?: number | null;
+  noise_filter_preserve_tail?: number | null;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -32,7 +62,7 @@ export interface Agent {
   type: "product" | "faq" | "kb" | "custom";
   system_prompt: string;
   mode_default: "natural" | "free" | "strict";
-  middleware_flags: Record<string, boolean> | null;
+  middleware_flags: MiddlewareFlags | null;
   tool_policy: Record<string, unknown> | null;
   tool_categories: string[] | null;
   knowledge_config_id: string | null;

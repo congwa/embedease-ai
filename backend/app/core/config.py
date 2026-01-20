@@ -161,15 +161,39 @@ class Settings(BaseSettings):
     AGENT_TOOL_RETRY_INITIAL_DELAY: float = 1.0  # 初始延迟（秒）
     AGENT_TOOL_RETRY_MAX_DELAY: float = 60.0  # 最大延迟（秒）
 
+    # ========== Agent 滑动窗口中间件配置 ==========
+    # 在模型调用前裁剪消息历史，保留最近的 N 条消息或 N 个 Token
+    AGENT_SLIDING_WINDOW_ENABLED: bool = False  # 是否启用 SlidingWindowMiddleware
+    AGENT_SLIDING_WINDOW_STRATEGY: str = "messages"  # 裁剪策略："messages" | "tokens"
+    AGENT_SLIDING_WINDOW_MAX_MESSAGES: int = 50  # 最大消息数（strategy="messages" 时生效）
+    AGENT_SLIDING_WINDOW_MAX_TOKENS: int = 8000  # 最大 Token 数（strategy="tokens" 时生效）
+
     # ========== Agent 上下文压缩中间件配置 ==========
     # 当消息历史过长时自动压缩（使用 LLM 生成摘要替换旧消息）
     AGENT_SUMMARIZATION_ENABLED: bool = True  # 是否启用 SummarizationMiddleware
     # 触发压缩的阈值（消息数），达到此数量时触发压缩
     AGENT_SUMMARIZATION_TRIGGER_MESSAGES: int = 50
-    # 压缩后保留的最近消息数
+    # 触发压缩的阈值（Token 数），达到此数量时触发压缩（可选，0 表示不使用）
+    AGENT_SUMMARIZATION_TRIGGER_TOKENS: int = 0
+    # 触发压缩的阈值（模型上下文窗口分数），如 0.7 表示 70%（可选，0 表示不使用）
+    AGENT_SUMMARIZATION_TRIGGER_FRACTION: float = 0.0
+    # 压缩后保留策略："messages" | "tokens"
+    AGENT_SUMMARIZATION_KEEP_STRATEGY: str = "messages"
+    # 压缩后保留的最近消息数（keep_strategy="messages" 时生效）
     AGENT_SUMMARIZATION_KEEP_MESSAGES: int = 20
+    # 压缩后保留的 Token 数（keep_strategy="tokens" 时生效）
+    AGENT_SUMMARIZATION_KEEP_TOKENS: int = 3000
     # 用于生成摘要的最大 token 数（避免摘要请求过大）
     AGENT_SUMMARIZATION_TRIM_TOKENS: int = 4000
+    # 摘要专用模型（可选，留空则使用主模型）
+    AGENT_SUMMARIZATION_MODEL: str | None = None
+
+    # ========== Agent 噪音过滤中间件配置 ==========
+    # 过滤/截断工具执行的冗长输出，避免干扰模型注意力
+    AGENT_NOISE_FILTER_ENABLED: bool = True  # 是否启用 NoiseFilterMiddleware
+    AGENT_NOISE_FILTER_MAX_CHARS: int = 2000  # 最大输出字符数
+    AGENT_NOISE_FILTER_PRESERVE_HEAD: int = 500  # 截断时保留头部字符数
+    AGENT_NOISE_FILTER_PRESERVE_TAIL: int = 1000  # 截断时保留尾部字符数
 
     # ========== OCR 配置 ==========
     # 总开关

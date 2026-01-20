@@ -52,14 +52,17 @@ class AgentTypeConfigurator(ABC):
         pass
 
     @property
-    def default_middleware_flags(self) -> dict[str, bool]:
-        """默认中间件开关"""
+    def default_middleware_flags(self) -> dict[str, Any]:
+        """默认中间件配置（开关 + 参数）"""
         return {
             "todo_enabled": True,
             "summarization_enabled": True,
             "tool_retry_enabled": True,
             "tool_limit_enabled": True,
             "memory_enabled": True,
+            # 默认不启用滑动窗口和噪音过滤，由子类覆盖
+            "sliding_window_enabled": None,
+            "noise_filter_enabled": None,
         }
 
     @property
@@ -132,13 +135,19 @@ class ProductAgentConfigurator(AgentTypeConfigurator):
         return ["search", "query", "compare", "filter", "category", "featured", "purchase", "guide"]
 
     @property
-    def default_middleware_flags(self) -> dict[str, bool]:
+    def default_middleware_flags(self) -> dict[str, Any]:
+        """商品推荐 Agent 默认启用噪音过滤（压缩商品描述）"""
         return {
             "todo_enabled": True,
             "summarization_enabled": True,
             "tool_retry_enabled": True,
             "tool_limit_enabled": True,
             "memory_enabled": True,
+            # 商品场景：启用噪音过滤，压缩商品描述
+            "noise_filter_enabled": True,
+            "noise_filter_max_chars": 2000,
+            # 滑动窗口使用全局默认
+            "sliding_window_enabled": None,
         }
 
     @property
@@ -259,13 +268,20 @@ class FAQAgentConfigurator(AgentTypeConfigurator):
         return ["faq_search"]
 
     @property
-    def default_middleware_flags(self) -> dict[str, bool]:
+    def default_middleware_flags(self) -> dict[str, Any]:
+        """FAQ Agent 默认配置：启用滑动窗口（对话通常较短）"""
         return {
             "todo_enabled": False,
             "summarization_enabled": True,
             "tool_retry_enabled": True,
             "tool_limit_enabled": True,
             "memory_enabled": False,
+            # FAQ 场景：启用滑动窗口，对话通常较短
+            "sliding_window_enabled": True,
+            "sliding_window_strategy": "messages",
+            "sliding_window_max_messages": 30,
+            # 噪音过滤：FAQ 输出通常简洁，不需要过滤
+            "noise_filter_enabled": False,
         }
 
     @property
@@ -389,13 +405,21 @@ class KBAgentConfigurator(AgentTypeConfigurator):
         return ["kb_search", "kb_query"]
 
     @property
-    def default_middleware_flags(self) -> dict[str, bool]:
+    def default_middleware_flags(self) -> dict[str, Any]:
+        """KB Agent 默认配置：启用摘要和噪音过滤（文档检索结果可能很长）"""
         return {
             "todo_enabled": False,
             "summarization_enabled": True,
+            "summarization_trigger_messages": 40,
+            "summarization_keep_messages": 15,
             "tool_retry_enabled": True,
             "tool_limit_enabled": True,
             "memory_enabled": True,
+            # KB 场景：启用噪音过滤，压缩文档内容
+            "noise_filter_enabled": True,
+            "noise_filter_max_chars": 3000,
+            # 滑动窗口使用全局默认
+            "sliding_window_enabled": None,
         }
 
     @property

@@ -77,14 +77,62 @@ class ToolPolicySchema(BaseModel):
 
 
 class MiddlewareFlagsSchema(BaseModel):
-    """中间件开关配置"""
+    """中间件开关配置
 
+    支持 Agent 级别的中间件配置，未设置的字段使用全局默认值。
+    """
+
+    # ========== 基础开关 ==========
     todo_enabled: bool | None = Field(default=None, description="TODO 规划中间件")
-    summarization_enabled: bool | None = Field(default=None, description="上下文压缩")
     tool_retry_enabled: bool | None = Field(default=None, description="工具重试")
     tool_limit_enabled: bool | None = Field(default=None, description="工具调用限制")
     memory_enabled: bool | None = Field(default=None, description="记忆系统")
     strict_mode_enabled: bool | None = Field(default=None, description="严格模式检查")
+
+    # ========== 滑动窗口配置 ==========
+    sliding_window_enabled: bool | None = Field(default=None, description="滑动窗口裁剪")
+    sliding_window_strategy: str | None = Field(
+        default=None, description="裁剪策略: messages | tokens"
+    )
+    sliding_window_max_messages: int | None = Field(
+        default=None, ge=10, le=500, description="最大消息数"
+    )
+    sliding_window_max_tokens: int | None = Field(
+        default=None, ge=1000, le=100000, description="最大 Token 数"
+    )
+
+    # ========== 上下文压缩配置 ==========
+    summarization_enabled: bool | None = Field(default=None, description="上下文压缩")
+    summarization_trigger_messages: int | None = Field(
+        default=None, ge=10, le=500, description="触发压缩的消息数阈值"
+    )
+    summarization_trigger_tokens: int | None = Field(
+        default=None, ge=1000, le=100000, description="触发压缩的 Token 阈值"
+    )
+    summarization_keep_strategy: str | None = Field(
+        default=None, description="保留策略: messages | tokens"
+    )
+    summarization_keep_messages: int | None = Field(
+        default=None, ge=5, le=100, description="保留的消息数"
+    )
+    summarization_keep_tokens: int | None = Field(
+        default=None, ge=500, le=50000, description="保留的 Token 数"
+    )
+    summarization_model: str | None = Field(
+        default=None, description="摘要专用模型（留空使用主模型）"
+    )
+
+    # ========== 噪音过滤配置 ==========
+    noise_filter_enabled: bool | None = Field(default=None, description="噪音过滤")
+    noise_filter_max_chars: int | None = Field(
+        default=None, ge=500, le=10000, description="最大输出字符数"
+    )
+    noise_filter_preserve_head: int | None = Field(
+        default=None, ge=100, le=2000, description="截断时保留头部字符数"
+    )
+    noise_filter_preserve_tail: int | None = Field(
+        default=None, ge=100, le=5000, description="截断时保留尾部字符数"
+    )
 
 
 # ========== Knowledge Config ==========
