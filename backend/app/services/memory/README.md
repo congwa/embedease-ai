@@ -1,6 +1,6 @@
 # 记忆系统
 
-embedAi-agent 的记忆系统实现，包含 LangGraph Store、事实型长期记忆、图谱记忆和记忆编排中间件。
+embedeaseai-agent 的记忆系统实现，包含 LangGraph Store、事实型长期记忆、图谱记忆和记忆编排中间件。
 
 ## 架构概览
 

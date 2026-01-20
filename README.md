@@ -628,8 +628,8 @@ Agent："抱歉，我需要更具体的信息才能回答。
 
 ```bash
 # 第 1 步：下载项目
-git clone https://github.com/你的账号/embedAi-agent.git
-cd embedAi-agent
+git clone https://github.com/你的账号/embedeaseai-agent.git
+cd embedeaseai-agent
 
 # 第 2 步：运行安装向导
 ./install.sh
@@ -708,7 +708,7 @@ pnpm dev
 ## 📁 项目结构
 
 ```
-embedAi-agent/
+embedeaseai-agent/
 │
 ├── 📂 backend/                    # 后端服务
 │   ├── 📂 app/

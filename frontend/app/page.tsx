@@ -654,7 +654,7 @@ export default function LandingPage() {
                     进入管理后台 <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <Link href="https://github.com/congwa/embedAi-agent" target="_blank">
+                <Link href="https://github.com/congwa/embedeaseai-agent" target="_blank">
                   <Button
                     size="lg"
                     variant="outline"
