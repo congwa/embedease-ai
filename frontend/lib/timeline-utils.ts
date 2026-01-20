@@ -188,6 +188,13 @@ export interface GreetingItem {
   ts: number;
 }
 
+export interface WaitingItem {
+  type: "waiting";
+  id: string;
+  turnId: string;
+  ts: number;
+}
+
 export type TimelineItem =
   | UserMessageItem
   | LLMCallClusterItem
@@ -196,7 +203,8 @@ export type TimelineItem =
   | FinalItem
   | MemoryEventItem
   | SupportEventItem
-  | GreetingItem;
+  | GreetingItem
+  | WaitingItem;
 
 export interface TimelineState {
   timeline: TimelineItem[];
@@ -357,8 +365,17 @@ export function addGreetingMessage(
 }
 
 export function startAssistantTurn(state: TimelineState, turnId: string): TimelineState {
+  // 插入等待项，显示加载状态
+  const waitingItem: WaitingItem = {
+    type: "waiting",
+    id: `waiting-${turnId}`,
+    turnId,
+    ts: Date.now(),
+  };
+  const newState = insertItem(state, waitingItem);
+  
   return {
-    ...state,
+    ...newState,
     activeTurn: {
       turnId,
       currentLlmCallId: null,
@@ -366,6 +383,19 @@ export function startAssistantTurn(state: TimelineState, turnId: string): Timeli
       isStreaming: true,
     },
   };
+}
+
+function removeWaitingItem(state: TimelineState, turnId: string): TimelineState {
+  const waitingId = `waiting-${turnId}`;
+  const index = state.indexById[waitingId];
+  if (index === undefined) return state;
+  
+  const timeline = state.timeline.filter((_, i) => i !== index);
+  const indexById: Record<string, number> = {};
+  timeline.forEach((item, i) => {
+    indexById[item.id] = i;
+  });
+  return { ...state, timeline, indexById };
 }
 
 export function timelineReducer(state: TimelineState, event: ChatEvent): TimelineState {
@@ -399,6 +429,9 @@ export function timelineReducer(state: TimelineState, event: ChatEvent): Timelin
     }
 
     case "llm.call.start": {
+      // 移除等待项
+      const stateWithoutWaiting = removeWaitingItem(state, turnId);
+      
       const payload = event.payload as LlmCallStartPayload;
       const llmCallId = payload.llm_call_id || crypto.randomUUID();
       const cluster: LLMCallClusterItem = {
@@ -411,7 +444,7 @@ export function timelineReducer(state: TimelineState, event: ChatEvent): Timelin
         childIndexById: {},
         ts: now,
       };
-      const newState = insertItem(state, cluster);
+      const newState = insertItem(stateWithoutWaiting, cluster);
       return {
         ...newState,
         activeTurn: {

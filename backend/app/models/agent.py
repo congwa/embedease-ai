@@ -153,6 +153,22 @@ class Agent(Base, TimestampMixin):
     # 是否为默认 Agent
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # ========== Supervisor 相关字段 ==========
+
+    # 是否为 Supervisor 类型
+    is_supervisor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # 子 Agent 配置（JSON，仅 is_supervisor=True 时有效）
+    # 格式: [{"agent_id": "xxx", "name": "商品助手", "routing_hints": ["商品", "推荐"], "priority": 100}]
+    sub_agents: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+
+    # 路由策略配置（JSON）
+    # 格式: {"type": "hybrid", "rules": [...], "default_agent": "xxx", "allow_multi_agent": false}
+    routing_policy: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
+    # Supervisor 专用提示词（意图分类指令）
+    supervisor_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # 开场白配置（JSON）
     # 格式: {"enabled": true, "trigger": "first_visit", "delay_ms": 1500, "channels": {...}, "cta": {...}}
     greeting_config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)

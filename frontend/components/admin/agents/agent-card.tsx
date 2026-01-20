@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bot, ChevronRight, Database, HelpCircle, Wrench, Zap } from "lucide-react";
+import { Bot, ChevronRight, Database, HelpCircle, Network, Wrench, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,12 @@ export function AgentCard({ agent, className }: AgentCardProps) {
                   {agent.is_default && !isActive && (
                     <Badge variant="secondary" className="text-xs">
                       默认
+                    </Badge>
+                  )}
+                  {agent.is_supervisor && (
+                    <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 text-xs">
+                      <Network className="mr-1 h-3 w-3" />
+                      Supervisor
                     </Badge>
                   )}
                 </div>

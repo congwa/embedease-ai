@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AlertCircle, ArrowUp, Square, X } from "lucide-react";
+import { AlertCircle, ArrowUp, Bot, Network, Square, X } from "lucide-react";
 import {
   ChatContainerContent,
   ChatContainerRoot,
@@ -15,6 +15,8 @@ import {
 import { ScrollButton } from "@/components/prompt-kit/scroll-button";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useConversationStore, useChatStore, type TimelineItem } from "@/stores";
 import {
@@ -24,6 +26,7 @@ import {
   TimelineToolCallItem,
   TimelineSupportEventItem,
   TimelineGreetingItem,
+  TimelineWaitingItem,
 } from "./timeline";
 import {
   useChatThemeOptional,
@@ -52,9 +55,14 @@ export function ChatContent() {
   
   // 获取当前 Agent 和推荐问题
   const activeAgent = useAgentStore((s) => s.activeAgent());
+  const agents = useAgentStore((s) => s.agents);
+  const activateAgent = useAgentStore((s) => s.activateAgent);
   const { questions: suggestedQuestions, trackClick } = useSuggestedQuestions({
     agentId: activeAgent?.id,
   });
+  
+  // Supervisor 状态
+  const currentAgentName = useChatStore((s) => s.currentAgentName);
   
   const title = currentConversation?.title || "";
   const [prompt, setPrompt] = useState("");
@@ -161,6 +169,16 @@ export function ChatContent() {
           </Message>
         );
 
+      case "waiting":
+        return (
+          <Message
+            key={item.id}
+            className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
+          >
+            <TimelineWaitingItem item={item} />
+          </Message>
+        );
+
       default:
         return null;
     }
@@ -188,6 +206,38 @@ export function ChatContent() {
         )}>
           {title || "新对话"}
         </div>
+
+        {/* Supervisor 当前 Agent 显示 */}
+        {currentAgentName && (
+          <Badge variant="secondary" className="text-xs gap-1">
+            <Network className="h-3 w-3" />
+            {currentAgentName}
+          </Badge>
+        )}
+
+        {/* Agent 切换器 */}
+        {agents.length > 0 && (
+          <Select
+            value={activeAgent?.id || ""}
+            onValueChange={(id) => activateAgent(id)}
+          >
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <Bot className="h-3 w-3 mr-1" />
+              <SelectValue placeholder="选择 Agent" />
+            </SelectTrigger>
+            <SelectContent>
+              {agents.filter(a => a.status === "enabled").map((agent) => (
+                <SelectItem key={agent.id} value={agent.id} className="text-xs">
+                  <div className="flex items-center gap-1">
+                    {agent.is_supervisor && <Network className="h-3 w-3 text-orange-500" />}
+                    {agent.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         {/* 主题切换器 */}
         {theme && <ThemeSwitcherIcon />}
       </header>

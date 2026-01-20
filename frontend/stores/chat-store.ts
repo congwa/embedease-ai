@@ -32,6 +32,9 @@ interface ChatState {
   // 分页状态
   nextCursor: string | null;
   hasMore: boolean;
+  // Supervisor 状态
+  currentAgentId: string | null;
+  currentAgentName: string | null;
 
   timeline: () => TimelineItem[];
   currentTurnId: () => string | null;
@@ -58,6 +61,8 @@ export const useChatStore = create<ChatState>()(
     isStreaming: false,
     nextCursor: null,
     hasMore: false,
+    currentAgentId: null,
+    currentAgentName: null,
 
     timeline: () => get().timelineState.timeline,
     currentTurnId: () => get().timelineState.activeTurn.turnId,
@@ -229,6 +234,8 @@ export const useChatStore = create<ChatState>()(
       set((state) => {
         let newTimelineState = timelineReducer(state.timelineState, event);
         let newHumanMode = state.isHumanMode;
+        let newAgentId = state.currentAgentId;
+        let newAgentName = state.currentAgentName;
 
         if (event.type === "meta.start") {
           const payload = event.payload as { mode?: string };
@@ -237,9 +244,22 @@ export const useChatStore = create<ChatState>()(
           }
         }
 
+        // Supervisor 事件处理
+        if (event.type === "agent.routed" || event.type === "agent.handoff") {
+          const payload = event.payload as { target_agent?: string; target_agent_name?: string; to_agent?: string; to_agent_name?: string };
+          newAgentId = payload.target_agent || payload.to_agent || null;
+          newAgentName = payload.target_agent_name || payload.to_agent_name || null;
+        }
+
+        if (event.type === "agent.complete") {
+          // Agent 完成后可以清除或保持，这里保持显示
+        }
+
         return {
           timelineState: newTimelineState,
           isHumanMode: newHumanMode,
+          currentAgentId: newAgentId,
+          currentAgentName: newAgentName,
         };
       });
     },
@@ -259,6 +279,8 @@ export const useChatStore = create<ChatState>()(
         isStreaming: false,
         nextCursor: null,
         hasMore: false,
+        currentAgentId: null,
+        currentAgentName: null,
       });
     },
   }))

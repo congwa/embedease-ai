@@ -162,6 +162,14 @@ export type SupportEventType =
   | "support.message_edited"
   | "support.messages_deleted";
 
+/**
+ * Supervisor 多 Agent 编排事件
+ */
+export type SupervisorEventType =
+  | "agent.routed"
+  | "agent.handoff"
+  | "agent.complete";
+
 /** 所有事件类型 */
 export type ChatEventType =
   | StreamLevelEventType
@@ -170,7 +178,8 @@ export type ChatEventType =
   | ToolCallEventType
   | DataEventType
   | PostProcessEventType
-  | SupportEventType;
+  | SupportEventType
+  | SupervisorEventType;
 
 // ==================== 事件类型判断函数 ====================
 
@@ -286,6 +295,29 @@ export interface SupportEventPayload {
   created_at?: string;   // 创建时间
 }
 
+// ========== Supervisor 事件 Payload ==========
+
+export interface AgentRoutedPayload {
+  source_agent: string;
+  target_agent: string;
+  target_agent_name: string;
+  reason?: string;
+}
+
+export interface AgentHandoffPayload {
+  from_agent: string;
+  to_agent: string;
+  to_agent_name: string;
+  task?: string;
+}
+
+export interface AgentCompletePayload {
+  agent_id: string;
+  agent_name: string;
+  elapsed_ms?: number;
+  status?: string;
+}
+
 export type ChatEventPayload =
   | MetaStartPayload
   | TextDeltaPayload
@@ -301,6 +333,9 @@ export type ChatEventPayload =
   | MemoryExtractionPayload
   | MemoryProfilePayload
   | SupportEventPayload
+  | AgentRoutedPayload
+  | AgentHandoffPayload
+  | AgentCompletePayload
   | Record<string, unknown>;
 
 export interface ChatEventBase {
@@ -336,5 +371,9 @@ export type ChatEvent =
   | (ChatEventBase & { type: "tool.end"; payload: ToolEndPayload })
   | (ChatEventBase & { type: "context.summarized"; payload: ContextSummarizedPayload })
   | (ChatEventBase & { type: "assistant.todos"; payload: TodosPayload })
+  // ========== Supervisor 事件 ==========
+  | (ChatEventBase & { type: "agent.routed"; payload: AgentRoutedPayload })
+  | (ChatEventBase & { type: "agent.handoff"; payload: AgentHandoffPayload })
+  | (ChatEventBase & { type: "agent.complete"; payload: AgentCompletePayload })
   // ========== 兜底 ==========
   | (ChatEventBase & { type: ChatEventType; payload: Record<string, unknown> });

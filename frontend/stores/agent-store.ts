@@ -11,6 +11,7 @@ export interface Agent {
   type: "product" | "faq" | "kb" | "custom";
   status: "enabled" | "disabled";
   is_default: boolean;
+  is_supervisor: boolean;
   mode_default: string;
   created_at: string;
   updated_at: string;

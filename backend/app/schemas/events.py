@@ -78,6 +78,14 @@ class SupportEventType(StrEnum):
     SUPPORT_PING = "support.ping"  # 心跳
 
 
+class SupervisorEventType(StrEnum):
+    """Supervisor 多 Agent 编排事件。"""
+
+    AGENT_ROUTED = "agent.routed"  # Agent 路由决策
+    AGENT_HANDOFF = "agent.handoff"  # Agent 切换/移交
+    AGENT_COMPLETE = "agent.complete"  # 子 Agent 任务完成
+
+
 # ==================== 兼容旧代码的别名 ====================
 
 class NonLLMCallDomainEventType(StrEnum):
@@ -159,6 +167,11 @@ class StreamEventType(StrEnum):
     SUPPORT_HUMAN_MESSAGE = SupportEventType.SUPPORT_HUMAN_MESSAGE.value
     SUPPORT_CONNECTED = SupportEventType.SUPPORT_CONNECTED.value
     SUPPORT_PING = SupportEventType.SUPPORT_PING.value
+
+    # ========== Supervisor 多 Agent 编排事件 ==========
+    AGENT_ROUTED = SupervisorEventType.AGENT_ROUTED.value
+    AGENT_HANDOFF = SupervisorEventType.AGENT_HANDOFF.value
+    AGENT_COMPLETE = SupervisorEventType.AGENT_COMPLETE.value
 
 
 class MetaStartPayload(TypedDict):
@@ -249,3 +262,30 @@ class ContextTrimmedPayload(TypedDict):
     messages_before: int  # 裁剪前消息数
     messages_after: int  # 裁剪后消息数
     strategy: str  # 裁剪策略："messages" | "tokens"
+
+
+# ========== Supervisor 事件 Payload ==========
+
+
+class AgentRoutedPayload(TypedDict):
+    """Agent 路由事件 payload"""
+    source_agent: str  # 来源 Agent ID（Supervisor）
+    target_agent: str  # 目标 Agent ID
+    target_agent_name: str  # 目标 Agent 名称
+    reason: NotRequired[str]  # 路由原因
+
+
+class AgentHandoffPayload(TypedDict):
+    """Agent 切换事件 payload"""
+    from_agent: str  # 切换前 Agent ID
+    to_agent: str  # 切换后 Agent ID
+    to_agent_name: str  # 切换后 Agent 名称
+    task: NotRequired[str]  # 任务描述
+
+
+class AgentCompletePayload(TypedDict):
+    """子 Agent 任务完成事件 payload"""
+    agent_id: str  # Agent ID
+    agent_name: str  # Agent 名称
+    elapsed_ms: NotRequired[int]  # 耗时
+    status: NotRequired[str]  # "success" | "error"

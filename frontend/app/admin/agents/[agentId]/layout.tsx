@@ -42,7 +42,7 @@ const baseTabs = [
 ];
 
 // 根据 Agent 类型获取额外的 Tab
-const getTypeTabs = (agentType: string) => {
+const getTypeTabs = (agentType: string, isSupervisor?: boolean) => {
   const tabs: { id: string; label: string; href: string }[] = [];
   
   if (agentType === "faq") {
@@ -52,6 +52,9 @@ const getTypeTabs = (agentType: string) => {
   if (agentType === "kb" || agentType === "faq") {
     tabs.push({ id: "knowledge", label: "知识库", href: "/knowledge" });
   }
+
+  // Supervisor 配置 Tab
+  tabs.push({ id: "supervisor", label: "多Agent编排", href: "/supervisor" });
   
   return tabs;
 };

@@ -9,7 +9,7 @@ import {
   ErrorAlert,
   EmptyState,
 } from "@/components/admin";
-import { AgentList, AgentFilterBar } from "@/components/admin/agents";
+import { AgentList, AgentFilterBar, CreateAgentDialog } from "@/components/admin/agents";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -63,10 +63,7 @@ export default function AgentsPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             刷新
           </Button>
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            新建 Agent
-          </Button>
+          <CreateAgentDialog onCreated={loadAgents} />
         </div>
       </div>
 
@@ -130,10 +127,7 @@ export default function AgentsPage() {
           }
           action={
             agents.length === 0 && (
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                创建 Agent
-              </Button>
+              <CreateAgentDialog onCreated={loadAgents} />
             )
           }
         />

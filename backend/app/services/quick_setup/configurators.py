@@ -612,6 +612,131 @@ class CustomAgentConfigurator(AgentTypeConfigurator):
         ]
 
 
+class SupervisorConfigurator(AgentTypeConfigurator):
+    """Supervisor 多 Agent 编排配置器"""
+
+    agent_type: ClassVar[str] = "supervisor"
+
+    @property
+    def name(self) -> str:
+        return "智能调度器"
+
+    @property
+    def description(self) -> str:
+        return "多 Agent 编排，根据用户意图自动路由到最合适的子 Agent"
+
+    @property
+    def icon(self) -> str:
+        return "Network"
+
+    @property
+    def default_tool_categories(self) -> list[str]:
+        return []
+
+    @property
+    def default_middleware_flags(self) -> dict[str, Any]:
+        """Supervisor 默认配置：启用基础功能，禁用复杂处理"""
+        return {
+            "todo_enabled": False,
+            "summarization_enabled": True,
+            "summarization_trigger_messages": 30,
+            "summarization_keep_messages": 10,
+            "tool_retry_enabled": False,
+            "tool_limit_enabled": False,
+            "memory_enabled": True,
+            "sliding_window_enabled": None,
+            "noise_filter_enabled": None,
+        }
+
+    @property
+    def system_prompt_template(self) -> str | None:
+        return """你是一个智能助手调度器（Supervisor）。
+
+你的职责是分析用户的问题，并将其路由到最合适的专业助手处理。
+
+## 路由规则
+1. 分析用户意图，选择最匹配的助手
+2. 如果问题涉及多个领域，选择主要相关的助手
+3. 如果无法确定，使用默认助手
+
+## 输出格式
+直接调用 transfer_to_xxx 工具将对话转交给对应助手。"""
+
+    @property
+    def greeting_template(self) -> dict[str, Any] | None:
+        return {
+            "enabled": True,
+            "trigger": "first_visit",
+            "delay_ms": 500,
+            "channels": {
+                "default": {
+                    "title": "🤖 智能助手",
+                    "body": "您好！我是智能助手，可以帮您处理各种问题。请告诉我您需要什么帮助？",
+                },
+            },
+        }
+
+    def get_step_configs(self) -> list[AgentTypeStepConfig]:
+        return [
+            AgentTypeStepConfig(
+                step_key="supervisor",
+                enabled=True,
+                title_override="多 Agent 编排",
+                description_override="配置子 Agent 和路由策略",
+                fields=self.get_supervisor_step_fields(),
+                hints=[
+                    "添加至少 2 个子 Agent 才能发挥编排优势",
+                    "关键词匹配适合简单场景，意图识别更智能但消耗更多 Token",
+                    "建议设置默认 Agent 处理无法分类的请求",
+                ],
+            ),
+            AgentTypeStepConfig(
+                step_key="greeting",
+                enabled=True,
+                hints=["开场白应概括所有子 Agent 的能力"],
+            ),
+        ]
+
+    def get_supervisor_step_fields(self) -> list[AgentTypeField]:
+        return [
+            AgentTypeField(
+                key="sub_agents",
+                label="子 Agent",
+                type="agent_selector",
+                required=True,
+                description="选择要编排的子 Agent",
+                group="agents",
+            ),
+            AgentTypeField(
+                key="routing_policy_type",
+                label="路由策略",
+                type="select",
+                default="hybrid",
+                options=[
+                    {"value": "keyword", "label": "关键词匹配"},
+                    {"value": "intent", "label": "意图识别"},
+                    {"value": "hybrid", "label": "混合模式（推荐）"},
+                ],
+                description="用户意图识别方式",
+                group="routing",
+            ),
+            AgentTypeField(
+                key="default_agent",
+                label="默认 Agent",
+                type="agent_selector_single",
+                description="无法确定意图时使用的 Agent",
+                group="routing",
+            ),
+            AgentTypeField(
+                key="supervisor_prompt",
+                label="调度提示词",
+                type="textarea",
+                description="指导 Supervisor 如何分析意图和路由",
+                group="prompt",
+            ),
+        ]
+
+
 # ========== 配置器注册表 ==========
 
 
@@ -620,6 +745,7 @@ _CONFIGURATOR_REGISTRY: dict[str, type[AgentTypeConfigurator]] = {
     "faq": FAQAgentConfigurator,
     "kb": KBAgentConfigurator,
     "custom": CustomAgentConfigurator,
+    "supervisor": SupervisorConfigurator,
 }
 
 

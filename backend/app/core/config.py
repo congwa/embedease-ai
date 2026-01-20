@@ -195,6 +195,16 @@ class Settings(BaseSettings):
     AGENT_NOISE_FILTER_PRESERVE_HEAD: int = 500  # 截断时保留头部字符数
     AGENT_NOISE_FILTER_PRESERVE_TAIL: int = 1000  # 截断时保留尾部字符数
 
+    # ========== Supervisor 多 Agent 编排配置 ==========
+    # 全局开关（关闭后所有 Supervisor Agent 回退到单 Agent 模式）
+    SUPERVISOR_ENABLED: bool = False
+    # 默认 Supervisor Agent ID（留空则使用默认 Agent）
+    SUPERVISOR_DEFAULT_AGENT_ID: str | None = None
+    # 意图分类超时（秒）
+    SUPERVISOR_INTENT_TIMEOUT: float = 3.0
+    # 是否允许多 Agent 协作（同时调用多个子 Agent）
+    SUPERVISOR_ALLOW_MULTI_AGENT: bool = False
+
     # ========== OCR 配置 ==========
     # 总开关
     OCR_ENABLED: bool = True

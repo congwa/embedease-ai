@@ -76,6 +76,54 @@ class ToolPolicySchema(BaseModel):
     clarification_tool: str | None = Field(default=None, description="信息不足时的澄清工具")
 
 
+# ========== Supervisor 配置 ==========
+
+RoutingPolicyTypeEnum = Literal["keyword", "intent", "hybrid"]
+
+
+class SubAgentConfig(BaseModel):
+    """子 Agent 配置"""
+
+    agent_id: str = Field(..., description="子 Agent ID")
+    name: str = Field(..., min_length=1, max_length=100, description="显示名称")
+    description: str | None = Field(default=None, max_length=500, description="描述")
+    routing_hints: list[str] = Field(default_factory=list, description="路由提示关键词")
+    priority: int = Field(default=0, ge=0, le=1000, description="优先级，越大越优先")
+
+
+class RoutingCondition(BaseModel):
+    """路由条件"""
+
+    type: Literal["keyword", "intent"] = Field(..., description="条件类型")
+    keywords: list[str] | None = Field(default=None, description="关键词列表（type=keyword 时）")
+    intents: list[str] | None = Field(default=None, description="意图列表（type=intent 时）")
+
+
+class RoutingRule(BaseModel):
+    """路由规则"""
+
+    condition: RoutingCondition = Field(..., description="触发条件")
+    target: str = Field(..., description="目标 Agent ID")
+    priority: int = Field(default=0, ge=0, le=1000, description="规则优先级")
+
+
+class RoutingPolicy(BaseModel):
+    """路由策略"""
+
+    type: RoutingPolicyTypeEnum = Field(default="hybrid", description="策略类型")
+    rules: list[RoutingRule] = Field(default_factory=list, description="路由规则列表")
+    default_agent: str | None = Field(default=None, description="默认 Agent ID")
+    allow_multi_agent: bool = Field(default=False, description="是否允许多 Agent 协作")
+
+
+class SupervisorConfigSchema(BaseModel):
+    """Supervisor 完整配置"""
+
+    sub_agents: list[SubAgentConfig] = Field(default_factory=list, description="子 Agent 列表")
+    routing_policy: RoutingPolicy = Field(default_factory=RoutingPolicy, description="路由策略")
+    supervisor_prompt: str | None = Field(default=None, description="Supervisor 专用提示词")
+
+
 class MiddlewareFlagsSchema(BaseModel):
     """中间件开关配置
 
@@ -204,6 +252,12 @@ class AgentBase(BaseModel):
     is_default: bool = Field(default=False)
     greeting_config: GreetingConfigSchema | None = Field(default=None, description="开场白配置")
 
+    # Supervisor 相关
+    is_supervisor: bool = Field(default=False, description="是否为 Supervisor 类型")
+    sub_agents: list[SubAgentConfig] | None = Field(default=None, description="子 Agent 配置")
+    routing_policy: RoutingPolicy | None = Field(default=None, description="路由策略")
+    supervisor_prompt: str | None = Field(default=None, description="Supervisor 提示词")
+
 
 class AgentCreate(AgentBase):
     """创建智能体"""
@@ -227,6 +281,12 @@ class AgentUpdate(BaseModel):
     status: AgentStatusEnum | None = Field(default=None)
     is_default: bool | None = Field(default=None)
     greeting_config: GreetingConfigSchema | None = Field(default=None)
+
+    # Supervisor 相关
+    is_supervisor: bool | None = Field(default=None)
+    sub_agents: list[SubAgentConfig] | None = Field(default=None)
+    routing_policy: RoutingPolicy | None = Field(default=None)
+    supervisor_prompt: str | None = Field(default=None)
 
 
 class AgentResponse(AgentBase):
@@ -414,5 +474,11 @@ class AgentConfig(BaseModel):
 
     # 版本（用于缓存失效）
     config_version: str | None = None
+
+    # Supervisor 相关
+    is_supervisor: bool = False
+    sub_agents: list[SubAgentConfig] | None = None
+    routing_policy: RoutingPolicy | None = None
+    supervisor_prompt: str | None = None
 
     model_config = {"from_attributes": True}

@@ -35,6 +35,7 @@ import { KnowledgeStep } from "./steps/knowledge-step";
 import { GreetingStep } from "./steps/greeting-step";
 import { ChannelStep } from "./steps/channel-step";
 import { SummaryStep } from "./steps/summary-step";
+import { SupervisorStep } from "./steps/supervisor-step";
 
 const STEP_COMPONENTS: Record<string, React.ComponentType<StepProps>> = {
   welcome: WelcomeStep,
@@ -44,6 +45,7 @@ const STEP_COMPONENTS: Record<string, React.ComponentType<StepProps>> = {
   greeting: GreetingStep,
   channel: ChannelStep,
   summary: SummaryStep,
+  supervisor: SupervisorStep,
 };
 
 export interface StepProps {

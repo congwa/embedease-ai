@@ -55,6 +55,35 @@ export interface MiddlewareFlags {
   noise_filter_preserve_tail?: number | null;
 }
 
+// ========== Supervisor 配置类型 ==========
+
+export interface SubAgentConfig {
+  agent_id: string;
+  name: string;
+  description?: string;
+  routing_hints: string[];
+  priority: number;
+}
+
+export interface RoutingCondition {
+  type: "keyword" | "intent";
+  keywords?: string[];
+  intents?: string[];
+}
+
+export interface RoutingRule {
+  condition: RoutingCondition;
+  target: string;
+  priority: number;
+}
+
+export interface RoutingPolicy {
+  type: "keyword" | "intent" | "hybrid";
+  rules: RoutingRule[];
+  default_agent?: string;
+  allow_multi_agent: boolean;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -70,6 +99,11 @@ export interface Agent {
   status: "enabled" | "disabled";
   is_default: boolean;
   greeting_config: GreetingConfig | null;
+  // Supervisor 相关
+  is_supervisor: boolean;
+  sub_agents: SubAgentConfig[] | null;
+  routing_policy: RoutingPolicy | null;
+  supervisor_prompt: string | null;
   created_at: string;
   updated_at: string;
   knowledge_config: KnowledgeConfig | null;
