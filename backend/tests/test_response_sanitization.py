@@ -105,7 +105,7 @@ class TestMalformedDetection:
 class TestMiddlewareProcessing:
     """测试中间件处理逻辑"""
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_disabled_middleware_passthrough(self, mock_request, mock_handler):
         """测试禁用时直接透传"""
         middleware = ResponseSanitizationMiddleware(enabled=False)
@@ -118,7 +118,7 @@ class TestMiddlewareProcessing:
         assert result == mock_response
         mock_handler.assert_called_once_with(mock_request)
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_sanitize_malformed_response(self, middleware, mock_request, mock_handler):
         """测试清洗异常响应"""
         # 创建包含异常内容的响应
@@ -139,7 +139,7 @@ class TestMiddlewareProcessing:
         assert "技术问题" in sanitized_msg.content
         assert "function" not in sanitized_msg.content
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_normal_response_unchanged(self, middleware, mock_request, mock_handler):
         """测试正常响应不被修改"""
         normal_message = AIMessage(content="这是一个正常的回复，推荐以下商品：")
@@ -153,7 +153,7 @@ class TestMiddlewareProcessing:
         assert len(result.result) == 1
         assert result.result[0].content == "这是一个正常的回复，推荐以下商品："
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_custom_fallback_message(self, mock_request, mock_handler):
         """测试自定义降级消息"""
         custom_msg = "系统维护中，请稍后再试。"
@@ -171,7 +171,7 @@ class TestMiddlewareProcessing:
 
         assert result.result[0].content == custom_msg
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_list_content_handling(self, middleware, mock_request, mock_handler):
         """测试处理列表类型的内容"""
         # 某些模型可能返回列表格式的内容

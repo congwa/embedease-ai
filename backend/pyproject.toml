@@ -1,25 +1,25 @@
 [project]
 name = "embed-ai-agent"
 version = "0.1.11"
-description = "商品推荐 Agent - 基于 LangChain v1.1"
+description = "商品推荐 Agent - 基于 LangChain v1.2"
 requires-python = ">=3.13"
 
 dependencies = [
   "aiofiles>=24.1.0",
-  "aiosqlite>=0.22.0",
+  "aiosqlite>=0.22.1",
   "apscheduler>=3.10.0",
   "beautifulsoup4>=4.12.0",
   "croniter>=2.0.0",
-  "fastapi>=0.124.4",
+  "fastapi>=0.128.0",
   "greenlet>=3.1.1",
-  "langchain>=1.1.3",
-  "langchain-openai>=1.1.3",
+  "langchain>=1.2.6",
+  "langchain-openai>=1.1.7",
   "langchain-qdrant>=1.1.0",
   "langchain-text-splitters>=1.1.0",
-  "langgraph>=1.0.5",
+  "langgraph>=1.0.6",
   "langgraph-supervisor>=0.0.11",
-  "langgraph-checkpoint-sqlite>=3.0.1",
-  "langgraph-checkpoint-postgres>=3.0.0",
+  "langgraph-checkpoint-sqlite>=3.0.3",
+  "langgraph-checkpoint-postgres>=3.0.3",
   "asyncpg>=0.30.0",
   "psycopg[binary,pool]>=3.2.0",
   "loguru>=0.7.3",
@@ -33,15 +33,15 @@ dependencies = [
   "rich>=14.2.0",
   "sqlalchemy>=2.0.45",
   "structlog>=25.5.0",
-  "uvicorn[standard]>=0.38.0",
-  "websockets>=15.0.1",
+  "uvicorn[standard]>=0.40.0",
+  "websockets>=16.0",
   "python-multipart>=0.0.21",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
-    "ruff>=0.7.0",
+    "ruff>=0.14.13",
 ]
 
 [tool.ruff]
