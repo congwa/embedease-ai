@@ -736,3 +736,401 @@
   --chat-border-color: #3f3f46;
   --chat-border-focus: #71717a;
 }
+
+/* ========================================
+   科技商务风主题 (techbiz)
+   专业可信 + 科技感
+   ======================================== */
+
+[data-chat-theme="techbiz"] {
+  --chat-bg-page: #FAFBFC;
+  --chat-bg-header: #FFFFFF;
+  --chat-bg-messages: #FAFBFC;
+  --chat-bg-input-area: #FFFFFF;
+  --chat-bg-user-bubble: #EFF6FF;
+  --chat-bg-ai-bubble: #FFFFFF;
+  --chat-bg-input: #FFFFFF;
+  
+  --chat-text-primary: #1E293B;
+  --chat-text-secondary: #64748B;
+  --chat-text-tertiary: #94A3B8;
+  --chat-text-user: #1E40AF;
+  --chat-text-ai: #1E293B;
+  
+  --chat-border-color: #E2E8F0;
+  --chat-border-focus: #3B82F6;
+  
+  --chat-accent: #2563EB;
+  --chat-accent-hover: #1D4ED8;
+  --chat-accent-light: #DBEAFE;
+  --chat-success: #10B981;
+  --chat-error: #EF4444;
+  --chat-warning: #F59E0B;
+  
+  --chat-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --chat-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --chat-shadow-input: 0 2px 8px rgba(37, 99, 235, 0.08);
+  
+  --chat-radius-sm: 0.5rem;
+  --chat-radius-md: 0.75rem;
+  --chat-radius-lg: 1rem;
+  --chat-radius-bubble: 1.25rem;
+}
+
+.dark [data-chat-theme="techbiz"],
+[data-chat-theme="techbiz"].dark {
+  --chat-bg-page: #0F172A;
+  --chat-bg-header: #1E293B;
+  --chat-bg-messages: #0F172A;
+  --chat-bg-input-area: #1E293B;
+  --chat-bg-user-bubble: #1E3A8A;
+  --chat-bg-ai-bubble: #1E293B;
+  --chat-bg-input: #0F172A;
+  
+  --chat-text-primary: #F1F5F9;
+  --chat-text-secondary: #94A3B8;
+  --chat-text-tertiary: #64748B;
+  --chat-text-user: #93C5FD;
+  --chat-text-ai: #F1F5F9;
+  
+  --chat-border-color: #334155;
+  --chat-border-focus: #3B82F6;
+  
+  --chat-accent: #3B82F6;
+  --chat-accent-hover: #60A5FA;
+  --chat-accent-light: #1E3A8A;
+}
+
+/* 科技商务风组件样式 */
+.chat-techbiz {
+  background: var(--chat-bg-page);
+  color: var(--chat-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+}
+
+.chat-techbiz-user-msg {
+  max-width: 80%;
+  padding: 0.75rem 1.25rem;
+  background: var(--chat-bg-user-bubble);
+  color: var(--chat-text-user);
+  border-radius: var(--chat-radius-bubble);
+  border: 1px solid var(--chat-border-color);
+  font-weight: 500;
+}
+
+.chat-techbiz-ai-msg {
+  background: var(--chat-bg-ai-bubble);
+  color: var(--chat-text-ai);
+  border-radius: var(--chat-radius-md);
+  border: 1px solid var(--chat-border-color);
+  padding: 1rem;
+}
+
+.chat-techbiz-input-wrapper {
+  border: 2px solid var(--chat-border-color);
+  border-radius: var(--chat-radius-bubble);
+  background: var(--chat-bg-input);
+  box-shadow: var(--chat-shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.chat-techbiz-input-wrapper:focus-within {
+  border-color: var(--chat-accent);
+  box-shadow: var(--chat-shadow-input), 0 0 0 3px var(--chat-accent-light);
+}
+
+.chat-techbiz-send-btn {
+  background: var(--chat-accent);
+  color: white;
+  border-radius: var(--chat-radius-md);
+  transition: all 0.15s ease;
+}
+
+.chat-techbiz-send-btn:hover {
+  background: var(--chat-accent-hover);
+  transform: translateY(-1px);
+}
+
+.chat-techbiz-suggestion {
+  border: 1px solid var(--chat-border-color);
+  background: var(--chat-bg-ai-bubble);
+  color: var(--chat-text-primary);
+  border-radius: var(--chat-radius-md);
+  padding: 0.5rem 1rem;
+  transition: all 0.15s ease;
+}
+
+.chat-techbiz-suggestion:hover {
+  border-color: var(--chat-accent);
+  background: var(--chat-accent-light);
+}
+
+/* ========================================
+   温暖电商风主题 (warmshop)
+   亲和友好 + 促销转化
+   ======================================== */
+
+[data-chat-theme="warmshop"] {
+  --chat-bg-page: #FFF9F5;
+  --chat-bg-header: #FFFFFF;
+  --chat-bg-messages: #FFF9F5;
+  --chat-bg-input-area: #FFFFFF;
+  --chat-bg-user-bubble: #FFF1E6;
+  --chat-bg-ai-bubble: #FFFFFF;
+  --chat-bg-input: #FFFFFF;
+  
+  --chat-text-primary: #422006;
+  --chat-text-secondary: #78350F;
+  --chat-text-tertiary: #A16207;
+  --chat-text-user: #C2410C;
+  --chat-text-ai: #422006;
+  
+  --chat-border-color: #FED7AA;
+  --chat-border-focus: #FB923C;
+  
+  --chat-accent: #FF6B35;
+  --chat-accent-hover: #EA580C;
+  --chat-accent-light: #FFEDD5;
+  --chat-accent-secondary: #1E3A5F;
+  --chat-success: #22C55E;
+  --chat-error: #DC2626;
+  --chat-warning: #FBBF24;
+  
+  --chat-shadow-sm: 0 1px 3px rgba(194, 65, 12, 0.06);
+  --chat-shadow-md: 0 4px 12px rgba(194, 65, 12, 0.1);
+  --chat-shadow-float: 0 8px 24px rgba(255, 107, 53, 0.15);
+  
+  --chat-radius-sm: 0.75rem;
+  --chat-radius-md: 1rem;
+  --chat-radius-lg: 1.5rem;
+  --chat-radius-bubble: 1.5rem;
+}
+
+.dark [data-chat-theme="warmshop"],
+[data-chat-theme="warmshop"].dark {
+  --chat-bg-page: #1C1412;
+  --chat-bg-header: #292018;
+  --chat-bg-messages: #1C1412;
+  --chat-bg-input-area: #292018;
+  --chat-bg-user-bubble: #431407;
+  --chat-bg-ai-bubble: #292018;
+  --chat-bg-input: #1C1412;
+  
+  --chat-text-primary: #FEF3C7;
+  --chat-text-secondary: #FCD34D;
+  --chat-text-tertiary: #A16207;
+  --chat-text-user: #FB923C;
+  --chat-text-ai: #FEF3C7;
+  
+  --chat-border-color: #431407;
+  --chat-border-focus: #FB923C;
+  
+  --chat-accent: #FF8A5B;
+  --chat-accent-hover: #FB923C;
+  --chat-accent-light: #431407;
+}
+
+/* 温暖电商风组件样式 */
+.chat-warmshop {
+  background: var(--chat-bg-page);
+  color: var(--chat-text-primary);
+  font-family: 'PingFang SC', 'Noto Sans SC', -apple-system, sans-serif;
+}
+
+.chat-warmshop-user-msg {
+  max-width: 80%;
+  padding: 0.875rem 1.25rem;
+  background: var(--chat-bg-user-bubble);
+  color: var(--chat-text-user);
+  border-radius: var(--chat-radius-bubble) var(--chat-radius-bubble) 0.25rem var(--chat-radius-bubble);
+  box-shadow: var(--chat-shadow-sm);
+  line-height: 1.6;
+}
+
+.chat-warmshop-ai-msg {
+  background: var(--chat-bg-ai-bubble);
+  color: var(--chat-text-ai);
+  border-radius: var(--chat-radius-bubble) var(--chat-radius-bubble) var(--chat-radius-bubble) 0.25rem;
+  box-shadow: var(--chat-shadow-sm);
+  padding: 1rem 1.25rem;
+  line-height: 1.6;
+}
+
+.chat-warmshop-input-wrapper {
+  border: 2px solid var(--chat-border-color);
+  border-radius: 2rem;
+  background: var(--chat-bg-input);
+  box-shadow: var(--chat-shadow-md);
+  transition: all 0.25s ease;
+}
+
+.chat-warmshop-input-wrapper:focus-within {
+  border-color: var(--chat-accent);
+  box-shadow: var(--chat-shadow-float);
+  transform: translateY(-2px);
+}
+
+.chat-warmshop-send-btn {
+  background: linear-gradient(135deg, var(--chat-accent) 0%, var(--chat-accent-hover) 100%);
+  color: white;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  transition: all 0.2s ease;
+}
+
+.chat-warmshop-send-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+}
+
+.chat-warmshop-suggestion {
+  border: none;
+  background: linear-gradient(135deg, var(--chat-accent-light) 0%, #FFF7ED 100%);
+  color: var(--chat-accent);
+  border-radius: var(--chat-radius-bubble);
+  padding: 0.625rem 1.25rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.chat-warmshop-suggestion:hover {
+  background: var(--chat-accent);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: var(--chat-shadow-float);
+}
+
+/* ========================================
+   极简高端风主题 (luxemin)
+   高端质感 + 奢华感
+   ======================================== */
+
+[data-chat-theme="luxemin"] {
+  --chat-bg-page: #FFFFFF;
+  --chat-bg-header: #FFFFFF;
+  --chat-bg-messages: #FFFFFF;
+  --chat-bg-input-area: #FAFAFA;
+  --chat-bg-user-bubble: #18181B;
+  --chat-bg-ai-bubble: #FAFAFA;
+  --chat-bg-input: #FFFFFF;
+  
+  --chat-text-primary: #18181B;
+  --chat-text-secondary: #52525B;
+  --chat-text-tertiary: #A1A1AA;
+  --chat-text-user: #FFFFFF;
+  --chat-text-ai: #18181B;
+  
+  --chat-border-color: #E4E4E7;
+  --chat-border-focus: #D4AF37;
+  
+  --chat-accent: #18181B;
+  --chat-accent-hover: #27272A;
+  --chat-accent-gold: #D4AF37;
+  --chat-accent-gold-hover: #B8962E;
+  --chat-success: #16A34A;
+  --chat-error: #DC2626;
+  
+  --chat-shadow-sm: none;
+  --chat-shadow-md: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --chat-shadow-gold: 0 4px 16px rgba(212, 175, 55, 0.2);
+  
+  --chat-radius-sm: 0;
+  --chat-radius-md: 0;
+  --chat-radius-lg: 0;
+  --chat-radius-bubble: 0;
+}
+
+.dark [data-chat-theme="luxemin"],
+[data-chat-theme="luxemin"].dark {
+  --chat-bg-page: #09090B;
+  --chat-bg-header: #09090B;
+  --chat-bg-messages: #09090B;
+  --chat-bg-input-area: #18181B;
+  --chat-bg-user-bubble: #FAFAFA;
+  --chat-bg-ai-bubble: #18181B;
+  --chat-bg-input: #09090B;
+  
+  --chat-text-primary: #FAFAFA;
+  --chat-text-secondary: #A1A1AA;
+  --chat-text-tertiary: #71717A;
+  --chat-text-user: #18181B;
+  --chat-text-ai: #FAFAFA;
+  
+  --chat-border-color: #27272A;
+  --chat-border-focus: #D4AF37;
+  
+  --chat-accent: #FAFAFA;
+  --chat-accent-hover: #E4E4E7;
+}
+
+/* 极简高端风组件样式 */
+.chat-luxemin {
+  background: var(--chat-bg-page);
+  color: var(--chat-text-primary);
+  font-family: 'SF Pro Display', -apple-system, 'Helvetica Neue', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.chat-luxemin-user-msg {
+  max-width: 75%;
+  padding: 1rem 1.5rem;
+  background: var(--chat-bg-user-bubble);
+  color: var(--chat-text-user);
+  border-radius: 0;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.chat-luxemin-ai-msg {
+  background: transparent;
+  color: var(--chat-text-ai);
+  border-radius: 0;
+  padding: 1rem 0;
+  border-left: 2px solid var(--chat-accent-gold);
+  padding-left: 1.5rem;
+}
+
+.chat-luxemin-input-wrapper {
+  border: 1px solid var(--chat-border-color);
+  border-radius: 0;
+  background: var(--chat-bg-input);
+  transition: all 0.2s ease;
+}
+
+.chat-luxemin-input-wrapper:focus-within {
+  border-color: var(--chat-accent-gold);
+}
+
+.chat-luxemin-send-btn {
+  background: var(--chat-accent);
+  color: var(--chat-bg-page);
+  border-radius: 0;
+  transition: all 0.15s ease;
+}
+
+.chat-luxemin-send-btn:hover {
+  background: var(--chat-accent-gold);
+}
+
+.chat-luxemin-suggestion {
+  border: 1px solid var(--chat-border-color);
+  background: transparent;
+  color: var(--chat-text-primary);
+  border-radius: 0;
+  padding: 0.625rem 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.chat-luxemin-suggestion:hover {
+  border-color: var(--chat-accent-gold);
+  color: var(--chat-accent-gold);
+}
+
+.chat-luxemin-empty-icon {
+  border: 1px solid var(--chat-accent-gold);
+  color: var(--chat-accent-gold);
+}

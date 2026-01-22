@@ -8,7 +8,7 @@
  * 4. 提供类型安全的主题配置
  */
 
-export type ChatThemeId = "default" | "ethereal" | "industrial";
+export type ChatThemeId = "default" | "ethereal" | "industrial" | "techbiz" | "warmshop" | "luxemin";
 
 export interface ChatThemeConfig {
   id: ChatThemeId;
@@ -185,6 +185,129 @@ const industrialTheme: ChatThemeConfig = {
   },
 };
 
+// 科技商务风主题
+const techbizTheme: ChatThemeConfig = {
+  id: "techbiz",
+  name: "科技商务",
+  description: "专业可信的科技蓝调，适合企业级应用",
+  classPrefix: "theme-techbiz",
+  previewColors: {
+    primary: "#2563EB",
+    background: "#FAFBFC",
+    accent: "#F59E0B",
+  },
+  components: {
+    chatContainer: "chat-techbiz",
+    header: "chat-techbiz-header",
+    messageArea: "chat-techbiz-messages",
+    inputArea: "chat-techbiz-input-area",
+    userMessage: "chat-techbiz-user-msg",
+    aiMessage: "chat-techbiz-ai-msg",
+    inputWrapper: "chat-techbiz-input-wrapper",
+    inputTextarea: "chat-techbiz-textarea",
+    sendButton: "chat-techbiz-send-btn",
+    sendButtonActive: "chat-techbiz-send-btn-active",
+    emptyState: "chat-techbiz-empty",
+    emptyIcon: "chat-techbiz-empty-icon",
+    emptyTitle: "chat-techbiz-empty-title",
+    emptyDescription: "chat-techbiz-empty-desc",
+    suggestionButton: "chat-techbiz-suggestion",
+    llmCallCluster: "chat-techbiz-llm-cluster",
+    llmCallHeader: "chat-techbiz-llm-header",
+    llmCallBody: "chat-techbiz-llm-body",
+    toolCall: "chat-techbiz-tool",
+    reasoning: "chat-techbiz-reasoning",
+    content: "chat-techbiz-content",
+  },
+  motion: {
+    messageAppear: "animate-fade-in",
+    buttonPress: "active:scale-95",
+    transition: "transition-all duration-200",
+  },
+};
+
+// 温暖电商风主题
+const warmshopTheme: ChatThemeConfig = {
+  id: "warmshop",
+  name: "温暖电商",
+  description: "亲和友好的暖橙色调，促进商业转化",
+  classPrefix: "theme-warmshop",
+  previewColors: {
+    primary: "#FF6B35",
+    background: "#FFF9F5",
+    accent: "#1E3A5F",
+  },
+  components: {
+    chatContainer: "chat-warmshop",
+    header: "chat-warmshop-header",
+    messageArea: "chat-warmshop-messages",
+    inputArea: "chat-warmshop-input-area",
+    userMessage: "chat-warmshop-user-msg",
+    aiMessage: "chat-warmshop-ai-msg",
+    inputWrapper: "chat-warmshop-input-wrapper",
+    inputTextarea: "chat-warmshop-textarea",
+    sendButton: "chat-warmshop-send-btn",
+    sendButtonActive: "chat-warmshop-send-btn-active",
+    emptyState: "chat-warmshop-empty",
+    emptyIcon: "chat-warmshop-empty-icon",
+    emptyTitle: "chat-warmshop-empty-title",
+    emptyDescription: "chat-warmshop-empty-desc",
+    suggestionButton: "chat-warmshop-suggestion",
+    llmCallCluster: "chat-warmshop-llm-cluster",
+    llmCallHeader: "chat-warmshop-llm-header",
+    llmCallBody: "chat-warmshop-llm-body",
+    toolCall: "chat-warmshop-tool",
+    reasoning: "chat-warmshop-reasoning",
+    content: "chat-warmshop-content",
+  },
+  motion: {
+    messageAppear: "animate-fade-in",
+    buttonPress: "active:scale-90",
+    transition: "transition-all duration-250 ease-out",
+  },
+};
+
+// 极简高端风主题
+const luxeminTheme: ChatThemeConfig = {
+  id: "luxemin",
+  name: "极简高端",
+  description: "黑金配色的奢华质感，彰显品牌格调",
+  classPrefix: "theme-luxemin",
+  previewColors: {
+    primary: "#18181B",
+    background: "#FFFFFF",
+    accent: "#D4AF37",
+  },
+  components: {
+    chatContainer: "chat-luxemin",
+    header: "chat-luxemin-header",
+    messageArea: "chat-luxemin-messages",
+    inputArea: "chat-luxemin-input-area",
+    userMessage: "chat-luxemin-user-msg",
+    aiMessage: "chat-luxemin-ai-msg",
+    inputWrapper: "chat-luxemin-input-wrapper",
+    inputTextarea: "chat-luxemin-textarea",
+    sendButton: "chat-luxemin-send-btn",
+    sendButtonActive: "chat-luxemin-send-btn-active",
+    emptyState: "chat-luxemin-empty",
+    emptyIcon: "chat-luxemin-empty-icon",
+    emptyTitle: "chat-luxemin-empty-title",
+    emptyDescription: "chat-luxemin-empty-desc",
+    suggestionButton: "chat-luxemin-suggestion",
+    llmCallCluster: "chat-luxemin-llm-cluster",
+    llmCallHeader: "chat-luxemin-llm-header",
+    llmCallBody: "chat-luxemin-llm-body",
+    toolCall: "chat-luxemin-tool",
+    reasoning: "chat-luxemin-reasoning",
+    content: "chat-luxemin-content",
+  },
+  motion: {
+    messageAppear: "animate-fade-in",
+    buttonPress: "active:scale-98",
+    transition: "transition-all duration-150",
+  },
+};
+
 // 主题注册表
 class ThemeRegistry {
   private themes: Map<ChatThemeId, ChatThemeConfig> = new Map();
@@ -194,6 +317,9 @@ class ThemeRegistry {
     this.register(defaultTheme);
     this.register(etherealTheme);
     this.register(industrialTheme);
+    this.register(techbizTheme);
+    this.register(warmshopTheme);
+    this.register(luxeminTheme);
   }
 
   register(theme: ChatThemeConfig): void {

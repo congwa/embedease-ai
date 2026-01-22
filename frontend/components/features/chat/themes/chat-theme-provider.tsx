@@ -1,7 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { type ChatThemeId, type ChatThemeConfig, getTheme, getAllThemes } from "./theme-registry";
+
+export type ColorMode = "light" | "dark" | "system";
 
 interface ChatThemeContextValue {
   // 当前主题
@@ -15,48 +17,106 @@ interface ChatThemeContextValue {
   getClass: (component: keyof ChatThemeConfig["components"]) => string;
   // 便捷方法：获取动效类名
   getMotion: (motion: keyof ChatThemeConfig["motion"]) => string;
+  // 颜色模式
+  colorMode: ColorMode;
+  setColorMode: (mode: ColorMode) => void;
+  // 实际生效的模式（system 会解析为 light 或 dark）
+  resolvedColorMode: "light" | "dark";
 }
 
 const ChatThemeContext = createContext<ChatThemeContextValue | null>(null);
 
-const STORAGE_KEY = "chat-theme-id";
+const THEME_STORAGE_KEY = "embedease-chat-theme";
+const COLOR_MODE_STORAGE_KEY = "embedease-color-mode";
+
+const VALID_THEMES: ChatThemeId[] = ["default", "ethereal", "industrial", "techbiz", "warmshop", "luxemin"];
 
 interface ChatThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: ChatThemeId;
+  defaultColorMode?: ColorMode;
 }
 
 export function ChatThemeProvider({ 
   children, 
-  defaultTheme = "default" 
+  defaultTheme = "default",
+  defaultColorMode = "system"
 }: ChatThemeProviderProps) {
-  const [themeId, setThemeId] = useState<ChatThemeId>(defaultTheme);
-  const [mounted, setMounted] = useState(false);
+  // 初始化时从 localStorage 读取
+  const getInitialTheme = (): ChatThemeId => {
+    if (typeof window === "undefined") return defaultTheme;
+    const stored = localStorage.getItem(THEME_STORAGE_KEY) as ChatThemeId | null;
+    return stored && VALID_THEMES.includes(stored) ? stored : defaultTheme;
+  };
 
-  // 从 localStorage 恢复主题
+  const getInitialColorMode = (): ColorMode => {
+    if (typeof window === "undefined") return defaultColorMode;
+    const stored = localStorage.getItem(COLOR_MODE_STORAGE_KEY) as ColorMode | null;
+    return stored && ["light", "dark", "system"].includes(stored) ? stored : defaultColorMode;
+  };
+
+  const [themeId, setThemeId] = useState<ChatThemeId>(getInitialTheme);
+  const [colorMode, setColorModeState] = useState<ColorMode>(getInitialColorMode);
+  const [resolvedColorMode, setResolvedColorMode] = useState<"light" | "dark">("light");
+  
+  // 使用 useSyncExternalStore 检测客户端渲染，避免 hydration 问题
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
+  // 解析系统颜色模式
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as ChatThemeId | null;
-    if (stored && ["default", "ethereal", "industrial"].includes(stored)) {
-      setThemeId(stored);
-    }
-    setMounted(true);
-  }, []);
+    const updateResolvedMode = () => {
+      if (colorMode === "system") {
+        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        setResolvedColorMode(isDark ? "dark" : "light");
+      } else {
+        setResolvedColorMode(colorMode);
+      }
+    };
+
+    updateResolvedMode();
+
+    // 监听系统主题变化
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      if (colorMode === "system") {
+        updateResolvedMode();
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [colorMode]);
 
   // 切换主题
   const setTheme = useCallback((id: ChatThemeId) => {
     setThemeId(id);
-    localStorage.setItem(STORAGE_KEY, id);
-    
-    // 更新 document 的 data-chat-theme 属性，用于 CSS 选择器
-    document.documentElement.setAttribute("data-chat-theme", id);
+    localStorage.setItem(THEME_STORAGE_KEY, id);
+    // DOM 更新统一在 useEffect 中处理，避免重复
   }, []);
 
-  // 初始化时设置 data-chat-theme
+  // 切换颜色模式
+  const setColorMode = useCallback((mode: ColorMode) => {
+    setColorModeState(mode);
+    localStorage.setItem(COLOR_MODE_STORAGE_KEY, mode);
+  }, []);
+
+  // 更新 DOM 属性
   useEffect(() => {
     if (mounted) {
       document.documentElement.setAttribute("data-chat-theme", themeId);
+      
+      // 更新 dark 类
+      if (resolvedColorMode === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     }
-  }, [mounted, themeId]);
+  }, [mounted, themeId, resolvedColorMode]);
 
   const theme = getTheme(themeId);
   const availableThemes = getAllThemes();
@@ -82,6 +142,9 @@ export function ChatThemeProvider({
     availableThemes,
     getClass,
     getMotion,
+    colorMode,
+    setColorMode,
+    resolvedColorMode,
   };
 
   // 避免 SSR 闪烁
