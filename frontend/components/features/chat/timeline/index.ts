@@ -10,3 +10,4 @@ export { TimelineErrorItem } from "./TimelineErrorItem";
 export { TimelineSupportEventItem } from "./TimelineSupportEventItem";
 export { TimelineGreetingItem } from "./greeting-item";
 export { TimelineWaitingItem } from "./TimelineWaitingItem";
+export { TimelineSkillActivatedItem } from "./TimelineSkillActivatedItem";

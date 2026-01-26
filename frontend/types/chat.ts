@@ -170,6 +170,11 @@ export type SupervisorEventType =
   | "agent.handoff"
   | "agent.complete";
 
+/**
+ * 技能事件
+ */
+export type SkillEventType = "skill.activated" | "skill.loaded";
+
 /** 所有事件类型 */
 export type ChatEventType =
   | StreamLevelEventType
@@ -179,7 +184,8 @@ export type ChatEventType =
   | DataEventType
   | PostProcessEventType
   | SupportEventType
-  | SupervisorEventType;
+  | SupervisorEventType
+  | SkillEventType;
 
 // ==================== 事件类型判断函数 ====================
 
@@ -318,6 +324,21 @@ export interface AgentCompletePayload {
   status?: string;
 }
 
+// ========== 技能事件 Payload ==========
+
+export interface SkillActivatedPayload {
+  skill_id: string;
+  skill_name: string;
+  trigger_type: "keyword" | "intent" | "manual";
+  trigger_keyword?: string;
+}
+
+export interface SkillLoadedPayload {
+  skill_id: string;
+  skill_name: string;
+  skill_category: string;
+}
+
 export type ChatEventPayload =
   | MetaStartPayload
   | TextDeltaPayload
@@ -336,6 +357,8 @@ export type ChatEventPayload =
   | AgentRoutedPayload
   | AgentHandoffPayload
   | AgentCompletePayload
+  | SkillActivatedPayload
+  | SkillLoadedPayload
   | Record<string, unknown>;
 
 export interface ChatEventBase {
@@ -375,5 +398,8 @@ export type ChatEvent =
   | (ChatEventBase & { type: "agent.routed"; payload: AgentRoutedPayload })
   | (ChatEventBase & { type: "agent.handoff"; payload: AgentHandoffPayload })
   | (ChatEventBase & { type: "agent.complete"; payload: AgentCompletePayload })
+  // ========== 技能事件 ==========
+  | (ChatEventBase & { type: "skill.activated"; payload: SkillActivatedPayload })
+  | (ChatEventBase & { type: "skill.loaded"; payload: SkillLoadedPayload })
   // ========== 兜底 ==========
   | (ChatEventBase & { type: ChatEventType; payload: Record<string, unknown> });

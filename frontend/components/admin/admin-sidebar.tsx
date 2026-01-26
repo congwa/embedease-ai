@@ -18,6 +18,7 @@ import {
   FileText,
   Zap,
   Sparkles,
+  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,11 @@ const systemNavItems = [
     title: "Agent 列表",
     href: "/admin/agents",
     icon: Bot,
+  },
+  {
+    title: "技能管理",
+    href: "/admin/skills",
+    icon: Wand2,
   },
   {
     title: "爬虫管理",

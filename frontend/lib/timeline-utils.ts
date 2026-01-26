@@ -20,6 +20,7 @@ import type {
   ErrorPayload,
   ContextSummarizedPayload,
   ImageAttachment,
+  SkillActivatedPayload,
 } from "@/types/chat";
 
 /** 工具名称中文映射 */
@@ -29,6 +30,7 @@ const TOOL_LABEL_MAP: Record<string, string> = {
   filter_by_price: "价格筛选",
   compare_products: "商品对比",
   guide_user: "用户引导",
+  load_skill: "加载技能",
 };
 
 export function getToolLabel(name: string): string {
@@ -195,6 +197,17 @@ export interface WaitingItem {
   ts: number;
 }
 
+export interface SkillActivatedItem {
+  type: "skill.activated";
+  id: string;
+  turnId: string;
+  skillId: string;
+  skillName: string;
+  triggerType: "keyword" | "intent" | "manual";
+  triggerKeyword?: string;
+  ts: number;
+}
+
 export type TimelineItem =
   | UserMessageItem
   | LLMCallClusterItem
@@ -204,7 +217,8 @@ export type TimelineItem =
   | MemoryEventItem
   | SupportEventItem
   | GreetingItem
-  | WaitingItem;
+  | WaitingItem
+  | SkillActivatedItem;
 
 export interface TimelineState {
   timeline: TimelineItem[];
@@ -809,6 +823,21 @@ export function timelineReducer(state: TimelineState, event: ChatEvent): Timelin
         return appendSubItemToCurrentToolCall(state, subItem);
       }
       return appendSubItemToCurrentCluster(state, subItem);
+    }
+
+    case "skill.activated": {
+      const payload = event.payload as SkillActivatedPayload;
+      const skillItem: SkillActivatedItem = {
+        type: "skill.activated",
+        id: `skill:${payload.skill_id}:${event.seq}`,
+        turnId,
+        skillId: payload.skill_id,
+        skillName: payload.skill_name,
+        triggerType: payload.trigger_type,
+        triggerKeyword: payload.trigger_keyword,
+        ts: now,
+      };
+      return insertItem(state, skillItem);
     }
 
     default:

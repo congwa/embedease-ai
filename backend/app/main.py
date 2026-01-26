@@ -18,6 +18,7 @@ from app.routers import health as health_router
 from app.routers import ocr as ocr_router
 from app.routers import quick_setup as quick_setup_router
 from app.routers import system as system_router
+from app.routers import skills as skills_router
 from app.routers import system_config as system_config_router
 from app.routers import upload as upload_router
 from app.routers.agents import (
@@ -314,6 +315,7 @@ app.include_router(scheduler_router)
 app.include_router(health_router.router)
 app.include_router(system_router.router)
 app.include_router(system_config_router.router)
+app.include_router(skills_router.router)
 app.include_router(quick_setup_router.router)
 app.include_router(ocr_router.router)
 app.include_router(upload_router.router)

@@ -22,6 +22,7 @@ import {
   TimelineSupportEventItem,
   TimelineGreetingItem,
   TimelineWaitingItem,
+  TimelineSkillActivatedItem,
 } from "@/components/features/chat/timeline";
 import {
   useChatThemeOptional,
@@ -172,6 +173,11 @@ export function ChatContent() {
           >
             <TimelineWaitingItem item={item} />
           </Message>
+        );
+
+      case "skill.activated":
+        return (
+          <TimelineSkillActivatedItem key={item.id} item={item} />
         );
 
       default:

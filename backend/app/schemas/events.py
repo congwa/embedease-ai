@@ -86,6 +86,13 @@ class SupervisorEventType(StrEnum):
     AGENT_COMPLETE = "agent.complete"  # 子 Agent 任务完成
 
 
+class SkillEventType(StrEnum):
+    """技能事件：技能激活和加载。"""
+
+    SKILL_ACTIVATED = "skill.activated"  # 技能被激活（关键词触发）
+    SKILL_LOADED = "skill.loaded"  # 技能被加载（AI 主动调用）
+
+
 # ==================== 兼容旧代码的别名 ====================
 
 class NonLLMCallDomainEventType(StrEnum):
@@ -172,6 +179,10 @@ class StreamEventType(StrEnum):
     AGENT_ROUTED = SupervisorEventType.AGENT_ROUTED.value
     AGENT_HANDOFF = SupervisorEventType.AGENT_HANDOFF.value
     AGENT_COMPLETE = SupervisorEventType.AGENT_COMPLETE.value
+
+    # ========== 技能事件 ==========
+    SKILL_ACTIVATED = SkillEventType.SKILL_ACTIVATED.value
+    SKILL_LOADED = SkillEventType.SKILL_LOADED.value
 
 
 class MetaStartPayload(TypedDict):
@@ -289,3 +300,21 @@ class AgentCompletePayload(TypedDict):
     agent_name: str  # Agent 名称
     elapsed_ms: NotRequired[int]  # 耗时
     status: NotRequired[str]  # "success" | "error"
+
+
+# ========== 技能事件 Payload ==========
+
+
+class SkillActivatedPayload(TypedDict):
+    """技能激活事件 payload（关键词触发）"""
+    skill_id: str  # 技能 ID
+    skill_name: str  # 技能名称
+    trigger_type: str  # 触发方式: "keyword" | "intent" | "manual"
+    trigger_keyword: NotRequired[str]  # 触发的关键词（如有）
+
+
+class SkillLoadedPayload(TypedDict):
+    """技能加载事件 payload（AI 主动调用）"""
+    skill_id: str  # 技能 ID
+    skill_name: str  # 技能名称
+    skill_category: str  # 技能分类
