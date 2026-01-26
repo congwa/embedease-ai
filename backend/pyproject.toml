@@ -56,4 +56,13 @@ ignore = ["E501", "W293"]
 testpaths = ["tests"]
 markers = [
     "webtest: tests that需要访问真实站点/浏览器的用例",
+    "integration: 集成测试，需要真实 API 和数据库",
+    "slow: 执行时间较长的测试",
 ]
+# 详细输出配置
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+log_cli_date_format = "%H:%M:%S"
+# 捕获 stdout/stderr 实时输出
+addopts = "-s --capture=no"
