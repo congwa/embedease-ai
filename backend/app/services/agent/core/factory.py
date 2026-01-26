@@ -25,26 +25,13 @@ logger = get_logger("agent.factory")
 
 
 # ========== 模式策略提示词后缀 ==========
+# 从 prompts 模块获取模式后缀
+from app.prompts.registry import get_default_prompt_content
 
 MODE_PROMPT_SUFFIX: dict[str, str] = {
     "natural": "",  # 默认模式无额外约束
-    "free": """
-
-## 自由模式
-你可以与用户自由交流各种话题，不局限于特定领域。
-当用户有明确需求时，可以帮助检索相关信息。
-保持自然、友好的对话风格。
-""",
-    "strict": """
-
-## 严格模式
-- **数据驱动**：所有回答必须基于工具返回的真实数据
-- **准确可靠**：推荐或回答时必须引用具体数据
-- **诚实透明**：如果没有找到合适的信息，请如实告知
-- **不编造信息**：只基于检索结果回答
-
-如果没有调用工具或工具返回为空，请引导用户补充信息。
-""",
+    "free": get_default_prompt_content("agent.mode.free") or "",
+    "strict": get_default_prompt_content("agent.mode.strict") or "",
 }
 
 

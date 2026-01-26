@@ -16,6 +16,7 @@ from app.core.models_dev import get_model_profile
 from app.routers import admin, chat, conversations, crawler, support, users, ws
 from app.routers import health as health_router
 from app.routers import ocr as ocr_router
+from app.routers import prompts as prompts_router
 from app.routers import quick_setup as quick_setup_router
 from app.routers import system as system_router
 from app.routers import skills as skills_router
@@ -319,6 +320,7 @@ app.include_router(skills_router.router)
 app.include_router(quick_setup_router.router)
 app.include_router(ocr_router.router)
 app.include_router(upload_router.router)
+app.include_router(prompts_router.router)
 
 
 if __name__ == "__main__":
