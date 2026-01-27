@@ -79,6 +79,7 @@ prompt.md
 prompt-*.md
 
 backend/data/*
+backend/data/*.json
 
 
 
