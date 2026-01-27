@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
-  Check,
   Edit2,
   Filter,
   Loader2,
@@ -53,7 +53,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   listPrompts,
-  updatePrompt,
   resetPrompt,
   createPrompt,
   deletePrompt,
@@ -67,20 +66,23 @@ import {
 
 function PromptCard({
   prompt,
-  onEdit,
   onReset,
   onDelete,
 }: {
   prompt: Prompt;
-  onEdit: (prompt: Prompt) => void;
   onReset: (key: string) => void;
   onDelete: (key: string) => void;
 }) {
+  const router = useRouter();
   const isCustom = prompt.source === "custom";
   const canDelete = isCustom && !prompt.default_content; // 只有完全自定义的才能删除
 
+  const handleEdit = () => {
+    router.push(`/admin/prompts/${encodeURIComponent(prompt.key)}`);
+  };
+
   return (
-    <Card className="group relative overflow-hidden transition-shadow hover:shadow-md">
+    <Card className="group relative overflow-hidden transition-shadow hover:shadow-md cursor-pointer" onClick={handleEdit}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1 flex-1 min-w-0">
@@ -108,7 +110,10 @@ function PromptCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => onEdit(prompt)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit();
+              }}
             >
               <Edit2 className="h-4 w-4" />
             </Button>
@@ -117,7 +122,10 @@ function PromptCard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => onReset(prompt.key)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReset(prompt.key);
+                }}
                 title="重置为默认值"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -128,7 +136,10 @@ function PromptCard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={() => onDelete(prompt.key)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(prompt.key);
+                }}
                 title="删除提示词"
               >
                 <Trash2 className="h-4 w-4" />
@@ -181,12 +192,6 @@ export default function PromptsPage() {
     "all"
   );
   const [searchQuery, setSearchQuery] = useState("");
-
-  // 编辑对话框
-  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
-  const [editContent, setEditContent] = useState("");
-  const [editName, setEditName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
   // 重置确认
   const [resetKey, setResetKey] = useState<string | null>(null);
@@ -241,30 +246,6 @@ export default function PromptsPage() {
   useEffect(() => {
     loadPrompts();
   }, [loadPrompts]);
-
-  const handleEdit = (prompt: Prompt) => {
-    setEditingPrompt(prompt);
-    setEditContent(prompt.content);
-    setEditName(prompt.name);
-  };
-
-  const handleSave = async () => {
-    if (!editingPrompt) return;
-
-    try {
-      setIsSaving(true);
-      await updatePrompt(editingPrompt.key, {
-        name: editName,
-        content: editContent,
-      });
-      setEditingPrompt(null);
-      loadPrompts();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "保存失败");
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleReset = async () => {
     if (!resetKey) return;
@@ -398,98 +379,12 @@ export default function PromptsPage() {
             <PromptCard
               key={prompt.key}
               prompt={prompt}
-              onEdit={handleEdit}
               onReset={setResetKey}
               onDelete={setDeleteKey}
             />
           ))}
         </div>
       )}
-
-      {/* 编辑对话框 */}
-      <Dialog
-        open={!!editingPrompt}
-        onOpenChange={() => setEditingPrompt(null)}
-      >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>编辑提示词</DialogTitle>
-            <DialogDescription>
-              修改提示词内容，保存后立即生效。
-              {editingPrompt?.source === "custom" && (
-                <span className="text-amber-600 ml-2">
-                  （已自定义，可点击重置恢复默认值）
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>标识 (Key)</Label>
-              <Input value={editingPrompt?.key || ""} disabled />
-            </div>
-
-            <div className="space-y-2">
-              <Label>名称</Label>
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>内容</Label>
-              <Textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                rows={15}
-                className="font-mono text-sm"
-              />
-            </div>
-
-            {editingPrompt?.variables && editingPrompt.variables.length > 0 && (
-              <div className="space-y-2">
-                <Label>支持的变量</Label>
-                <div className="flex flex-wrap gap-2">
-                  {editingPrompt.variables.map((v) => (
-                    <Badge key={v} variant="outline" className="font-mono">
-                      {"{" + v + "}"}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {editingPrompt?.default_content && (
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">默认内容（参考）</Label>
-                <div className="text-xs text-muted-foreground font-mono bg-muted/50 p-3 rounded max-h-40 overflow-y-auto">
-                  {editingPrompt.default_content}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditingPrompt(null)}
-              disabled={isSaving}
-            >
-              取消
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="mr-2 h-4 w-4" />
-              )}
-              保存
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 重置确认对话框 */}
       <AlertDialog open={!!resetKey} onOpenChange={() => setResetKey(null)}>
