@@ -52,7 +52,7 @@ export interface PromptResetResponse {
 
 // ========== API 函数 ==========
 
-const BASE_URL = "/prompts";
+const BASE_URL = "/api/v1/admin/prompts";
 
 /**
  * 获取提示词列表
