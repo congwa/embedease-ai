@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, GripVertical, AlertCircle, Network } from "lucide-react";
+import { Plus, Trash2, GripVertical, AlertCircle, Network, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { type StepProps } from "../page";
-import { getAgents, type Agent, type SubAgentConfig, type RoutingPolicy } from "@/lib/api/agents";
+import {
+  getSupervisorGlobalConfig,
+  updateSupervisorGlobalConfig,
+  getAvailableAgentsForSupervisor,
+  type SupervisorSubAgent,
+  type SupervisorGlobalConfig,
+  type AvailableAgentForSupervisor,
+} from "@/lib/api/admin";
 
 const DEFAULT_SUPERVISOR_PROMPT = `你是一个智能助手调度器（Supervisor）。
 
@@ -22,43 +29,62 @@ const DEFAULT_SUPERVISOR_PROMPT = `你是一个智能助手调度器（Superviso
 2. 如果问题涉及多个领域，选择主要相关的助手
 3. 如果无法确定，使用默认助手`;
 
-export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps) {
-  const [availableAgents, setAvailableAgents] = useState<Agent[]>([]);
-  const [subAgents, setSubAgents] = useState<SubAgentConfig[]>([]);
+export function SupervisorStep({ step, onComplete, isLoading }: StepProps) {
+  const [availableAgents, setAvailableAgents] = useState<AvailableAgentForSupervisor[]>([]);
+  const [subAgents, setSubAgents] = useState<SupervisorSubAgent[]>([]);
   const [routingPolicyType, setRoutingPolicyType] = useState<"keyword" | "intent" | "hybrid">("hybrid");
   const [defaultAgent, setDefaultAgent] = useState<string>("");
   const [supervisorPrompt, setSupervisorPrompt] = useState(DEFAULT_SUPERVISOR_PROMPT);
-  const [loadingAgents, setLoadingAgents] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    loadAgents();
-    // 从步骤数据恢复
-    if (step.data) {
-      if (step.data.sub_agents) {
-        setSubAgents(step.data.sub_agents as SubAgentConfig[]);
-      }
-      if (step.data.routing_policy_type) {
-        setRoutingPolicyType(step.data.routing_policy_type as typeof routingPolicyType);
-      }
-      if (step.data.default_agent) {
-        setDefaultAgent(step.data.default_agent as string);
-      }
-      if (step.data.supervisor_prompt) {
-        setSupervisorPrompt(step.data.supervisor_prompt as string);
-      }
-    }
-  }, [step.data]);
+    loadData();
+  }, []);
 
-  const loadAgents = async () => {
+  const loadData = async () => {
     try {
-      const response = await getAgents({ status_filter: "enabled" });
-      // 排除 supervisor 类型的 Agent（避免循环引用）
-      const filtered = response.items.filter(a => !a.is_supervisor);
-      setAvailableAgents(filtered);
+      setLoadingData(true);
+      const [config, agents] = await Promise.all([
+        getSupervisorGlobalConfig(),
+        getAvailableAgentsForSupervisor(),
+      ]);
+
+      setAvailableAgents(agents);
+
+      // 从全局配置恢复
+      if (config.sub_agents && config.sub_agents.length > 0) {
+        setSubAgents(config.sub_agents);
+      }
+      if (config.routing_policy?.type) {
+        setRoutingPolicyType(config.routing_policy.type as "keyword" | "intent" | "hybrid");
+      }
+      if (config.routing_policy?.default_agent_id) {
+        setDefaultAgent(config.routing_policy.default_agent_id);
+      }
+      if (config.supervisor_prompt) {
+        setSupervisorPrompt(config.supervisor_prompt);
+      }
+
+      // 也从步骤数据恢复（优先级更高）
+      if (step.data) {
+        if (step.data.sub_agents) {
+          setSubAgents(step.data.sub_agents as SupervisorSubAgent[]);
+        }
+        if (step.data.routing_policy_type) {
+          setRoutingPolicyType(step.data.routing_policy_type as typeof routingPolicyType);
+        }
+        if (step.data.default_agent) {
+          setDefaultAgent(step.data.default_agent as string);
+        }
+        if (step.data.supervisor_prompt) {
+          setSupervisorPrompt(step.data.supervisor_prompt as string);
+        }
+      }
     } catch (error) {
-      console.error("加载 Agent 列表失败", error);
+      console.error("加载 Supervisor 配置失败", error);
     } finally {
-      setLoadingAgents(false);
+      setLoadingData(false);
     }
   };
 
@@ -73,7 +99,7 @@ export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps
       {
         agent_id: firstAvailable.id,
         name: firstAvailable.name,
-        description: firstAvailable.description || "",
+        description: firstAvailable.description,
         routing_hints: [],
         priority: subAgents.length > 0 ? Math.max(...subAgents.map(s => s.priority)) - 10 : 100,
       },
@@ -84,7 +110,7 @@ export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps
     setSubAgents(subAgents.filter((_, i) => i !== index));
   };
 
-  const handleSubAgentChange = (index: number, field: keyof SubAgentConfig, value: unknown) => {
+  const handleSubAgentChange = (index: number, field: keyof SupervisorSubAgent, value: unknown) => {
     const updated = [...subAgents];
     if (field === "agent_id") {
       const selectedAgent = availableAgents.find(a => a.id === value);
@@ -93,7 +119,7 @@ export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps
           ...updated[index],
           agent_id: value as string,
           name: selectedAgent.name,
-          description: selectedAgent.description || "",
+          description: selectedAgent.description,
         };
       }
     } else if (field === "routing_hints") {
@@ -108,25 +134,44 @@ export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps
   };
 
   const handleComplete = async () => {
-    // 构建路由策略
-    const routingPolicy: RoutingPolicy = {
-      type: routingPolicyType,
-      rules: [],
-      default_agent: defaultAgent || undefined,
-      allow_multi_agent: false,
-    };
+    try {
+      setIsSaving(true);
 
-    await onComplete({
-      is_supervisor: true,
-      sub_agents: subAgents,
-      routing_policy: routingPolicy,
-      supervisor_prompt: supervisorPrompt,
-      routing_policy_type: routingPolicyType,
-      default_agent: defaultAgent,
-    });
+      // 保存到全局 Supervisor 配置
+      await updateSupervisorGlobalConfig({
+        enabled: true,
+        sub_agents: subAgents,
+        routing_policy: {
+          type: routingPolicyType,
+          rules: [],
+          default_agent_id: defaultAgent || null,
+        },
+        supervisor_prompt: supervisorPrompt,
+      });
+
+      // 完成步骤
+      await onComplete({
+        sub_agents: subAgents,
+        routing_policy_type: routingPolicyType,
+        default_agent: defaultAgent,
+        supervisor_prompt: supervisorPrompt,
+      });
+    } catch (error) {
+      console.error("保存 Supervisor 配置失败", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const canComplete = subAgents.length >= 1;
+
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -137,7 +182,7 @@ export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps
         <div>
           <h2 className="text-xl font-semibold">多 Agent 编排</h2>
           <p className="text-sm text-muted-foreground">
-            配置 Supervisor 调度的子 Agent 和路由策略
+            配置全局 Supervisor 调度的子 Agent 和路由策略
           </p>
         </div>
       </div>
@@ -154,7 +199,7 @@ export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps
               onClick={handleAddSubAgent} 
               size="sm" 
               variant="outline"
-              disabled={loadingAgents || availableAgents.length === subAgents.length}
+              disabled={availableAgents.length === subAgents.length}
             >
               <Plus className="w-4 h-4 mr-1" />
               添加
@@ -299,8 +344,8 @@ export function SupervisorStep({ step, state, onComplete, isLoading }: StepProps
 
       {/* 完成按钮 */}
       <div className="flex justify-end">
-        <Button onClick={handleComplete} disabled={!canComplete || isLoading}>
-          {isLoading ? "保存中..." : "保存并继续"}
+        <Button onClick={handleComplete} disabled={!canComplete || isLoading || isSaving}>
+          {isSaving ? "保存中..." : "保存并继续"}
         </Button>
       </div>
     </div>

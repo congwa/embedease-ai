@@ -106,6 +106,41 @@ async def set_current_agent(agent_id: str, db: AsyncSession = Depends(get_db_ses
     return state
 
 
+@router.post("/state/mode/{mode}", response_model=QuickSetupState)
+async def set_setup_mode(mode: str, db: AsyncSession = Depends(get_db_session)):
+    """设置向导模式（单 Agent / Supervisor）
+    
+    Args:
+        mode: "single" | "supervisor"
+    """
+    if mode not in ("single", "supervisor"):
+        raise HTTPException(status_code=400, detail="无效的模式，必须是 'single' 或 'supervisor'")
+    
+    state_manager = get_state_manager()
+    state = state_manager.set_mode(mode)
+    
+    # 更新全局 Supervisor 配置
+    from app.services.system_config import SupervisorGlobalConfigService
+    from app.schemas.system_config import SupervisorGlobalConfigUpdate
+    
+    supervisor_service = SupervisorGlobalConfigService(db)
+    await supervisor_service.update_config(
+        SupervisorGlobalConfigUpdate(enabled=(mode == "supervisor"))
+    )
+    await db.commit()
+    
+    logger.info("设置向导模式", mode=mode, supervisor_enabled=(mode == "supervisor"))
+    return state
+
+
+@router.get("/state/mode")
+async def get_current_mode() -> dict[str, str | None]:
+    """获取当前向导模式"""
+    state_manager = get_state_manager()
+    mode = state_manager.get_current_mode()
+    return {"mode": mode}
+
+
 # ========== Checklist ==========
 
 

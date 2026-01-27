@@ -7,7 +7,7 @@
  * 用于侧边栏顶部，让用户始终了解当前工作的 Agent 上下文。
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bot,
@@ -18,6 +18,7 @@ import {
   Database,
   Sparkles,
   Zap,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,20 @@ const typeIcons: Record<string, React.ElementType> = {
   custom: Sparkles,
 };
 
+const typeColors: Record<string, string> = {
+  product: "from-orange-500 to-amber-500",
+  faq: "from-blue-500 to-cyan-500",
+  kb: "from-violet-500 to-purple-500",
+  custom: "from-pink-500 to-rose-500",
+};
+
+const typeColorsBg: Record<string, string> = {
+  product: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  faq: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  kb: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  custom: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+};
+
 const typeLabels: Record<string, string> = {
   product: "商品推荐",
   faq: "FAQ 问答",
@@ -76,6 +91,16 @@ export function AgentSwitcher({ className, collapsed }: AgentSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [confirmAgent, setConfirmAgent] = useState<Agent | null>(null);
   const [isActivating, setIsActivating] = useState(false);
+  const fetchAgents = useAgentStore((s) => s.fetchAgents);
+  const hasFetched = useRef(false);
+
+  // 初始化时加载 Agent 列表
+  useEffect(() => {
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      fetchAgents();
+    }
+  }, [fetchAgents]);
 
   const handleSelect = (agent: Agent) => {
     if (agent.is_default) {
@@ -126,27 +151,41 @@ export function AgentSwitcher({ className, collapsed }: AgentSwitcherProps) {
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "w-full justify-between bg-zinc-50 dark:bg-zinc-900",
+              "group h-auto w-full justify-between border-zinc-200/80 bg-gradient-to-b from-white to-zinc-50/50 px-4 py-3 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-700/80 dark:from-zinc-800 dark:to-zinc-900/50 dark:hover:border-zinc-600",
               className
             )}
             disabled={isLoading}
           >
-            <div className="flex items-center gap-2 truncate">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-zinc-200 dark:bg-zinc-700">
-                <TypeIcon className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-3.5 truncate">
+              <div className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-sm",
+                activeAgent ? typeColors[activeAgent.type] : "from-zinc-400 to-zinc-500"
+              )}>
+                <TypeIcon className="h-5 w-5 text-white drop-shadow-sm" />
               </div>
-              <div className="flex flex-col items-start truncate">
-                <span className="truncate text-sm font-medium">
-                  {activeAgent?.name || "选择 Agent"}
-                </span>
+              <div className="flex flex-col items-start gap-0.5 truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                    {activeAgent?.name || "选择 Agent"}
+                  </span>
+                  {activeAgent?.is_supervisor && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-orange-500/10 px-1 py-0.5 text-[9px] font-semibold text-orange-600 dark:text-orange-400">
+                      <Network className="h-2.5 w-2.5" />
+                      Supervisor
+                    </span>
+                  )}
+                </div>
                 {activeAgent && (
-                  <span className="text-xs text-zinc-500">
+                  <span className={cn(
+                    "text-xs font-medium",
+                    typeColorsBg[activeAgent.type]?.split(" ").slice(1).join(" ") || "text-zinc-500"
+                  )}>
                     {typeLabels[activeAgent.type]}
                   </span>
                 )}
               </div>
             </div>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-zinc-400 transition-transform group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[280px] p-0" align="start">
@@ -188,13 +227,15 @@ export function AgentSwitcher({ className, collapsed }: AgentSwitcherProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>切换激活 Agent</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                确定要将 <strong>{confirmAgent?.name}</strong> 设为激活状态吗？
-              </p>
-              <p className="text-amber-600 dark:text-amber-400">
-                ⚠️ 激活后，所有用户对话将由该 Agent 处理。
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  确定要将 <strong>{confirmAgent?.name}</strong> 设为激活状态吗？
+                </p>
+                <p className="text-amber-600 dark:text-amber-400">
+                  ⚠️ 激活后，所有用户对话将由该 Agent 处理。
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -235,41 +276,47 @@ function AgentCommandItem({
   const TypeIcon = typeIcons[agent.type] || Bot;
 
   return (
-    <CommandItem onSelect={onSelect} className="flex items-center gap-2">
+    <CommandItem 
+      onSelect={onSelect} 
+      className="flex items-center gap-3 px-3 py-2.5"
+    >
       <div
         className={cn(
-          "flex h-8 w-8 items-center justify-center rounded",
+          "flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br shadow-sm",
           isActive
-            ? "bg-blue-100 dark:bg-blue-900"
-            : "bg-zinc-100 dark:bg-zinc-800"
+            ? typeColors[agent.type]
+            : "from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800"
         )}
       >
         <TypeIcon
           className={cn(
             "h-4 w-4",
             isActive
-              ? "text-blue-600 dark:text-blue-400"
+              ? "text-white drop-shadow-sm"
               : "text-zinc-600 dark:text-zinc-400"
           )}
         />
       </div>
       <div className="flex-1 truncate">
         <div className="flex items-center gap-2">
-          <span className="font-medium">{agent.name}</span>
+          <span className="text-[13px] font-semibold text-zinc-800 dark:text-zinc-100">
+            {agent.name}
+          </span>
           {isActive && (
-            <Badge
-              variant="secondary"
-              className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-            >
-              激活
-            </Badge>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              当前
+            </span>
           )}
         </div>
-        <span className="text-xs text-zinc-500">
+        <span className={cn(
+          "text-[11px] font-medium",
+          typeColorsBg[agent.type]?.split(" ").slice(1).join(" ") || "text-zinc-500"
+        )}>
           {typeLabels[agent.type]}
         </span>
       </div>
-      {isActive && <Check className="h-4 w-4 text-green-600" />}
+      {isActive && <Check className="h-4 w-4 text-emerald-500" />}
     </CommandItem>
   );
 }

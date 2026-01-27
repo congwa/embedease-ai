@@ -119,11 +119,6 @@ class AgentBootstrapper:
             response_format=config.get("response_format"),
             status=AgentStatus.ENABLED.value,
             is_default=config.get("is_default", False),
-            # Supervisor 相关字段
-            is_supervisor=config.get("is_supervisor", False),
-            sub_agents=config.get("sub_agents"),
-            routing_policy=config.get("routing_policy"),
-            supervisor_prompt=config.get("supervisor_prompt"),
         )
 
         self._session.add(agent)
@@ -167,15 +162,6 @@ class AgentBootstrapper:
             agent.is_default = config["is_default"]
         if knowledge_config_id:
             agent.knowledge_config_id = knowledge_config_id
-        # Supervisor 相关字段
-        if "is_supervisor" in config:
-            agent.is_supervisor = config["is_supervisor"]
-        if "sub_agents" in config:
-            agent.sub_agents = config["sub_agents"]
-        if "routing_policy" in config:
-            agent.routing_policy = config["routing_policy"]
-        if "supervisor_prompt" in config:
-            agent.supervisor_prompt = config["supervisor_prompt"]
 
         await self._session.flush()
 

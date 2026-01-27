@@ -20,6 +20,7 @@ from app.models.message import Message
 from app.models.product import Product
 from app.models.user import User
 from app.schemas.admin import (
+    AgentStatsInfo,
     ConversationListItem,
     CrawlPageListItem,
     CrawlTaskListItem,
@@ -28,6 +29,7 @@ from app.schemas.admin import (
     ProductListItem,
     UserListItem,
 )
+from app.models.agent import Agent
 
 logger = get_logger("router.admin")
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -105,6 +107,17 @@ class MiddlewareDefaultsResponse(BaseModel):
     summarization_keep_messages: int
 
 
+class SupervisorConfigResponse(BaseModel):
+    """Supervisor 全局配置"""
+
+    enabled: bool
+    default_agent_id: str | None
+    default_agent_name: str | None
+    intent_timeout: float
+    allow_multi_agent: bool
+    supervisor_agents: list[dict]  # 所有 Supervisor Agent 列表
+
+
 @router.get("/settings/overview", response_model=SettingsOverview)
 async def get_settings_overview():
     """获取系统设置概览"""
@@ -164,6 +177,45 @@ async def get_middleware_defaults():
         summarization_enabled=settings.AGENT_SUMMARIZATION_ENABLED,
         summarization_trigger_messages=settings.AGENT_SUMMARIZATION_TRIGGER_MESSAGES,
         summarization_keep_messages=settings.AGENT_SUMMARIZATION_KEEP_MESSAGES,
+    )
+
+
+@router.get("/settings/supervisor", response_model=SupervisorConfigResponse)
+async def get_supervisor_config(
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    """获取 Supervisor 全局配置"""
+    # 获取默认 Supervisor Agent 信息
+    default_agent_name = None
+    if settings.SUPERVISOR_DEFAULT_AGENT_ID:
+        default_agent = await session.scalar(
+            select(Agent).where(Agent.id == settings.SUPERVISOR_DEFAULT_AGENT_ID)
+        )
+        if default_agent:
+            default_agent_name = default_agent.name
+
+    # 获取所有 Supervisor Agent
+    supervisor_agents_result = await session.execute(
+        select(Agent).where(Agent.is_supervisor == True)  # noqa: E712
+    )
+    supervisor_agents = supervisor_agents_result.scalars().all()
+
+    return SupervisorConfigResponse(
+        enabled=settings.SUPERVISOR_ENABLED,
+        default_agent_id=settings.SUPERVISOR_DEFAULT_AGENT_ID,
+        default_agent_name=default_agent_name,
+        intent_timeout=settings.SUPERVISOR_INTENT_TIMEOUT,
+        allow_multi_agent=settings.SUPERVISOR_ALLOW_MULTI_AGENT,
+        supervisor_agents=[
+            {
+                "id": agent.id,
+                "name": agent.name,
+                "description": agent.description,
+                "sub_agent_count": len(agent.sub_agents or []),
+                "is_default": agent.is_default,
+            }
+            for agent in supervisor_agents
+        ],
     )
 
 
@@ -277,6 +329,23 @@ async def get_dashboard_stats(
         )
     )
 
+    # Agent 统计
+    total_agents = await session.scalar(select(func.count(Agent.id)))
+    enabled_agents = await session.scalar(
+        select(func.count(Agent.id)).where(Agent.status == "enabled")
+    )
+
+    # 获取默认 Agent 信息
+    default_agent = await session.scalar(
+        select(Agent).where(Agent.is_default == True)  # noqa: E712
+    )
+    agent_stats = AgentStatsInfo(
+        total_agents=total_agents or 0,
+        enabled_agents=enabled_agents or 0,
+        default_agent_id=default_agent.id if default_agent else None,
+        default_agent_name=default_agent.name if default_agent else None,
+    )
+
     return DashboardStats(
         total_products=total_products or 0,
         total_conversations=total_conversations or 0,
@@ -290,6 +359,7 @@ async def get_dashboard_stats(
         ai_conversations=ai_conversations or 0,
         pending_conversations=pending_conversations or 0,
         human_conversations=human_conversations or 0,
+        agent_stats=agent_stats,
     )
 
 

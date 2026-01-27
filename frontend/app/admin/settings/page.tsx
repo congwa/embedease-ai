@@ -17,6 +17,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin";
+import { getAgentTypeLabel } from "@/lib/config/labels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -393,18 +394,24 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Agent 中间件配置对比</CardTitle>
+          <p className="text-sm text-zinc-500">点击展开查看各 Agent 的中间件配置详情</p>
         </CardHeader>
         <CardContent>
-          <Accordion className="w-full">
+          <Accordion className="w-full space-y-2">
             {agents.map((agent) => (
-              <AccordionItem key={agent.id} value={agent.id} className="border-b">
-                <AccordionTrigger className="hover:no-underline">
+              <AccordionItem
+                key={agent.id}
+                value={agent.id}
+                className="border rounded-lg px-4 data-[state=open]:bg-zinc-50 dark:data-[state=open]:bg-zinc-800/50"
+              >
+                <AccordionTrigger className="hover:no-underline py-4">
                   <div className="flex items-center gap-3">
+                    <Bot className="h-4 w-4 text-zinc-500" />
                     <span className="font-medium">{agent.name}</span>
-                    <Badge variant="outline">{agent.type}</Badge>
+                    <Badge variant="outline">{getAgentTypeLabel(agent.type)}</Badge>
                     {agent.is_default && (
-                      <Badge variant="secondary" className="text-xs">
-                        默认
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
+                        当前激活
                       </Badge>
                     )}
                   </div>

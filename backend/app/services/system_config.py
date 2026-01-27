@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.models.app_metadata import AppMetadata
 from app.schemas.system_config import (
+    AvailableAgentForSupervisor,
     ConfigTestRequest,
     ConfigTestResponse,
     EmbeddingConfigBase,
@@ -25,6 +26,11 @@ from app.schemas.system_config import (
     PROVIDER_PRESETS,
     QuickConfigUpdate,
     RerankConfigBase,
+    SupervisorGlobalConfig,
+    SupervisorGlobalConfigResponse,
+    SupervisorGlobalConfigUpdate,
+    SupervisorRoutingPolicy,
+    SupervisorSubAgent,
     SystemConfigRead,
     SystemConfigReadMasked,
 )
@@ -40,6 +46,7 @@ CONFIG_KEYS = {
     "embedding": f"{CONFIG_KEY_PREFIX}embedding",
     "rerank": f"{CONFIG_KEY_PREFIX}rerank",
     "initialized": f"{CONFIG_KEY_PREFIX}initialized",
+    "supervisor": f"{CONFIG_KEY_PREFIX}supervisor",
 }
 
 
@@ -381,3 +388,176 @@ async def get_effective_rerank_config(db: AsyncSession) -> RerankConfigBase:
     service = SystemConfigService(db)
     config = await service.get_config()
     return config.rerank
+
+
+# ========== Supervisor 全局配置服务 ==========
+
+
+class SupervisorGlobalConfigService:
+    """全局 Supervisor 配置服务"""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get_config(self) -> SupervisorGlobalConfigResponse:
+        """获取全局 Supervisor 配置（数据库优先）"""
+        from app.core.config import settings
+
+        # 尝试从数据库读取
+        supervisor_json = await self._get_value(CONFIG_KEYS["supervisor"])
+
+        if supervisor_json:
+            # 数据库配置
+            config = SupervisorGlobalConfig(**json.loads(supervisor_json))
+            source = "database"
+        else:
+            # 回退到环境变量（仅基础配置）
+            config = SupervisorGlobalConfig(
+                enabled=settings.SUPERVISOR_ENABLED,
+                intent_timeout=settings.SUPERVISOR_INTENT_TIMEOUT,
+                allow_multi_agent=settings.SUPERVISOR_ALLOW_MULTI_AGENT,
+            )
+            source = "env"
+
+        return SupervisorGlobalConfigResponse(
+            enabled=config.enabled,
+            supervisor_prompt=config.supervisor_prompt,
+            sub_agents=config.sub_agents,
+            routing_policy=config.routing_policy,
+            intent_timeout=config.intent_timeout,
+            allow_multi_agent=config.allow_multi_agent,
+            source=source,
+        )
+
+    async def update_config(
+        self, data: SupervisorGlobalConfigUpdate
+    ) -> SupervisorGlobalConfigResponse:
+        """更新全局 Supervisor 配置"""
+        # 获取当前配置
+        current = await self.get_config()
+
+        # 合并更新
+        new_config = SupervisorGlobalConfig(
+            enabled=data.enabled if data.enabled is not None else current.enabled,
+            supervisor_prompt=data.supervisor_prompt if data.supervisor_prompt is not None else current.supervisor_prompt,
+            sub_agents=data.sub_agents if data.sub_agents is not None else current.sub_agents,
+            routing_policy=data.routing_policy if data.routing_policy is not None else current.routing_policy,
+            intent_timeout=data.intent_timeout if data.intent_timeout is not None else current.intent_timeout,
+            allow_multi_agent=data.allow_multi_agent if data.allow_multi_agent is not None else current.allow_multi_agent,
+        )
+
+        # 保存到数据库
+        await self._set_value(CONFIG_KEYS["supervisor"], new_config.model_dump_json())
+        await self.db.commit()
+
+        logger.info(
+            "Supervisor 全局配置已更新",
+            enabled=new_config.enabled,
+            sub_agent_count=len(new_config.sub_agents),
+        )
+
+        # 清除配置缓存
+        clear_config_cache()
+
+        return await self.get_config()
+
+    async def get_available_agents(self) -> list[AvailableAgentForSupervisor]:
+        """获取可选为子 Agent 的 Agent 列表"""
+        from app.models.agent import Agent
+
+        # 获取当前配置中的子 Agent
+        current = await self.get_config()
+        selected_ids = {sa.agent_id for sa in current.sub_agents}
+
+        # 查询所有启用的 Agent
+        stmt = select(Agent).where(Agent.status == "enabled")
+        result = await self.db.execute(stmt)
+        agents = result.scalars().all()
+
+        return [
+            AvailableAgentForSupervisor(
+                id=agent.id,
+                name=agent.name,
+                description=agent.description,
+                type=agent.type,
+                status=agent.status,
+                is_selected=agent.id in selected_ids,
+            )
+            for agent in agents
+        ]
+
+    async def add_sub_agent(
+        self, agent_id: str, name: str, description: str | None = None,
+        routing_hints: list[str] | None = None, priority: int = 100
+    ) -> SupervisorGlobalConfigResponse:
+        """添加子 Agent"""
+        current = await self.get_config()
+
+        # 检查是否已存在
+        if any(sa.agent_id == agent_id for sa in current.sub_agents):
+            raise ValueError(f"Agent {agent_id} 已在子 Agent 列表中")
+
+        # 添加新的子 Agent
+        new_sub_agent = SupervisorSubAgent(
+            agent_id=agent_id,
+            name=name,
+            description=description,
+            routing_hints=routing_hints or [],
+            priority=priority,
+        )
+        new_sub_agents = list(current.sub_agents) + [new_sub_agent]
+
+        return await self.update_config(
+            SupervisorGlobalConfigUpdate(sub_agents=new_sub_agents)
+        )
+
+    async def remove_sub_agent(self, agent_id: str) -> SupervisorGlobalConfigResponse:
+        """移除子 Agent"""
+        current = await self.get_config()
+
+        new_sub_agents = [sa for sa in current.sub_agents if sa.agent_id != agent_id]
+
+        if len(new_sub_agents) == len(current.sub_agents):
+            raise ValueError(f"Agent {agent_id} 不在子 Agent 列表中")
+
+        return await self.update_config(
+            SupervisorGlobalConfigUpdate(sub_agents=new_sub_agents)
+        )
+
+    async def _get_value(self, key: str) -> str | None:
+        """从数据库获取配置值"""
+        stmt = select(AppMetadata).where(AppMetadata.key == key)
+        result = await self.db.execute(stmt)
+        row = result.scalar_one_or_none()
+        return row.value if row else None
+
+    async def _set_value(self, key: str, value: str) -> None:
+        """设置配置值到数据库"""
+        stmt = select(AppMetadata).where(AppMetadata.key == key)
+        result = await self.db.execute(stmt)
+        row = result.scalar_one_or_none()
+
+        if row:
+            row.value = value
+        else:
+            self.db.add(AppMetadata(key=key, value=value))
+
+
+async def get_effective_supervisor_config(db: AsyncSession) -> SupervisorGlobalConfig:
+    """获取生效的 Supervisor 全局配置（优先数据库，其次环境变量）"""
+    from app.core.config import settings
+
+    # 尝试从数据库读取
+    stmt = select(AppMetadata).where(AppMetadata.key == CONFIG_KEYS["supervisor"])
+    result = await db.execute(stmt)
+    row = result.scalar_one_or_none()
+
+    if row:
+        return SupervisorGlobalConfig(**json.loads(row.value))
+
+    # 回退到环境变量
+    return SupervisorGlobalConfig(
+        enabled=settings.SUPERVISOR_ENABLED,
+        intent_timeout=settings.SUPERVISOR_INTENT_TIMEOUT,
+        allow_multi_agent=settings.SUPERVISOR_ALLOW_MULTI_AGENT,
+    )

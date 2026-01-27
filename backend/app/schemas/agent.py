@@ -252,12 +252,6 @@ class AgentBase(BaseModel):
     is_default: bool = Field(default=False)
     greeting_config: GreetingConfigSchema | None = Field(default=None, description="开场白配置")
 
-    # Supervisor 相关
-    is_supervisor: bool = Field(default=False, description="是否为 Supervisor 类型")
-    sub_agents: list[SubAgentConfig] | None = Field(default=None, description="子 Agent 配置")
-    routing_policy: RoutingPolicy | None = Field(default=None, description="路由策略")
-    supervisor_prompt: str | None = Field(default=None, description="Supervisor 提示词")
-
 
 class AgentCreate(AgentBase):
     """创建智能体"""
@@ -281,12 +275,6 @@ class AgentUpdate(BaseModel):
     status: AgentStatusEnum | None = Field(default=None)
     is_default: bool | None = Field(default=None)
     greeting_config: GreetingConfigSchema | None = Field(default=None)
-
-    # Supervisor 相关
-    is_supervisor: bool | None = Field(default=None)
-    sub_agents: list[SubAgentConfig] | None = Field(default=None)
-    routing_policy: RoutingPolicy | None = Field(default=None)
-    supervisor_prompt: str | None = Field(default=None)
 
 
 class AgentResponse(AgentBase):
@@ -474,11 +462,5 @@ class AgentConfig(BaseModel):
 
     # 版本（用于缓存失效）
     config_version: str | None = None
-
-    # Supervisor 相关
-    is_supervisor: bool = False
-    sub_agents: list[SubAgentConfig] | None = None
-    routing_policy: RoutingPolicy | None = None
-    supervisor_prompt: str | None = None
 
     model_config = {"from_attributes": True}

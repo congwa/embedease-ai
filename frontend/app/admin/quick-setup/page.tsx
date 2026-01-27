@@ -29,8 +29,10 @@ import {
 } from "@/lib/api/quick-setup";
 
 import { WelcomeStep } from "./steps/welcome-step";
+import { ModeStep } from "./steps/mode-step";
 import { SystemStep } from "./steps/system-step";
 import { ModelsStep } from "./steps/models-step";
+import { AgentTypeStep } from "./steps/agent-type-step";
 import { KnowledgeStep } from "./steps/knowledge-step";
 import { GreetingStep } from "./steps/greeting-step";
 import { ChannelStep } from "./steps/channel-step";
@@ -39,8 +41,10 @@ import { SupervisorStep } from "./steps/supervisor-step";
 
 const STEP_COMPONENTS: Record<string, React.ComponentType<StepProps>> = {
   welcome: WelcomeStep,
+  mode: ModeStep,
   system: SystemStep,
   models: ModelsStep,
+  "agent-type": AgentTypeStep,
   knowledge: KnowledgeStep,
   greeting: GreetingStep,
   channel: ChannelStep,

@@ -46,7 +46,7 @@ export default function GenerateSkillPage() {
 
   // 输入数据
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<SkillCategory | "">("");
+  const [category, setCategory] = useState<SkillCategory | "__auto__">("__auto__");
   const [applicableAgents, setApplicableAgents] = useState<string[]>([]);
   const [examples, setExamples] = useState("");
 
@@ -85,7 +85,7 @@ export default function GenerateSkillPage() {
       setIsGenerating(true);
       const res = await generateSkill({
         description,
-        category: category || undefined,
+        category: category === "__auto__" ? undefined : category,
         applicable_agents: applicableAgents.length > 0 ? applicableAgents : undefined,
         examples: examples
           ? examples.split("\n").filter((e) => e.trim())
@@ -192,13 +192,13 @@ export default function GenerateSkillPage() {
               <Label htmlFor="category">分类建议（可选）</Label>
               <Select
                 value={category}
-                onValueChange={(v) => setCategory(v as SkillCategory | "")}
+                onValueChange={(v) => setCategory(v as SkillCategory | "__auto__")}
               >
                 <SelectTrigger id="category">
                   <SelectValue placeholder="由 AI 判断" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">由 AI 判断</SelectItem>
+                  <SelectItem value="__auto__">由 AI 判断</SelectItem>
                   {Object.entries(SKILL_CATEGORY_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}

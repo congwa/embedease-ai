@@ -44,12 +44,16 @@ import {
   deleteSkill,
   listSkills,
   reloadSkillCache,
+  getSystemSkills,
+  initSystemSkills,
   Skill,
   SkillCategory,
   SKILL_CATEGORY_LABELS,
   SkillType,
   SKILL_TYPE_LABELS,
 } from "@/lib/api/skills";
+import { Lock, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 function SkillCard({
   skill,
@@ -144,11 +148,16 @@ function SkillCard({
 
 export default function SkillsPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [systemSkills, setSystemSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(12);
+
+  // 系统技能区域状态
+  const [systemExpanded, setSystemExpanded] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   // 筛选条件
   const [typeFilter, setTypeFilter] = useState<SkillType | "all">("all");
@@ -159,20 +168,44 @@ export default function SkillsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 加载系统技能
+  const loadSystemSkills = useCallback(async () => {
+    try {
+      const skills = await getSystemSkills();
+      setSystemSkills(skills);
+      // 如果没有系统技能，自动初始化
+      if (skills.length === 0) {
+        setIsInitializing(true);
+        const result = await initSystemSkills();
+        if (result.created > 0) {
+          const newSkills = await getSystemSkills();
+          setSystemSkills(newSkills);
+        }
+        setIsInitializing(false);
+      }
+    } catch (e) {
+      console.error("加载系统技能失败:", e);
+    }
+  }, []);
+
   const loadSkills = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
+      // 加载非系统技能（排除 system 类型）
+      const effectiveType = typeFilter === "all" ? undefined : typeFilter;
       const result = await listSkills({
-        type: typeFilter === "all" ? undefined : typeFilter,
+        type: effectiveType === "system" ? undefined : effectiveType,
         category: categoryFilter === "all" ? undefined : categoryFilter,
         page,
         page_size: pageSize,
       });
 
+      // 过滤掉系统技能（在用户技能区域不显示）
+      let filtered = result.items.filter(s => !s.is_system);
+      
       // 本地搜索过滤
-      let filtered = result.items;
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         filtered = filtered.filter(
@@ -181,6 +214,11 @@ export default function SkillsPage() {
             s.description.toLowerCase().includes(query) ||
             s.trigger_keywords.some((kw) => kw.toLowerCase().includes(query))
         );
+      }
+
+      // 类型过滤
+      if (typeFilter !== "all" && typeFilter !== "system") {
+        filtered = filtered.filter(s => s.type === typeFilter);
       }
 
       setSkills(filtered);
@@ -193,8 +231,24 @@ export default function SkillsPage() {
   }, [typeFilter, categoryFilter, page, pageSize, searchQuery]);
 
   useEffect(() => {
+    loadSystemSkills();
+  }, [loadSystemSkills]);
+
+  useEffect(() => {
     loadSkills();
   }, [loadSkills]);
+
+  const handleInitSystemSkills = async () => {
+    setIsInitializing(true);
+    try {
+      await initSystemSkills();
+      await loadSystemSkills();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "初始化失败");
+    } finally {
+      setIsInitializing(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -305,7 +359,118 @@ export default function SkillsPage() {
         </div>
       )}
 
-      {/* 技能列表 */}
+      {/* 系统内置技能区域 */}
+      <Collapsible open={systemExpanded} onOpenChange={setSystemExpanded}>
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50/50 to-transparent dark:border-blue-800 dark:from-blue-950/30">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+                  <Lock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    系统内置技能
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                      {systemSkills.length} 个
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    预置的专业技能，自动应用到相关 Agent
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {systemSkills.length === 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleInitSystemSkills}
+                    disabled={isInitializing}
+                  >
+                    {isInitializing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Zap className="mr-2 h-4 w-4" />
+                    )}
+                    初始化
+                  </Button>
+                )}
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    {systemExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              {systemSkills.length === 0 ? (
+                <div className="flex items-center justify-center py-8 text-center">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      暂无系统技能，点击"初始化"加载预置技能
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {systemSkills.map((skill) => (
+                    <div
+                      key={skill.id}
+                      className="group relative rounded-lg border border-blue-100 bg-white p-4 transition-shadow hover:shadow-md dark:border-blue-900 dark:bg-zinc-900"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="truncate font-medium text-sm">{skill.name}</h4>
+                            <Lock className="h-3 w-3 shrink-0 text-blue-500" />
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            {skill.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                          {SKILL_CATEGORY_LABELS[skill.category]}
+                        </Badge>
+                        {skill.always_apply && (
+                          <Badge variant="outline" className="text-[10px]">始终应用</Badge>
+                        )}
+                      </div>
+                      <Link
+                        href={`/admin/skills/${skill.id}`}
+                        className="absolute inset-0 rounded-lg ring-blue-500 ring-offset-2 focus:outline-none focus:ring-2"
+                      >
+                        <span className="sr-only">查看 {skill.name}</span>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* 用户技能区域标题 */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
+          <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400" />
+        </div>
+        <h2 className="text-lg font-semibold">用户技能</h2>
+        <Badge variant="secondary">
+          {skills.length} 个
+        </Badge>
+      </div>
+
+      {/* 用户技能列表 */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

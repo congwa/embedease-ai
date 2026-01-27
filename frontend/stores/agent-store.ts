@@ -40,7 +40,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   isLoading: true,
   error: null,
 
-  activeAgent: () => get().agents.find((a) => a.is_default) || null,
+  activeAgent: () => {
+    const agents = get().agents;
+    // 优先返回 is_default=true 的 Agent
+    const defaultAgent = agents.find((a) => a.is_default);
+    if (defaultAgent) return defaultAgent;
+    // Fallback: 返回第一个启用的 Agent
+    return agents.find((a) => a.status === "enabled") || null;
+  },
 
   getAgentById: (id: string) => get().agents.find((a) => a.id === id),
 
@@ -52,8 +59,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         throw new Error("获取 Agent 列表失败");
       }
       const data = await response.json();
-      set({ agents: data.items || [], isLoading: false });
+      const agents = data.items || [];
+      console.log("[AgentStore] fetchAgents 完成，共", agents.length, "个 Agent");
+      set({ agents, isLoading: false });
     } catch (err) {
+      console.error("[AgentStore] fetchAgents 失败:", err);
       set({
         error: err instanceof Error ? err.message : "未知错误",
         isLoading: false,

@@ -2,12 +2,13 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Network, ChevronRight } from "lucide-react";
+import { Network, ChevronRight, CheckCircle, XCircle, Wrench, Tag } from "lucide-react";
 import { useAgentDetail } from "@/lib/hooks/use-agents";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin";
+import { getModeLabel, getMiddlewareLabel, getToolCategoryLabel } from "@/lib/config/labels";
 
 export default function AgentOverviewPage() {
   const params = useParams();
@@ -42,7 +43,7 @@ export default function AgentOverviewPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-zinc-500">默认模式</span>
-            <Badge variant="outline">{agent.mode_default}</Badge>
+            <Badge variant="outline">{getModeLabel(agent.mode_default)}</Badge>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-zinc-500">响应格式</span>
@@ -62,12 +63,15 @@ export default function AgentOverviewPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {agent.middleware_flags ? (
-            Object.entries(agent.middleware_flags).map(([key, value]) => (
-              <div key={key} className="flex justify-between">
-                <span className="text-sm text-zinc-500">{key}</span>
-                <StatusBadge enabled={!!value} />
-              </div>
-            ))
+            Object.entries(agent.middleware_flags).map(([key, value]) => {
+              const info = getMiddlewareLabel(key);
+              return (
+                <div key={key} className="flex justify-between">
+                  <span className="text-sm text-zinc-500">{info.label}</span>
+                  <StatusBadge enabled={!!value} />
+                </div>
+              );
+            })
           ) : (
             <p className="text-sm text-zinc-400">使用全局默认配置</p>
           )}
@@ -77,13 +81,51 @@ export default function AgentOverviewPage() {
       {/* 工具策略 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">工具策略</CardTitle>
+          <div className="flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-zinc-500" />
+            <CardTitle className="text-base">工具调用策略</CardTitle>
+          </div>
+          <CardDescription>
+            控制 Agent 如何使用工具回答问题
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {agent.tool_policy ? (
-            <pre className="rounded-lg bg-zinc-50 p-3 text-xs dark:bg-zinc-900">
-              {JSON.stringify(agent.tool_policy, null, 2)}
-            </pre>
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {agent.tool_policy.allow_direct_answer ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-zinc-300" />
+                  )}
+                  <span className="text-sm">允许直接回答</span>
+                </div>
+                <Badge variant={agent.tool_policy.allow_direct_answer ? "default" : "secondary"}
+                       className={agent.tool_policy.allow_direct_answer ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : ""}>
+                  {agent.tool_policy.allow_direct_answer ? "是" : "否"}
+                </Badge>
+              </div>
+              <p className="text-xs text-zinc-400 ml-6">
+                {agent.tool_policy.allow_direct_answer
+                  ? "Agent 可以不调用工具直接回答简单问题"
+                  : "Agent 必须调用工具后才能回答"}
+              </p>
+              <div className="flex items-center justify-between pt-2 border-t">
+                <span className="text-sm">最少工具调用次数</span>
+                <Badge variant="outline">
+                  {agent.tool_policy.min_tool_calls === 0
+                    ? "不限制"
+                    : `至少 ${agent.tool_policy.min_tool_calls} 次`}
+                </Badge>
+              </div>
+              {agent.tool_policy.fallback_tool && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">备选工具</span>
+                  <Badge variant="secondary">{String(agent.tool_policy.fallback_tool)}</Badge>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-sm text-zinc-400">使用默认策略</p>
           )}
@@ -93,19 +135,35 @@ export default function AgentOverviewPage() {
       {/* 工具类别 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">工具类别</CardTitle>
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-zinc-500" />
+            <CardTitle className="text-base">可用工具类别</CardTitle>
+          </div>
+          <CardDescription>
+            Agent 可以使用的工具功能范围
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {agent.tool_categories && agent.tool_categories.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {agent.tool_categories.map((cat) => (
-                <Badge key={cat} variant="secondary">
-                  {cat}
-                </Badge>
-              ))}
+            <div className="space-y-2">
+              {agent.tool_categories.map((cat) => {
+                const info = getToolCategoryLabel(cat);
+                const IconComponent = info.icon;
+                return (
+                  <div key={cat} className="flex items-center gap-3 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-white dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
+                      <IconComponent className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium">{info.label}</span>
+                      {info.desc && <p className="text-xs text-zinc-400">{info.desc}</p>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <p className="text-sm text-zinc-400">未配置工具类别</p>
+            <p className="text-sm text-zinc-400">未限制工具类别，可使用所有工具</p>
           )}
         </CardContent>
       </Card>

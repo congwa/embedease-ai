@@ -178,6 +178,19 @@ export async function setCurrentAgent(agentId: string): Promise<QuickSetupState>
   );
 }
 
+export async function setSetupMode(mode: "single" | "supervisor"): Promise<QuickSetupState> {
+  return apiRequest<QuickSetupState>(
+    `/api/v1/admin/quick-setup/state/mode/${mode}`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function getCurrentMode(): Promise<{ mode: string | null }> {
+  return apiRequest<{ mode: string | null }>("/api/v1/admin/quick-setup/state/mode");
+}
+
 // ========== Checklist API ==========
 
 export async function getChecklist(): Promise<ChecklistResponse> {

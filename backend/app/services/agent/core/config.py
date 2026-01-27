@@ -218,22 +218,6 @@ class AgentConfigLoader:
         # 7. 计算配置版本（用于缓存失效）
         config_version = self._compute_version(agent, mode_override)
 
-        # 8. Supervisor 配置
-        sub_agents_config = None
-        routing_policy_config = None
-
-        if agent.is_supervisor and agent.sub_agents:
-            from app.schemas.agent import RoutingPolicy, SubAgentConfig
-
-            # 解析子 Agent 配置
-            sub_agents_config = [
-                SubAgentConfig(**sa) for sa in agent.sub_agents
-            ]
-
-            # 解析路由策略
-            if agent.routing_policy:
-                routing_policy_config = RoutingPolicy(**agent.routing_policy)
-
         return AgentConfig(
             agent_id=agent.id,
             name=agent.name,
@@ -247,11 +231,6 @@ class AgentConfigLoader:
             knowledge_config=knowledge_config,
             response_format=agent.response_format,
             config_version=config_version,
-            # Supervisor 相关
-            is_supervisor=agent.is_supervisor,
-            sub_agents=sub_agents_config,
-            routing_policy=routing_policy_config,
-            supervisor_prompt=agent.supervisor_prompt,
         )
 
     def _compute_version(

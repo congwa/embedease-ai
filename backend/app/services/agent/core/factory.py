@@ -65,12 +65,37 @@ async def build_agent(
     Returns:
         编译后的 LangGraph Agent
     """
-    # 判断是否为 Supervisor 模式
-    if config.is_supervisor and config.sub_agents and settings.SUPERVISOR_ENABLED:
-        return await build_supervisor_agent(config, checkpointer, session)
-
     # 单 Agent 模式
     return await _build_single_agent(config, checkpointer, use_structured_output)
+
+
+async def build_supervisor_from_global_config(
+    checkpointer: BaseCheckpointSaver,
+    session: "AsyncSession",
+) -> CompiledStateGraph | None:
+    """从全局配置构建 Supervisor Agent
+
+    Args:
+        checkpointer: LangGraph checkpoint saver
+        session: 数据库会话
+
+    Returns:
+        编译后的 Supervisor Agent 或 None
+    """
+    from app.services.system_config import get_effective_supervisor_config
+
+    supervisor_config = await get_effective_supervisor_config(session)
+
+    if not supervisor_config.enabled:
+        return None
+
+    if not supervisor_config.sub_agents:
+        logger.warning("Supervisor 已启用但无子 Agent 配置")
+        return None
+
+    return await build_supervisor_agent_from_config(
+        supervisor_config, checkpointer, session
+    )
 
 
 async def _build_single_agent(
@@ -164,32 +189,31 @@ DEFAULT_SUPERVISOR_PROMPT = """你是一个智能助手调度器（Supervisor）
 """
 
 
-async def build_supervisor_agent(
-    config: AgentConfig,
+async def build_supervisor_agent_from_config(
+    supervisor_config: "SupervisorGlobalConfig",
     checkpointer: BaseCheckpointSaver,
-    session: "AsyncSession | None" = None,
+    session: "AsyncSession",
 ) -> CompiledStateGraph:
-    """构建 Supervisor Agent（多 Agent 编排）
-
-    使用 langgraph-supervisor 库实现多 Agent 协作。
+    """从全局配置构建 Supervisor Agent
 
     Args:
-        config: Supervisor Agent 配置
+        supervisor_config: 全局 Supervisor 配置
         checkpointer: LangGraph checkpoint saver
-        session: 数据库会话，用于加载子 Agent 配置
+        session: 数据库会话
 
     Returns:
         编译后的 Supervisor Agent
     """
+    from app.schemas.system_config import SupervisorGlobalConfig
+
     try:
         from langgraph_supervisor import create_supervisor
     except ImportError:
-        logger.error("langgraph-supervisor 未安装，回退到单 Agent 模式")
-        return await _build_single_agent(config, checkpointer, False)
+        logger.error("langgraph-supervisor 未安装")
+        raise ImportError("langgraph-supervisor 未安装")
 
-    if not config.sub_agents:
-        logger.warning("Supervisor 无子 Agent 配置，回退到单 Agent 模式")
-        return await _build_single_agent(config, checkpointer, False)
+    if not supervisor_config.sub_agents:
+        raise ValueError("Supervisor 无子 Agent 配置")
 
     # 1. 获取 LLM
     model = get_chat_model()
@@ -198,7 +222,7 @@ async def build_supervisor_agent(
     sub_agents_compiled = []
     agent_descriptions = []
 
-    for sub_config in config.sub_agents:
+    for sub_config in supervisor_config.sub_agents:
         try:
             # 加载子 Agent 配置
             sub_agent_config = await _load_sub_agent_config(
@@ -234,35 +258,28 @@ async def build_supervisor_agent(
             continue
 
     if not sub_agents_compiled:
-        logger.warning("无有效子 Agent，回退到单 Agent 模式")
-        return await _build_single_agent(config, checkpointer, False)
+        raise ValueError("无有效子 Agent")
 
     # 3. 构建 Supervisor 提示词
-    supervisor_prompt = config.supervisor_prompt or DEFAULT_SUPERVISOR_PROMPT
+    supervisor_prompt = supervisor_config.supervisor_prompt or DEFAULT_SUPERVISOR_PROMPT
     supervisor_prompt = supervisor_prompt.replace(
         "{agent_descriptions}", "\n".join(agent_descriptions)
     )
 
     # 4. 创建 Supervisor
-    try:
-        supervisor = create_supervisor(
-            agents=[a["agent"] for a in sub_agents_compiled],
-            model=model,
-            prompt=supervisor_prompt,
-        ).compile(checkpointer=checkpointer)
+    supervisor = create_supervisor(
+        agents=[a["agent"] for a in sub_agents_compiled],
+        model=model,
+        prompt=supervisor_prompt,
+    ).compile(checkpointer=checkpointer)
 
-        logger.info(
-            "构建 Supervisor Agent 成功",
-            agent_id=config.agent_id,
-            sub_agent_count=len(sub_agents_compiled),
-            sub_agents=[a["name"] for a in sub_agents_compiled],
-        )
+    logger.info(
+        "构建 Supervisor Agent 成功",
+        sub_agent_count=len(sub_agents_compiled),
+        sub_agents=[a["name"] for a in sub_agents_compiled],
+    )
 
-        return supervisor
-
-    except Exception as e:
-        logger.error(f"创建 Supervisor 失败: {e}，回退到单 Agent 模式")
-        return await _build_single_agent(config, checkpointer, False)
+    return supervisor
 
 
 async def _load_sub_agent_config(

@@ -10,6 +10,8 @@ import {
   Bot,
   Loader2,
   ExternalLink,
+  HelpCircle,
+  Cpu,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -181,45 +183,94 @@ export function WelcomeStep({ state, onComplete, onGoto, isLoading }: StepProps)
         </p>
       </div>
 
-      {/* Stats Overview */}
+      {/* Stats Overview - 精致的状态卡片 */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stats.agents.total}</div>
-              <div className="text-sm text-zinc-500">Agent 数量</div>
-              {stats.agents.default_name && (
-                <div className="mt-1 text-xs text-zinc-400">
-                  默认: {stats.agents.default_name}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stats.faq.total}</div>
-              <div className="text-sm text-zinc-500">FAQ 条目</div>
-              {stats.faq.unindexed > 0 && (
-                <div className="mt-1 text-xs text-amber-500">
-                  {stats.faq.unindexed} 未索引
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">
-                {stats.knowledge_configs.total}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Agent 数量 */}
+          <div className="group relative overflow-hidden rounded-xl border border-zinc-200/60 bg-gradient-to-br from-white to-zinc-50/50 p-4 transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  Agent
+                </p>
+                <p className="text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                  {stats.agents.total}
+                </p>
               </div>
-              <div className="text-sm text-zinc-500">知识源配置</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stats.settings.llm_model}</div>
-              <div className="text-sm text-zinc-500">当前模型</div>
-            </CardContent>
-          </Card>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                <Bot className="h-4 w-4" />
+              </div>
+            </div>
+            {stats.agents.default_name && (
+              <p className="mt-2 truncate text-xs text-zinc-500" title={stats.agents.default_name}>
+                默认: {stats.agents.default_name}
+              </p>
+            )}
+          </div>
+
+          {/* FAQ 条目 */}
+          <div className="group relative overflow-hidden rounded-xl border border-zinc-200/60 bg-gradient-to-br from-white to-zinc-50/50 p-4 transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  FAQ
+                </p>
+                <p className="text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                  {stats.faq.total}
+                </p>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                <HelpCircle className="h-4 w-4" />
+              </div>
+            </div>
+            {stats.faq.unindexed > 0 && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                {stats.faq.unindexed} 条待索引
+              </p>
+            )}
+          </div>
+
+          {/* 知识源配置 */}
+          <div className="group relative overflow-hidden rounded-xl border border-zinc-200/60 bg-gradient-to-br from-white to-zinc-50/50 p-4 transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  知识源
+                </p>
+                <p className="text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                  {stats.knowledge_configs.total}
+                </p>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                <Database className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* 当前模型 */}
+          <div className="group relative overflow-hidden rounded-xl border border-zinc-200/60 bg-gradient-to-br from-white to-zinc-50/50 p-4 transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  模型
+                </p>
+                <p 
+                  className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100" 
+                  title={stats.settings.llm_model}
+                >
+                  {stats.settings.llm_model?.split('/').pop() || stats.settings.llm_model}
+                </p>
+              </div>
+              <div className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
+                <Cpu className="h-4 w-4" />
+              </div>
+            </div>
+            {stats.settings.llm_model?.includes('/') && (
+              <p className="mt-2 truncate text-xs text-zinc-400" title={stats.settings.llm_model}>
+                {stats.settings.llm_model.split('/')[0]}
+              </p>
+            )}
+          </div>
         </div>
       )}
 

@@ -18,6 +18,15 @@ class PaginatedResponse(BaseModel, Generic[T]):
     total_pages: int
 
 
+class AgentStatsInfo(BaseModel):
+    """Agent 统计信息"""
+
+    total_agents: int
+    enabled_agents: int
+    default_agent_id: str | None = None
+    default_agent_name: str | None = None
+
+
 class DashboardStats(BaseModel):
     """仪表盘统计"""
 
@@ -36,6 +45,8 @@ class DashboardStats(BaseModel):
     ai_conversations: int
     pending_conversations: int
     human_conversations: int
+    # Agent 统计
+    agent_stats: AgentStatsInfo | None = None
 
 
 class ProductListItem(BaseModel):

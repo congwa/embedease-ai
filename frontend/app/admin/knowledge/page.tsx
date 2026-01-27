@@ -16,6 +16,7 @@ import {
   Bot,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin";
+import { getAgentTypeLabel } from "@/lib/config/labels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -698,7 +699,7 @@ export default function KnowledgePage() {
                         >
                           <div>
                             <div className="font-medium">{agent.name}</div>
-                            <div className="text-xs text-zinc-500">{agent.type}</div>
+                            <div className="text-xs text-zinc-500">{getAgentTypeLabel(agent.type)}</div>
                           </div>
                           <Badge variant={agent.status === "enabled" ? "default" : "secondary"}>
                             {agent.status}

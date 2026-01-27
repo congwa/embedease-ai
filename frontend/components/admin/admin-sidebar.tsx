@@ -19,6 +19,7 @@ import {
   Zap,
   Sparkles,
   Wand2,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,11 +30,12 @@ import { useAgentStore } from "@/stores";
 import { useSupportStats } from "@/hooks/use-support-stats";
 
 // 基础菜单（始终显示）
-const baseNavItems = [
+const baseNavItems: NavItemConfig[] = [
   {
     title: "仪表盘",
     href: "/admin",
     icon: LayoutDashboard,
+    exact: true,  // 精确匹配，避免与其他 /admin/* 路径冲突
   },
   {
     title: "Quick Setup",
@@ -43,22 +45,25 @@ const baseNavItems = [
 ];
 
 // Agent 控制台菜单（根据当前激活 Agent 动态生成）
-const getAgentConsoleItems = (agentId: string, agentType: string) => {
-  const baseItems = [
+const getAgentConsoleItems = (agentId: string, agentType: string): NavItemConfig[] => {
+  const baseItems: NavItemConfig[] = [
     {
       title: "基础设置",
       href: `/admin/agents/${agentId}`,
       icon: Settings,
+      exact: true,  // 精确匹配，避免与子路径冲突
     },
     {
       title: "工具配置",
       href: `/admin/agents/${agentId}/tools`,
       icon: Wrench,
+      exact: true,
     },
     {
       title: "会话洞察",
       href: `/admin/agents/${agentId}/conversations`,
       icon: BarChart3,
+      exact: true,
     },
   ];
 
@@ -68,6 +73,7 @@ const getAgentConsoleItems = (agentId: string, agentType: string) => {
       title: "商品数据",
       href: "/admin/products",
       icon: Package,
+      exact: true,
     });
   }
 
@@ -76,6 +82,7 @@ const getAgentConsoleItems = (agentId: string, agentType: string) => {
       title: "FAQ 管理",
       href: `/admin/agents/${agentId}/faq`,
       icon: HelpCircle,
+      exact: true,
     });
   }
 
@@ -84,6 +91,7 @@ const getAgentConsoleItems = (agentId: string, agentType: string) => {
       title: "知识库",
       href: `/admin/agents/${agentId}/knowledge`,
       icon: Database,
+      exact: true,
     });
   }
 
@@ -96,6 +104,7 @@ const systemNavItems = [
     title: "Agent 列表",
     href: "/admin/agents",
     icon: Bot,
+    exact: true,  // 精确匹配，避免与 Agent 控制台子路径冲突
   },
   {
     title: "技能管理",
@@ -129,17 +138,26 @@ const systemNavItems = [
   },
 ];
 
+interface NavItemConfig {
+  title: string;
+  href: string;
+  icon: React.ElementType;
+  exact?: boolean;  // 是否精确匹配（不匹配子路径）
+  children?: { title: string; href: string }[];
+}
+
 function NavItem({
   item,
   pathname,
 }: {
-  item: { title: string; href: string; icon: React.ElementType; children?: { title: string; href: string }[] };
+  item: NavItemConfig;
   pathname: string;
 }) {
-  const isActive =
-    pathname === item.href ||
-    pathname.startsWith(item.href + "/") ||
-    (item.children && item.children.some((child) => pathname === child.href));
+  const isActive = item.exact
+    ? pathname === item.href
+    : pathname === item.href ||
+      pathname.startsWith(item.href + "/") ||
+      (item.children && item.children.some((child) => pathname === child.href));
 
   return (
     <li>
@@ -210,16 +228,19 @@ export function AdminSidebar() {
         </div>
 
         {/* Agent 切换器 */}
-        <div className="border-b border-zinc-200 p-3 dark:border-zinc-800">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-500">当前 Agent</span>
+        <div className="border-b border-zinc-200/50 p-4 dark:border-zinc-800/50">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              当前 Agent
+            </span>
             {activeAgent && (
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-              >
-                激活中
-              </Badge>
+              <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                运行中
+              </span>
             )}
           </div>
           <AgentSwitcher />

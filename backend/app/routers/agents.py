@@ -174,6 +174,12 @@ async def update_agent(
 
     await db.flush()
 
+    # 清除会话缓存并重新查询（避免 MissingGreenlet 错误）
+    db.expire_all()
+    stmt = select(Agent).options(selectinload(Agent.knowledge_config)).where(Agent.id == agent_id)
+    result = await db.execute(stmt)
+    agent = result.scalar_one()
+
     # 使缓存失效
     agent_service.invalidate_agent(agent_id)
 

@@ -62,6 +62,11 @@ export async function apiRequest<T>(
     throw await parseErrorResponse(response);
   }
 
+  // 处理 204 No Content 响应
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json();
 }
 

@@ -188,3 +188,79 @@ class ProviderPresetsResponse(BaseModel):
     """提供商预设列表响应"""
 
     items: list[ProviderPreset]
+
+
+# ========== Supervisor 全局配置 ==========
+
+
+class SupervisorSubAgent(BaseModel):
+    """Supervisor 子 Agent 配置"""
+
+    agent_id: str = Field(..., description="Agent ID")
+    name: str = Field(..., min_length=1, max_length=100, description="显示名称")
+    description: str | None = Field(default=None, max_length=500, description="描述")
+    routing_hints: list[str] = Field(default_factory=list, description="路由关键词")
+    priority: int = Field(default=100, ge=0, le=1000, description="优先级，越大越优先")
+
+
+class SupervisorRoutingRule(BaseModel):
+    """Supervisor 路由规则"""
+
+    condition_type: str = Field(default="keyword", description="条件类型: keyword | intent")
+    keywords: list[str] = Field(default_factory=list, description="关键词列表")
+    intents: list[str] = Field(default_factory=list, description="意图列表")
+    target_agent_id: str = Field(..., description="目标 Agent ID")
+    priority: int = Field(default=0, ge=0, le=1000, description="规则优先级")
+
+
+class SupervisorRoutingPolicy(BaseModel):
+    """Supervisor 路由策略"""
+
+    type: str = Field(default="hybrid", description="策略类型: keyword | intent | hybrid")
+    rules: list[SupervisorRoutingRule] = Field(default_factory=list, description="路由规则")
+    default_agent_id: str | None = Field(default=None, description="默认 Agent ID")
+
+
+class SupervisorGlobalConfig(BaseModel):
+    """全局 Supervisor 配置"""
+
+    enabled: bool = Field(default=False, description="是否启用 Supervisor 功能")
+    supervisor_prompt: str | None = Field(default=None, description="调度器提示词")
+    sub_agents: list[SupervisorSubAgent] = Field(default_factory=list, description="子 Agent 列表")
+    routing_policy: SupervisorRoutingPolicy = Field(default_factory=SupervisorRoutingPolicy, description="路由策略")
+    intent_timeout: float = Field(default=3.0, ge=0.5, le=30.0, description="意图分类超时（秒）")
+    allow_multi_agent: bool = Field(default=False, description="是否允许多 Agent 协作")
+
+
+class SupervisorGlobalConfigUpdate(BaseModel):
+    """全局 Supervisor 配置更新"""
+
+    enabled: bool | None = Field(default=None, description="是否启用 Supervisor 功能")
+    supervisor_prompt: str | None = Field(default=None, description="调度器提示词")
+    sub_agents: list[SupervisorSubAgent] | None = Field(default=None, description="子 Agent 列表")
+    routing_policy: SupervisorRoutingPolicy | None = Field(default=None, description="路由策略")
+    intent_timeout: float | None = Field(default=None, ge=0.5, le=30.0, description="意图分类超时（秒）")
+    allow_multi_agent: bool | None = Field(default=None, description="是否允许多 Agent 协作")
+
+
+class SupervisorGlobalConfigResponse(BaseModel):
+    """全局 Supervisor 配置响应"""
+
+    enabled: bool
+    supervisor_prompt: str | None
+    sub_agents: list[SupervisorSubAgent]
+    routing_policy: SupervisorRoutingPolicy
+    intent_timeout: float
+    allow_multi_agent: bool
+    source: str = Field(description="配置来源: env | database")
+
+
+class AvailableAgentForSupervisor(BaseModel):
+    """可选为子 Agent 的 Agent"""
+
+    id: str
+    name: str
+    description: str | None
+    type: str
+    status: str
+    is_selected: bool = Field(default=False, description="是否已加入子 Agent")

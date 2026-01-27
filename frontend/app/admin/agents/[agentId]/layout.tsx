@@ -6,6 +6,7 @@ import { ChevronLeft, Bot, RefreshCw, Zap, MessageSquareText } from "lucide-reac
 import { useAgentDetail } from "@/lib/hooks/use-agents";
 import { useAgentStore } from "@/stores";
 import { LoadingState, ErrorAlert, StatusBadge } from "@/components/admin";
+import { getModeLabel } from "@/lib/config/labels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -147,7 +148,7 @@ export default function AgentDetailLayout({
             <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
               <Badge variant="outline">{typeLabels[agent.type] || agent.type}</Badge>
               <span>·</span>
-              <span>模式: {agent.mode_default}</span>
+              <span>模式: {getModeLabel(agent.mode_default)}</span>
               {agent.knowledge_config?.name && (
                 <>
                   <span>·</span>

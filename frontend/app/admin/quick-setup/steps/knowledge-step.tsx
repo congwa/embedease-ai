@@ -200,7 +200,6 @@ export function KnowledgeStep({
               <CardTitle className="flex items-center gap-2 text-base">
                 <TypeIcon className="h-4 w-4" />
                 {TYPE_LABELS[selectedAgent.type]}
-                <Badge variant="outline">{selectedAgent.type}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -250,13 +249,20 @@ export function KnowledgeStep({
               {/* 工具类别 */}
               {typeConfig && (
                 <div className="space-y-2">
-                  <Label>工具类别</Label>
+                  <Label>可用功能</Label>
                   <div className="flex flex-wrap gap-2">
-                    {typeConfig.tool_categories.map((cat) => (
-                      <Badge key={cat} variant="secondary">
-                        {cat}
-                      </Badge>
-                    ))}
+                    {typeConfig.tool_categories.map((cat) => {
+                      const labels: Record<string, string> = {
+                        search: "搜索", query: "查询", compare: "对比",
+                        filter: "筛选", category: "分类", featured: "精选",
+                        purchase: "购买", guide: "引导", faq: "FAQ", kb: "知识库",
+                      };
+                      return (
+                        <Badge key={cat} variant="secondary">
+                          {labels[cat] || cat}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -267,17 +273,26 @@ export function KnowledgeStep({
                   <Label>中间件配置</Label>
                   <div className="grid gap-3 md:grid-cols-2">
                     {Object.entries(typeConfig.middleware_flags).map(
-                      ([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between rounded-lg border p-3"
-                        >
-                          <span className="text-sm">
-                            {key.replace(/_/g, " ").replace("enabled", "")}
-                          </span>
-                          <Switch checked={value} disabled />
-                        </div>
-                      )
+                      ([key, value]) => {
+                        const labels: Record<string, string> = {
+                          todo_enabled: "TODO 规划",
+                          memory_enabled: "记忆系统",
+                          summarization_enabled: "上下文压缩",
+                          tool_retry_enabled: "工具重试",
+                          tool_limit_enabled: "工具限制",
+                          noise_filter_enabled: "噪音过滤",
+                          sliding_window_enabled: "滑动窗口",
+                        };
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center justify-between rounded-lg border p-3"
+                          >
+                            <span className="text-sm">{labels[key] || key}</span>
+                            <Switch checked={value} disabled />
+                          </div>
+                        );
+                      }
                     )}
                   </div>
                 </div>

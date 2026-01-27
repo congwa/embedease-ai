@@ -1,6 +1,6 @@
 {
   "completed": false,
-  "current_step": 3,
+  "current_step": 6,
   "steps": [
     {
       "index": 0,
@@ -12,6 +12,16 @@
     },
     {
       "index": 1,
+      "key": "mode",
+      "title": "模式选择",
+      "description": "选择单 Agent 模式或 Supervisor 多 Agent 编排模式",
+      "status": "in_progress",
+      "data": {
+        "mode": "supervisor"
+      }
+    },
+    {
+      "index": 2,
       "key": "system",
       "title": "系统基础设置",
       "description": "配置公司信息、品牌主题等基础设置",
@@ -19,7 +29,7 @@
       "data": null
     },
     {
-      "index": 2,
+      "index": 3,
       "key": "models",
       "title": "模型 & 向量服务",
       "description": "配置 LLM、Embedding 和 Qdrant 服务",
@@ -27,38 +37,38 @@
       "data": null
     },
     {
-      "index": 3,
-      "key": "knowledge",
-      "title": "知识 & Agent 配置",
-      "description": "根据 Agent 类型配置知识源和工具",
-      "status": "in_progress",
-      "data": null
-    },
-    {
       "index": 4,
-      "key": "greeting",
-      "title": "开场白配置",
-      "description": "设置 Agent 的欢迎消息和触发策略",
+      "key": "supervisor",
+      "title": "多 Agent 编排",
+      "description": "配置子 Agent 和路由策略",
       "status": "in_progress",
       "data": null
     },
     {
       "index": 5,
-      "key": "channel",
-      "title": "渠道 & 集成",
-      "description": "配置客服入口和第三方集成",
-      "status": "pending",
+      "key": "greeting",
+      "title": "开场白配置",
+      "description": "设置调度器的欢迎消息",
+      "status": "in_progress",
       "data": null
     },
     {
       "index": 6,
+      "key": "channel",
+      "title": "渠道 & 集成",
+      "description": "配置客服入口和第三方集成",
+      "status": "in_progress",
+      "data": null
+    },
+    {
+      "index": 7,
       "key": "summary",
       "title": "总结 & 快捷入口",
       "description": "查看配置完成状态，获取常用入口",
-      "status": "pending",
+      "status": "in_progress",
       "data": null
     }
   ],
   "agent_id": null,
-  "updated_at": "2026-01-27T14:39:55.400101"
+  "updated_at": "2026-01-27T18:14:23.197022"
 }

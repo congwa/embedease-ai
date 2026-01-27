@@ -2,6 +2,13 @@
 
 import { apiRequest } from "./client";
 
+export interface AgentStatsInfo {
+  total_agents: number;
+  enabled_agents: number;
+  default_agent_id: string | null;
+  default_agent_name: string | null;
+}
+
 export interface DashboardStats {
   total_products: number;
   total_conversations: number;
@@ -15,6 +22,7 @@ export interface DashboardStats {
   ai_conversations: number;
   pending_conversations: number;
   human_conversations: number;
+  agent_stats: AgentStatsInfo | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -182,4 +190,115 @@ export async function getCategories(): Promise<string[]> {
 // 获取品牌列表
 export async function getBrands(): Promise<string[]> {
   return apiRequest<string[]>("/api/v1/admin/brands");
+}
+
+// Supervisor 全局配置（只读，从 admin 接口）
+export interface SupervisorConfig {
+  enabled: boolean;
+  default_agent_id: string | null;
+  default_agent_name: string | null;
+  intent_timeout: number;
+  allow_multi_agent: boolean;
+  supervisor_agents: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    sub_agent_count: number;
+    is_default: boolean;
+  }>;
+}
+
+// 获取 Supervisor 全局配置（只读）
+export async function getSupervisorConfig(): Promise<SupervisorConfig> {
+  return apiRequest<SupervisorConfig>("/api/v1/admin/settings/supervisor");
+}
+
+// Supervisor 子 Agent 配置
+export interface SupervisorSubAgent {
+  agent_id: string;
+  name: string;
+  description: string | null;
+  routing_hints: string[];
+  priority: number;
+}
+
+// Supervisor 路由规则
+export interface SupervisorRoutingRule {
+  condition_type: string;
+  keywords: string[];
+  intents: string[];
+  target_agent_id: string;
+  priority: number;
+}
+
+// Supervisor 路由策略
+export interface SupervisorRoutingPolicy {
+  type: string;
+  rules: SupervisorRoutingRule[];
+  default_agent_id: string | null;
+}
+
+// 全局 Supervisor 配置
+export interface SupervisorGlobalConfig {
+  enabled: boolean;
+  supervisor_prompt: string | null;
+  sub_agents: SupervisorSubAgent[];
+  routing_policy: SupervisorRoutingPolicy;
+  intent_timeout: number;
+  allow_multi_agent: boolean;
+  source: string;
+}
+
+export interface SupervisorGlobalConfigUpdate {
+  enabled?: boolean;
+  supervisor_prompt?: string | null;
+  sub_agents?: SupervisorSubAgent[];
+  routing_policy?: SupervisorRoutingPolicy;
+  intent_timeout?: number;
+  allow_multi_agent?: boolean;
+}
+
+// 可选为子 Agent 的 Agent
+export interface AvailableAgentForSupervisor {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  status: string;
+  is_selected: boolean;
+}
+
+// 获取全局 Supervisor 配置
+export async function getSupervisorGlobalConfig(): Promise<SupervisorGlobalConfig> {
+  return apiRequest<SupervisorGlobalConfig>("/api/v1/admin/system-config/supervisor");
+}
+
+// 更新全局 Supervisor 配置
+export async function updateSupervisorGlobalConfig(
+  data: SupervisorGlobalConfigUpdate
+): Promise<SupervisorGlobalConfig> {
+  return apiRequest<SupervisorGlobalConfig>("/api/v1/admin/system-config/supervisor", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// 获取可选子 Agent 列表
+export async function getAvailableAgentsForSupervisor(): Promise<AvailableAgentForSupervisor[]> {
+  return apiRequest<AvailableAgentForSupervisor[]>("/api/v1/admin/system-config/supervisor/available-agents");
+}
+
+// 添加子 Agent
+export async function addSubAgent(data: SupervisorSubAgent): Promise<SupervisorGlobalConfig> {
+  return apiRequest<SupervisorGlobalConfig>("/api/v1/admin/system-config/supervisor/sub-agents", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// 移除子 Agent
+export async function removeSubAgent(agentId: string): Promise<SupervisorGlobalConfig> {
+  return apiRequest<SupervisorGlobalConfig>(`/api/v1/admin/system-config/supervisor/sub-agents/${agentId}`, {
+    method: "DELETE",
+  });
 }

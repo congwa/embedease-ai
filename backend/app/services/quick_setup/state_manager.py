@@ -22,8 +22,8 @@ from app.schemas.quick_setup import (
 logger = get_logger("quick_setup.state_manager")
 
 
-# 默认步骤定义
-DEFAULT_STEPS = [
+# 基础步骤定义（模式无关）
+BASE_STEPS = [
     SetupStep(
         index=0,
         key="welcome",
@@ -33,47 +33,113 @@ DEFAULT_STEPS = [
     ),
     SetupStep(
         index=1,
+        key="mode",
+        title="模式选择",
+        description="选择单 Agent 模式或 Supervisor 多 Agent 编排模式",
+        status=SetupStepStatus.PENDING,
+    ),
+    SetupStep(
+        index=2,
         key="system",
         title="系统基础设置",
         description="配置公司信息、品牌主题等基础设置",
         status=SetupStepStatus.PENDING,
     ),
     SetupStep(
-        index=2,
+        index=3,
         key="models",
         title="模型 & 向量服务",
         description="配置 LLM、Embedding 和 Qdrant 服务",
         status=SetupStepStatus.PENDING,
     ),
+]
+
+# 单 Agent 模式专用步骤
+SINGLE_AGENT_STEPS = [
     SetupStep(
-        index=3,
+        index=4,
+        key="agent-type",
+        title="Agent 类型选择",
+        description="选择要配置的 Agent 类型",
+        status=SetupStepStatus.PENDING,
+    ),
+    SetupStep(
+        index=5,
         key="knowledge",
         title="知识 & Agent 配置",
         description="根据 Agent 类型配置知识源和工具",
         status=SetupStepStatus.PENDING,
     ),
     SetupStep(
-        index=4,
+        index=6,
         key="greeting",
         title="开场白配置",
         description="设置 Agent 的欢迎消息和触发策略",
         status=SetupStepStatus.PENDING,
     ),
+]
+
+# Supervisor 模式专用步骤
+SUPERVISOR_STEPS = [
+    SetupStep(
+        index=4,
+        key="supervisor",
+        title="多 Agent 编排",
+        description="配置子 Agent 和路由策略",
+        status=SetupStepStatus.PENDING,
+    ),
     SetupStep(
         index=5,
+        key="greeting",
+        title="开场白配置",
+        description="设置调度器的欢迎消息",
+        status=SetupStepStatus.PENDING,
+    ),
+]
+
+# 通用结束步骤
+END_STEPS = [
+    SetupStep(
+        index=0,  # index 会在 build_steps 中重新计算
         key="channel",
         title="渠道 & 集成",
         description="配置客服入口和第三方集成",
         status=SetupStepStatus.PENDING,
     ),
     SetupStep(
-        index=6,
+        index=0,
         key="summary",
         title="总结 & 快捷入口",
         description="查看配置完成状态，获取常用入口",
         status=SetupStepStatus.PENDING,
     ),
 ]
+
+
+def build_steps(mode: str = "single") -> list[SetupStep]:
+    """根据模式构建步骤列表"""
+    if mode == "supervisor":
+        middle_steps = SUPERVISOR_STEPS
+    else:
+        middle_steps = SINGLE_AGENT_STEPS
+    
+    all_steps = []
+    for step in BASE_STEPS:
+        all_steps.append(step.model_copy())
+    for step in middle_steps:
+        all_steps.append(step.model_copy())
+    for step in END_STEPS:
+        all_steps.append(step.model_copy())
+    
+    # 重新计算 index
+    for i, step in enumerate(all_steps):
+        step.index = i
+    
+    return all_steps
+
+
+# 默认步骤（单 Agent 模式）
+DEFAULT_STEPS = build_steps("single")
 
 
 class QuickSetupStateManager:
@@ -225,6 +291,47 @@ class QuickSetupStateManager:
         state.agent_id = agent_id
         self._save_state(state)
         return state
+
+    def set_mode(self, mode: str) -> QuickSetupState:
+        """设置向导模式，动态调整后续步骤
+        
+        Args:
+            mode: "single" | "supervisor"
+        """
+        state = self.get_state()
+        
+        # 保存 mode 选择步骤的已完成状态
+        mode_step_index = 1  # mode 步骤的 index
+        
+        # 构建新的步骤列表
+        new_steps = build_steps(mode)
+        
+        # 保留已完成步骤的状态（前 4 个基础步骤）
+        for i in range(min(len(state.steps), len(BASE_STEPS))):
+            if state.steps[i].status == SetupStepStatus.COMPLETED:
+                new_steps[i].status = SetupStepStatus.COMPLETED
+                new_steps[i].data = state.steps[i].data
+        
+        # 设置 mode 步骤为已完成
+        new_steps[mode_step_index].status = SetupStepStatus.COMPLETED
+        new_steps[mode_step_index].data = {"mode": mode}
+        
+        # 更新状态
+        state.steps = new_steps
+        state.current_step = mode_step_index + 1  # 移动到下一步
+        new_steps[state.current_step].status = SetupStepStatus.IN_PROGRESS
+        
+        self._save_state(state)
+        logger.info("设置向导模式", mode=mode, total_steps=len(new_steps))
+        return state
+
+    def get_current_mode(self) -> str | None:
+        """获取当前模式"""
+        state = self.get_state()
+        mode_step = next((s for s in state.steps if s.key == "mode"), None)
+        if mode_step and mode_step.data:
+            return mode_step.data.get("mode")
+        return None
 
 
 # 全局实例
