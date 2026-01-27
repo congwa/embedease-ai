@@ -17,3 +17,9 @@ export { Timeline } from "./timeline";
 // 统一错误处理组件
 export { ErrorState } from "./error-state";
 export { FormError } from "./form-error";
+
+// 提示词组件
+export { PromptViewer } from "./prompt-viewer";
+export type { PromptViewerProps } from "./prompt-viewer";
+export { PromptEditor } from "./prompt-editor";
+export type { PromptEditorProps } from "./prompt-editor";

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { PromptEditor } from "@/components/admin";
 import {
   AGENT_TYPE_OPTIONS,
   createSkill,
@@ -188,21 +189,14 @@ export default function CreateSkillPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="content">内容 *</Label>
-              <Textarea
-                id="content"
-                placeholder={`## 技能名称
-
-### 规则
-1. 规则一
-2. 规则二
-
-### 输出格式
-...`}
+              <Label>内容 *</Label>
+              <PromptEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={12}
-                className="font-mono text-sm"
+                onChange={setContent}
+                minHeight={250}
+                maxHeight={400}
+                placeholder="## 技能名称&#10;&#10;### 规则&#10;1. 规则一&#10;2. 规则二&#10;&#10;### 输出格式&#10;..."
+                showMarkdownPreview
               />
               <p className="text-xs text-muted-foreground">
                 至少 10 个字符，当前 {content.length} 个

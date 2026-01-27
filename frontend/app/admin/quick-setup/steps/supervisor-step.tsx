@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PromptEditor } from "@/components/admin";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -333,11 +334,12 @@ export function SupervisorStep({ step, onComplete, isLoading }: StepProps) {
           <CardDescription>指导 Supervisor 如何分析意图和路由</CardDescription>
         </CardHeader>
         <CardContent>
-          <Textarea
+          <PromptEditor
             value={supervisorPrompt}
-            onChange={(e) => setSupervisorPrompt(e.target.value)}
-            rows={8}
-            className="font-mono text-sm"
+            onChange={setSupervisorPrompt}
+            minHeight={180}
+            maxHeight={350}
+            placeholder={DEFAULT_SUPERVISOR_PROMPT}
           />
         </CardContent>
       </Card>

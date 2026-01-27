@@ -26,6 +26,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { PromptViewer, PromptEditor } from "@/components/admin";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -362,16 +363,21 @@ export default function SkillDetailPage() {
         </CardHeader>
         <CardContent>
           {isEditing ? (
-            <Textarea
+            <PromptEditor
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={15}
-              className="font-mono text-sm"
+              onChange={setEditContent}
+              minHeight={300}
+              maxHeight={500}
+              placeholder="输入技能提示词内容..."
+              showMarkdownPreview
             />
           ) : (
-            <div className="rounded-lg border bg-muted/50 p-4">
-              <pre className="whitespace-pre-wrap text-sm">{skill.content}</pre>
-            </div>
+            <PromptViewer 
+              content={skill.content} 
+              maxHeight={400}
+              onEdit={() => setIsEditing(true)}
+              editLabel="编辑内容"
+            />
           )}
         </CardContent>
       </Card>

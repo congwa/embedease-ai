@@ -10,8 +10,6 @@ import {
   RotateCcw,
   Search,
   FileText,
-  Plus,
-  Trash2,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -32,16 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -54,11 +42,8 @@ import {
 import {
   listPrompts,
   resetPrompt,
-  createPrompt,
-  deletePrompt,
   Prompt,
   PromptCategory,
-  PromptCreate,
   PROMPT_CATEGORY_LABELS,
   PROMPT_CATEGORY_COLORS,
   PROMPT_SOURCE_LABELS,
@@ -67,15 +52,12 @@ import {
 function PromptCard({
   prompt,
   onReset,
-  onDelete,
 }: {
   prompt: Prompt;
   onReset: (key: string) => void;
-  onDelete: (key: string) => void;
 }) {
   const router = useRouter();
   const isCustom = prompt.source === "custom";
-  const canDelete = isCustom && !prompt.default_content; // 只有完全自定义的才能删除
 
   const handleEdit = () => {
     router.push(`/admin/prompts/${encodeURIComponent(prompt.key)}`);
@@ -131,20 +113,6 @@ function PromptCard({
                 <RotateCcw className="h-4 w-4" />
               </Button>
             )}
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(prompt.key);
-                }}
-                title="删除提示词"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
           </div>
         </div>
       </CardHeader>
@@ -197,22 +165,6 @@ export default function PromptsPage() {
   const [resetKey, setResetKey] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
-  // 删除确认
-  const [deleteKey, setDeleteKey] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // 创建对话框
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createData, setCreateData] = useState<Partial<PromptCreate>>({
-    key: "",
-    category: "agent",
-    name: "",
-    description: "",
-    content: "",
-    variables: [],
-  });
-  const [isCreating, setIsCreating] = useState(false);
-
   const loadPrompts = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -262,43 +214,6 @@ export default function PromptsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteKey) return;
-
-    try {
-      setIsDeleting(true);
-      await deletePrompt(deleteKey);
-      setDeleteKey(null);
-      loadPrompts();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "删除失败");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleCreate = async () => {
-    if (!createData.key || !createData.name || !createData.content) return;
-
-    try {
-      setIsCreating(true);
-      await createPrompt(createData as PromptCreate);
-      setIsCreateOpen(false);
-      setCreateData({
-        key: "",
-        category: "agent",
-        name: "",
-        description: "",
-        content: "",
-        variables: [],
-      });
-      loadPrompts();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "创建失败");
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   return (
     <div className="container mx-auto max-w-7xl space-y-6 p-6">
@@ -310,10 +225,6 @@ export default function PromptsPage() {
             统一管理系统中的所有提示词模板，支持自定义和重置
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          创建提示词
-        </Button>
       </div>
 
       {/* 筛选器 */}
@@ -380,7 +291,6 @@ export default function PromptsPage() {
               key={prompt.key}
               prompt={prompt}
               onReset={setResetKey}
-              onDelete={setDeleteKey}
             />
           ))}
         </div>
@@ -408,143 +318,6 @@ export default function PromptsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={!!deleteKey} onOpenChange={() => setDeleteKey(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              删除后将无法恢复。确定要删除此自定义提示词吗？
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 创建对话框 */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>创建自定义提示词</DialogTitle>
-            <DialogDescription>
-              创建一个全新的提示词模板，用于扩展系统功能
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>标识 (Key) *</Label>
-                <Input
-                  placeholder="custom.my_prompt"
-                  value={createData.key || ""}
-                  onChange={(e) =>
-                    setCreateData({ ...createData, key: e.target.value })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  建议格式：category.name，如 custom.greeting
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>分类 *</Label>
-                <Select
-                  value={createData.category}
-                  onValueChange={(v) =>
-                    setCreateData({ ...createData, category: v as PromptCategory })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="agent">Agent 提示词</SelectItem>
-                    <SelectItem value="memory">记忆系统</SelectItem>
-                    <SelectItem value="skill">技能生成</SelectItem>
-                    <SelectItem value="crawler">爬虫提取</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>名称 *</Label>
-              <Input
-                placeholder="我的自定义提示词"
-                value={createData.name || ""}
-                onChange={(e) =>
-                  setCreateData({ ...createData, name: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>描述</Label>
-              <Input
-                placeholder="提示词的用途说明"
-                value={createData.description || ""}
-                onChange={(e) =>
-                  setCreateData({ ...createData, description: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>内容 *</Label>
-              <Textarea
-                placeholder="提示词模板内容..."
-                value={createData.content || ""}
-                onChange={(e) =>
-                  setCreateData({ ...createData, content: e.target.value })
-                }
-                rows={10}
-                className="font-mono text-sm"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCreateOpen(false)}
-              disabled={isCreating}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={
-                isCreating ||
-                !createData.key ||
-                !createData.name ||
-                !createData.content
-              }
-            >
-              {isCreating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-2 h-4 w-4" />
-              )}
-              创建
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { useAgentDetail } from "@/lib/hooks/use-agents";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/admin";
+import { StatusBadge, PromptViewer } from "@/components/admin";
 import { getModeLabel, getMiddlewareLabel, getToolCategoryLabel } from "@/lib/config/labels";
 
 export default function AgentOverviewPage() {
@@ -25,9 +25,12 @@ export default function AgentOverviewPage() {
           <CardTitle className="text-base">系统提示词</CardTitle>
         </CardHeader>
         <CardContent>
-          <pre className="max-h-64 overflow-auto rounded-lg bg-zinc-50 p-4 text-sm whitespace-pre-wrap dark:bg-zinc-900">
-            {agent.system_prompt}
-          </pre>
+          <PromptViewer 
+            content={agent.system_prompt} 
+            maxHeight={256}
+            editHref={`/admin/agents/${agentId}/system-prompt`}
+            editLabel="编辑提示词"
+          />
         </CardContent>
       </Card>
 

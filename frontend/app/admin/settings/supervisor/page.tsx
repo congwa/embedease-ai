@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PromptEditor } from "@/components/admin";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
@@ -235,11 +236,13 @@ export default function SupervisorSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Textarea
+          <PromptEditor
             value={supervisorPrompt}
-            onChange={(e) => setSupervisorPrompt(e.target.value)}
+            onChange={setSupervisorPrompt}
+            minHeight={200}
+            maxHeight={400}
             placeholder={DEFAULT_SUPERVISOR_PROMPT}
-            className="min-h-[200px] font-mono text-sm"
+            showMarkdownPreview
           />
           <div className="flex items-center gap-2">
             <Button

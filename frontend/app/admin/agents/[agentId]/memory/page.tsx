@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/admin";
+import { StatusBadge, PromptViewer } from "@/components/admin";
 import {
   Select,
   SelectContent,
@@ -441,16 +441,12 @@ export default function AgentMemoryPage() {
               <>
                 <div>
                   <div className="mb-2 text-sm font-medium text-zinc-500">基础提示词</div>
-                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-zinc-50 p-4 text-sm dark:bg-zinc-900">
-                    {promptPreview.base_prompt}
-                  </pre>
+                  <PromptViewer content={promptPreview.base_prompt} maxHeight={192} />
                 </div>
                 {promptPreview.mode_suffix && (
                   <div>
                     <div className="mb-2 text-sm font-medium text-zinc-500">模式后缀</div>
-                    <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-zinc-50 p-4 text-sm dark:bg-zinc-900">
-                      {promptPreview.mode_suffix}
-                    </pre>
+                    <PromptViewer content={promptPreview.mode_suffix} maxHeight={128} />
                   </div>
                 )}
                 {promptPreview.memory_context && (
@@ -461,9 +457,11 @@ export default function AgentMemoryPage() {
                         动态
                       </Badge>
                     </div>
-                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-blue-50 p-4 text-sm dark:bg-blue-950">
-                      {promptPreview.memory_context || "(无记忆数据)"}
-                    </pre>
+                    <PromptViewer 
+                      content={promptPreview.memory_context || "(无记忆数据)"} 
+                      maxHeight={192}
+                      className="bg-blue-50/50 dark:bg-blue-950/30"
+                    />
                   </div>
                 )}
               </>
