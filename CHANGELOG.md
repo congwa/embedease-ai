@@ -7,10 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.11] - 2026-01-09
 
+### 2026-01-27 (UTC+08:00)
+
+#### Added
+
+- **提示词统一管理架构** (`backend/app/prompts/*`, `backend/app/routers/prompts.py`, `frontend/app/admin/prompts/*`): 新增 `PromptRegistry` 提示词注册表，支持默认值 + 数据库覆盖，提供 CRUD、reset 等完整管理功能。前端新增富文本编辑器组件，支持变量高亮与实时预览。
+- **Quick Setup 模式选择** (`frontend/app/admin/quick-setup/*`): 新增 Agent 模式选择功能（Supervisor/Product/FAQ/KB），优化状态卡片展示与连接测试 UX，支持分步骤进度显示。
+
+#### Changed
+
+- **数据库 Provider 模式** (`backend/app/core/db/*`): 统一爬虫/Checkpoint 数据库使用 Provider 模式，新增 `get_session` 别名保持向后兼容。
+- **SQLite 防死锁优化** (`backend/app/core/database.py`): 优化 SQLite 连接配置，减少并发场景下的死锁风险。
+
+#### Fixed
+
+- **前端 Hydration 错误** (`frontend/components/*`): 修复多个 SSR hydration 问题，包括 Tiptap 编辑器 `immediatelyRender`、TabsTrigger `asChild`、AlertDialogDescription `p` 嵌套等。
+- **提示词 API 路径** (`backend/app/routers/prompts.py`): 修复路由前缀配置问题。
+- **Agent 更新接口** (`backend/app/routers/agents.py`): 修复 `knowledge_config` 关联加载问题。
+
+### 2026-01-26 (UTC+08:00)
+
+#### Added
+
+- **Agent 技能系统** (`backend/app/services/skill/*`, `backend/app/routers/skills.py`, `backend/app/models/skill.py`): 实现完整的 Agent 可扩展技能系统，包括 `SkillService`（CRUD、Agent 关联）、`SkillGenerator`（AI 智能生成）、`SkillRegistry`（运行时缓存）、`SkillInjector`（技能注入）。
+- **LLM 配置后台管理** (`frontend/app/admin/settings/*`): 新增 LLM/Embedding/Rerank 模型配置管理界面，支持动态切换与测试连接。
+
+#### Fixed
+
+- **集成测试问题** (`backend/tests/*`): 修复 `lru_cache` 缓存、asyncio 事件循环绑定、日志配置等集成测试问题。
+
+### 2026-01-22 (UTC+08:00)
+
+#### Added
+
+- **三套聊天主题 + 深色模式** (`frontend/stores/theme-store.ts`, `frontend/components/features/chat/*`): 新增 Minimal、Ethereal、Industrial 三种聊天界面风格，全面支持深色模式切换。
+- **Markdown 统一渲染** (`frontend/components/ui/markdown/*`): 统一 Markdown 输入与渲染组件，支持代码高亮、表格、任务列表等扩展语法。
+
+### 2026-01-20 (UTC+08:00)
+
+#### Added
+
+- **Supervisor 监督者模式** (`backend/app/services/agent/*`): 新增多 Agent 编排能力，支持 Supervisor Agent 协调多个子 Agent 协同工作，实现复杂任务分解与路由。
+- **滑动窗口 & 噪音过滤 & 关键信息摘要** (`backend/app/services/agent/middleware/*`): 新增三个中间件：`SlidingWindowMiddleware`（上下文窗口裁剪）、`NoiseFilterMiddleware`（工具输出噪音过滤）、`SummarizationBroadcastMiddleware`（关键信息压缩摘要）。
+
+### 2026-01-12 (UTC+08:00)
+
+#### Changed
+
+- **统一品牌名称** (`README.md`, `frontend/*`, `backend/*`): 将项目品牌从 "EmbedAI Agent" 统一更名为 "EmbedEase AI"，更新所有相关文档与界面文案。
+
 ### 2026-01-09 17:40 (UTC+08:00)
 
 #### Added
 
+- **产品落地页** (`frontend/app/landing/*`): 新增产品官网落地页，展示核心功能、使用场景与转化流程，支持 CTA 按钮与演示视频入口。
 - **多智能体系统架构** (`backend/app/services/agent/*`, `backend/app/models/agent.py`): 重构 Agent 架构，支持多 Agent 类型（Product/FAQ/KB/Custom），实现模块化设计与配置驱动的 Agent 创建。
 - **Quick Setup 一站式引导** (`backend/app/routers/quick_setup.py`, `backend/app/services/quick_setup/*`, `frontend/app/admin/quick-setup/*`): 新增可视化配置向导，支持 3 步完成 Agent 创建（选择类型 → 配置知识源 → 设置开场白），降低非技术用户使用门槛。
 - **Agent 开场白系统** (`backend/app/models/agent.py`, `frontend/components/features/chat/*`): 支持多渠道开场白配置（Web/嵌入组件/客服），可设置触发条件、延迟时间、CTA 按钮等。
@@ -49,6 +99,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Docs
 
+- 新增企业微信推送功能说明，强调嵌入组件转化率提升价值。
+- 完善人工客服系统架构图，新增通知配置与在线状态管理流程。
 - **Docker 一键部署指南** (`README.md`, `README_DOCKER.md`): 新增详细的 Docker 部署文档，优化快速开始章节结构。
 - **README 重构** (`README.md`): 重写用户文档，强调四种 Agent 类型、三种对话模式、一站式引导等核心功能，面向非技术用户优化。
 
