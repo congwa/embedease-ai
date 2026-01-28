@@ -13,6 +13,14 @@ export {
   type FeatureStatus,
   type MemoryFeature,
 } from "./system-store";
+export {
+  useModeStore,
+  useIsSupervisorMode,
+  useModeDisplayName,
+  type SystemMode,
+  type SupervisorConfig,
+  type SubAgentConfig,
+} from "./mode-store";
 
 // 重新导出 timeline 类型供组件使用
 export type {

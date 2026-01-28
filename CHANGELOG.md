@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-01-28
+
+### Added
+
+- **前端模式感知架构** (`frontend/stores/mode-store.ts`, `frontend/components/admin/mode-indicator.tsx`): 新增全局模式状态管理 Store，支持单 Agent 与 Supervisor 两种运行模式的切换与持久化。新增模式指示器组件，侧边栏顶部显示当前运行模式。
+- **统一工作空间入口** (`frontend/app/admin/workspace/*`): 新增 `/admin/workspace` 工作空间页面，作为模式感知的统一编辑入口。单 Agent 模式显示当前 Agent 快捷配置入口，Supervisor 模式显示编排架构可视化与子 Agent 列表。
+- **模式设置页面** (`frontend/app/admin/settings/mode/page.tsx`): 新增专门的模式切换页面，提供详细的模式说明与切换确认流程。
+- **仪表盘模式状态卡片** (`frontend/app/admin/page.tsx`): 仪表盘顶部新增运行模式状态卡片，直观显示当前模式并提供快捷入口。
+- **前端模式感知架构设计文档** (`docs/architecture/frontend-mode-aware-design.md`): 新增详细的架构设计文档，包含问题分析、设计原则、页面结构、数据流设计与实施路线图。
+
+### Changed
+
+- **侧边栏模式感知** (`frontend/components/admin/admin-sidebar.tsx`): 重构侧边栏支持模式感知，Supervisor 模式下隐藏 Agent 切换器与 Agent 控制台菜单，单 Agent 模式下正常显示。新增工作空间高亮入口。
+
+---
+
 ## [0.1.11] - 2026-01-09
 
 ### 2026-01-27 (UTC+08:00)

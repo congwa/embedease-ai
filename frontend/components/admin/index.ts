@@ -23,3 +23,6 @@ export { PromptViewer } from "./prompt-viewer";
 export type { PromptViewerProps } from "./prompt-viewer";
 export { PromptEditor } from "./prompt-editor";
 export type { PromptEditorProps } from "./prompt-editor";
+
+// 模式相关组件
+export { ModeIndicator } from "./mode-indicator";

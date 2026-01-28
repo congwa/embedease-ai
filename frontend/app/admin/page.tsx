@@ -14,16 +14,21 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageHeader, StatCard } from "@/components/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { getDashboardStats, getSupervisorGlobalConfig, type DashboardStats, type SupervisorGlobalConfig } from "@/lib/api/admin";
 import { Badge } from "@/components/ui/badge";
+import { useModeStore } from "@/stores";
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [supervisorConfig, setSupervisorConfig] = useState<SupervisorGlobalConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { mode, fetchModeState } = useModeStore();
 
   useEffect(() => {
     async function loadData() {
@@ -32,6 +37,7 @@ export default function AdminDashboardPage() {
         const [statsData, supervisorData] = await Promise.all([
           getDashboardStats(),
           getSupervisorGlobalConfig(),
+          fetchModeState(),
         ]);
         setStats(statsData);
         setSupervisorConfig(supervisorData);
@@ -42,7 +48,7 @@ export default function AdminDashboardPage() {
       }
     }
     loadData();
-  }, []);
+  }, [fetchModeState]);
 
   if (isLoading) {
     return (
@@ -68,6 +74,45 @@ export default function AdminDashboardPage() {
         title="仪表盘"
         description="系统数据概览"
       />
+
+      {/* 运行模式状态 */}
+      <Card className={mode === "supervisor" ? "border-violet-200 bg-violet-50/50 dark:border-violet-800 dark:bg-violet-950/30" : "border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/30"}>
+        <CardContent className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-4">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${mode === "supervisor" ? "bg-violet-100 dark:bg-violet-900/50" : "bg-emerald-100 dark:bg-emerald-900/50"}`}>
+              {mode === "supervisor" ? (
+                <Network className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+              ) : (
+                <Bot className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">
+                  {mode === "supervisor" ? "Supervisor 模式" : "单 Agent 模式"}
+                </span>
+                <Badge variant="secondary" className={mode === "supervisor" ? "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"}>
+                  运行中
+                </Badge>
+              </div>
+              <p className="text-sm text-zinc-500">
+                {mode === "supervisor" 
+                  ? "多个 Agent 协作，由 Supervisor 智能路由用户请求"
+                  : "单个 Agent 处理所有用户请求"}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push("/admin/settings/mode")}>
+              切换模式
+            </Button>
+            <Button size="sm" onClick={() => router.push("/admin/workspace")}>
+              进入工作空间
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 核心指标 */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

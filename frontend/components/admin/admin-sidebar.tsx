@@ -20,13 +20,15 @@ import {
   Sparkles,
   Wand2,
   Network,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AgentSwitcher } from "./agent-switcher";
-import { useAgentStore } from "@/stores";
+import { ModeIndicator } from "./mode-indicator";
+import { useAgentStore, useModeStore } from "@/stores";
 import { useSupportStats } from "@/hooks/use-support-stats";
 
 // 基础菜单（始终显示）
@@ -36,6 +38,12 @@ const baseNavItems: NavItemConfig[] = [
     href: "/admin",
     icon: LayoutDashboard,
     exact: true,  // 精确匹配，避免与其他 /admin/* 路径冲突
+  },
+  {
+    title: "工作空间",
+    href: "/admin/workspace",
+    icon: Briefcase,
+    highlight: true,  // 高亮显示核心入口
   },
   {
     title: "Quick Setup",
@@ -148,6 +156,7 @@ interface NavItemConfig {
   href: string;
   icon: React.ElementType;
   exact?: boolean;  // 是否精确匹配（不匹配子路径）
+  highlight?: boolean;  // 是否高亮显示
   children?: { title: string; href: string }[];
 }
 
@@ -172,10 +181,11 @@ function NavItem({
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
           isActive
             ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-            : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+            : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
+          item.highlight && !isActive && "bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-900/20 dark:text-violet-300 dark:hover:bg-violet-900/30"
         )}
       >
-        <item.icon className="h-4 w-4" />
+        <item.icon className={cn("h-4 w-4", item.highlight && "text-violet-500")} />
         <span className="flex-1">{item.title}</span>
       </Link>
       {item.children && isActive && (
@@ -205,6 +215,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const activeAgent = useAgentStore((s) => s.activeAgent());
   const isLoading = useAgentStore((s) => s.isLoading);
+  const { mode } = useModeStore();
   const { stats: supportStats, hasNotification } = useSupportStats();
 
   // 根据当前激活 Agent 生成控制台菜单
@@ -232,24 +243,34 @@ export function AdminSidebar() {
           </Link>
         </div>
 
-        {/* Agent 切换器 */}
-        <div className="border-b border-zinc-200/50 p-4 dark:border-zinc-800/50">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              当前 Agent
-            </span>
-            {activeAgent && (
-              <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                运行中
-              </span>
-            )}
+        {/* 模式指示器 */}
+        <div className="border-b border-zinc-200/50 px-4 py-3 dark:border-zinc-800/50">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            运行模式
           </div>
-          <AgentSwitcher />
+          <ModeIndicator className="w-full justify-start" />
         </div>
+
+        {/* Agent 切换器 - 仅在单 Agent 模式下显示 */}
+        {mode === "single" && (
+          <div className="border-b border-zinc-200/50 p-4 dark:border-zinc-800/50">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                当前 Agent
+              </span>
+              {activeAgent && (
+                <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  运行中
+                </span>
+              )}
+            </div>
+            <AgentSwitcher />
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4">
@@ -260,8 +281,8 @@ export function AdminSidebar() {
             ))}
           </ul>
 
-          {/* Agent 控制台菜单 */}
-          {activeAgent && agentConsoleItems.length > 0 && (
+          {/* Agent 控制台菜单 - 仅在单 Agent 模式下显示 */}
+          {mode === "single" && activeAgent && agentConsoleItems.length > 0 && (
             <>
               <Separator className="my-4" />
               <div className="mb-2 px-3">
