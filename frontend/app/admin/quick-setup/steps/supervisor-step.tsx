@@ -11,7 +11,7 @@ import { PromptEditor } from "@/components/admin";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { type StepProps } from "../page";
+import type { StepProps } from "@/types/quick-setup";
 import {
   getSupervisorGlobalConfig,
   updateSupervisorGlobalConfig,

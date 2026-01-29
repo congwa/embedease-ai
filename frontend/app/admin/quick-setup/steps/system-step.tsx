@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type StepProps } from "../page";
+import type { StepProps } from "@/types/quick-setup";
 
 export function SystemStep({ step, onComplete, onSkip, isLoading }: StepProps) {
   const [formData, setFormData] = useState({

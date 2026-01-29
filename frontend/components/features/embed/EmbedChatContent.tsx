@@ -18,7 +18,7 @@ import {
   TimelineErrorItem,
   TimelineToolCallItem,
   TimelineSupportEventItem,
-} from "../chat/timeline";
+} from "@/components/features/chat/timeline";
 
 interface SuggestedQuestionItem {
   id: string;

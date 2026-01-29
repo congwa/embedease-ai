@@ -644,3 +644,43 @@ export async function reorderSuggestedQuestions(
     }
   );
 }
+
+// ========== Effective Config API ==========
+
+// EffectiveConfig 类型已移至 @/types/effective-config
+export type {
+  PromptLayer,
+  EffectiveSystemPrompt,
+  SkillInfo,
+  EffectiveSkills,
+  ToolInfo,
+  FilteredToolInfo,
+  EffectiveTools,
+  MiddlewareInfo,
+  EffectiveMiddlewares,
+  EffectiveKnowledge,
+  PolicyValue,
+  EffectiveToolPolicy,
+  EffectivePolicies,
+  EffectiveHealth,
+  EffectiveConfigResponse,
+  EffectiveConfigParams,
+} from "@/types/effective-config";
+
+import type { EffectiveConfigResponse, EffectiveConfigParams } from "@/types/effective-config";
+
+export async function getAgentEffectiveConfig(
+  agentId: string,
+  params?: EffectiveConfigParams
+): Promise<EffectiveConfigResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.mode) searchParams.set("mode", params.mode);
+  if (params?.include_filtered !== undefined) {
+    searchParams.set("include_filtered", String(params.include_filtered));
+  }
+  if (params?.test_message) searchParams.set("test_message", params.test_message);
+  const query = searchParams.toString();
+  return apiRequest<EffectiveConfigResponse>(
+    `/api/v1/admin/agents/${agentId}/effective-config${query ? `?${query}` : ""}`
+  );
+}

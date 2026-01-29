@@ -329,6 +329,49 @@ async def preview_agent_prompt(
     )
 
 
+# ========== Effective Config ==========
+
+
+@router.get("/{agent_id}/effective-config")
+async def get_agent_effective_config(
+    agent_id: str,
+    mode: str | None = None,
+    include_filtered: bool = True,
+    test_message: str | None = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """获取 Agent 运行态配置
+
+    返回 Agent 最终生效的配置，包括：
+    - 最终系统提示词（含来源追踪）
+    - 技能清单（always_apply + 条件触发）
+    - 工具清单（启用的 + 被过滤的）
+    - 中间件链（按执行顺序）
+    - 知识源配置
+    - 策略配置
+    - 配置健康度
+    """
+    from app.schemas.effective_config import EffectiveConfigResponse
+    from app.services.agent.effective_config import EffectiveConfigBuilder
+
+    stmt = select(Agent).where(Agent.id == agent_id).options(selectinload(Agent.knowledge_config))
+    result = await db.execute(stmt)
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    builder = EffectiveConfigBuilder(db)
+    config = await builder.build(
+        agent=agent,
+        mode=mode,
+        include_filtered=include_filtered,
+        test_message=test_message,
+    )
+
+    return config
+
+
 class AgentUserItem(BaseModel):
     """Agent 用户项"""
 

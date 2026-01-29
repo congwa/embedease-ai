@@ -38,6 +38,7 @@ import { GreetingStep } from "./steps/greeting-step";
 import { ChannelStep } from "./steps/channel-step";
 import { SummaryStep } from "./steps/summary-step";
 import { SupervisorStep } from "./steps/supervisor-step";
+import type { StepProps } from "@/types/quick-setup";
 
 const STEP_COMPONENTS: Record<string, React.ComponentType<StepProps>> = {
   welcome: WelcomeStep,
@@ -52,15 +53,8 @@ const STEP_COMPONENTS: Record<string, React.ComponentType<StepProps>> = {
   supervisor: SupervisorStep,
 };
 
-export interface StepProps {
-  step: SetupStep;
-  state: QuickSetupState;
-  agentTypes: AgentTypeConfig[];
-  onComplete: (data?: Record<string, unknown>) => Promise<void>;
-  onSkip: () => Promise<void>;
-  onGoto: (index: number) => Promise<void>;
-  isLoading: boolean;
-}
+// StepProps 类型已移至 @/types/quick-setup
+export type { StepProps } from "@/types/quick-setup";
 
 function StepIndicator({
   step,

@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { type StepProps } from "../page";
+import type { StepProps } from "@/types/quick-setup";
 
 function StepStatus({ status }: { status: string }) {
   switch (status) {

@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type StepProps } from "../page";
+import type { StepProps } from "@/types/quick-setup";
 import {
   getAgentGreeting,
   updateAgentGreeting,

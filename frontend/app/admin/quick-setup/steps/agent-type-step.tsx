@@ -5,7 +5,7 @@ import { ShoppingCart, HelpCircle, BookOpen, Settings, Check, ArrowRight } from 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { StepProps } from "../page";
+import type { StepProps } from "@/types/quick-setup";
 
 interface AgentType {
   id: "product" | "faq" | "kb" | "custom";

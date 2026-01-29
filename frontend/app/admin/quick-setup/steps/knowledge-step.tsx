@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { type StepProps } from "../page";
+import type { StepProps } from "@/types/quick-setup";
 import { getAgents, getFAQStats, type Agent, type FAQStatsResponse } from "@/lib/api/agents";
 import { getAgentTypeDefaults } from "@/lib/api/quick-setup";
 

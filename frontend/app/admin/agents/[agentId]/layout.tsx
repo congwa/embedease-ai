@@ -34,6 +34,7 @@ const typeLabels: Record<string, string> = {
 // 基础 Tab（所有 Agent 都有）
 const baseTabs = [
   { id: "overview", label: "基础设置", href: "" },
+  { id: "effective-config", label: "运行态预览", href: "/effective-config" },
   { id: "greeting", label: "开场白", href: "/greeting" },
   { id: "suggested-questions", label: "推荐问题", href: "/suggested-questions" },
   { id: "tools", label: "工具配置", href: "/tools" },
