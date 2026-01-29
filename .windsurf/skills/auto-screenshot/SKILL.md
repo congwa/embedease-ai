@@ -22,19 +22,23 @@ description: 自动截屏功能页面。当用户需要更新项目文档截图�
 cd frontend && pnpm dev
 ```
 
-### 步骤 2：安装依赖（首次使用）
+### 步骤 2：安装依赖（首次使用，在项目根目录）
 
 ```bash
+# 回到项目根目录
+cd /path/to/embedease-ai
+
 # 安装 Playwright
-pnpm add -D playwright @types/node tsx
+pnpm add -D playwright @types/node
 
 # 安装浏览器（首次使用）
 npx playwright install chromium
 ```
 
-### 步骤 3：运行截屏脚本
+### 步骤 3：运行截屏脚本（在项目根目录）
 
 ```bash
+# 必须在项目根目录运行，不是 frontend 目录
 npx tsx .windsurf/skills/auto-screenshot/scripts/screenshot.ts
 ```
 
