@@ -513,7 +513,7 @@ export default function LandingPage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <Badge variant="outline" className="mb-4">一站式引导</Badge>
+              <Badge variant="outline" className="mb-4">快速配置</Badge>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 3 分钟完成配置，零代码上线
               </h2>

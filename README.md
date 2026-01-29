@@ -171,13 +171,13 @@ graph TD
 graph TD
     Admin[管理员登录] --> Dashboard[管理后台首页]
     
-    Dashboard --> QuickSetup{一站式引导}
+    Dashboard --> QuickSetup{快速配置}
     Dashboard --> AgentMgmt{Agent 管理}
     Dashboard --> DataMgmt{数据管理}
     Dashboard --> SupportMgmt{客服管理}
     Dashboard --> SystemMgmt{系统管理}
     
-    QuickSetup --> QS1[选择 Agent 类型]
+    QuickSetup[快速配置] --> QS1[选择 Agent 类型]
     QS1 --> QS2[配置知识源]
     QS2 --> QS3[设置开场白]
     QS3 --> QSComplete[Agent 创建完成]
@@ -549,7 +549,7 @@ Agent："抱歉，我需要更具体的信息才能回答。
 | **📝 事实记忆** | 存储对话中的关键事实 | 记住"上次看过索尼 XM5" |
 | **🕸️ 知识图谱** | 建立实体之间的关联 | 关联"用户 → 喜欢 → 降噪耳机" |
 
-### 🎯 一站式引导配置（Quick Setup）
+### 🎯 快速配置（Quick Setup）
 
 **不懂技术？没关系！** 系统提供可视化向导，3 步完成 Agent 配置：
 
@@ -587,7 +587,7 @@ Agent："抱歉，我需要更具体的信息才能回答。
 
 | 模块 | 功能 |
 |------|------|
-| **🎯 一站式引导** | 可视化向导，3 步完成 Agent 配置（推荐新手使用） |
+| **🎯 快速配置** | 可视化向导，3 步完成 Agent 配置（推荐新手使用） |
 | **🤖 Agent 管理** | 配置多个 Agent、设置提示词、选择对话模式 |
 | **📦 商品管理** | 添加、编辑、删除商品，支持批量导入 |
 | **📚 知识库管理** | 管理 FAQ 条目、上传文档、配置检索参数 |
@@ -647,7 +647,7 @@ cd embedeaseai-agent
 | 地址 | 用途 |
 |------|------|
 | http://localhost:3000 | 💬 对话界面 |
-| http://localhost:3000/admin/quick-setup | 🎯 一站式引导（推荐首次使用） |
+| http://localhost:3000/admin/quick-setup | 🎯 快速配置（推荐首次使用） |
 | http://localhost:3000/admin | ⚙️ 管理后台 |
 | http://localhost:8000/docs | 📄 API 文档 |
 
