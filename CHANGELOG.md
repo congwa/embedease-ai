@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.15] - 2026-01-30
+
+### 核心亮点
+
+本版本聚焦于 **中间件能力扩展** 与 **配置统一化**，新增 4 个 LangChain 原生中间件增强 Agent 稳定性，同时重构前端中间件配置体系，实现单一配置源、全局一致展示。
+
+### Added
+
+- **模型重试中间件 (ModelRetry)**: 当 LLM 调用失败时自动重试，支持指数退避策略。可配置最大重试次数、退避因子、初始/最大延迟、抖动开关和失败后行为（继续/报错）。通过 SSE 事件 `model.retry.start` / `model.retry.failed` 实时通知前端重试状态。
+
+- **模型降级中间件 (ModelFallback)**: 主模型调用失败时自动切换到备选模型列表。按配置顺序依次尝试，所有模型失败后返回错误。通过 SSE 事件 `model.fallback` 通知前端降级详情（原模型、降级模型、错误原因）。
+
+- **模型调用限制中间件 (ModelCallLimit)**: 防止 Agent 无限循环调用 LLM。支持线程级和单次运行级调用限制，超限时可选择静默结束或抛出错误。通过 SSE 事件 `model.call_limit.exceeded` 通知超限情况。
+
+- **上下文编辑中间件 (ContextEditing)**: 智能清理历史工具调用结果，管理上下文 token 大小。支持配置触发阈值、保留最近 N 个结果、清理工具输入、排除特定工具等。通过 SSE 事件 `context.edited` 通知清理详情。
+
+- **中间件配置统一化**: 
+  - 新增 `MIDDLEWARE_FLAG_KEYS` 常量定义 12 个可配置中间件开关键名
+  - 新增 `getAllMiddlewareFlags()` 函数获取完整中间件配置列表
+  - 所有前端中间件展示点统一使用配置源，移除硬编码
+
+- **中间件配置跳转**: 所有中间件展示位置（Agent 概览、设置中心、快速设置）均可点击跳转到对应 Agent 的中间件详细配置页面。
+
+### Changed
+
+- **中间件标签体系重构**: 
+  - `MIDDLEWARE_LABELS` 扩展至 12 个开关标签（新增 ModelRetry、ModelFallback、ModelCallLimit、ContextEditing）
+  - `MIDDLEWARE_PIPELINE_LABELS` 扩展至 16 个管道标签
+  - `policies.ts` 移除重复标签定义，改为引用统一的 `getMiddlewareLabel()`
+
+- **中间件展示组件优化**:
+  - `MiddlewareFlagsCard` 改为遍历 `MIDDLEWARE_FLAG_KEYS` 显示全部 12 个中间件
+  - `settings/page.tsx` 全局中间件默认配置和 Agent 对比表改为动态渲染
+  - `quick-setup/knowledge-step.tsx` 移除硬编码标签映射
+
+- **backend-architecture skill 更新**: 中间件执行顺序表更新为 16 个中间件，新增"可配置"列区分系统级和 Agent 级中间件，补充中间件 SSE 事件类型。
+
+---
+
 ## [0.1.14] - 2026-01-29
 
 ### 核心亮点
