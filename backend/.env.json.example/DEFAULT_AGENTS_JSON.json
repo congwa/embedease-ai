@@ -4,7 +4,6 @@
     "name": "商品推荐助手",
     "description": "智能商品推荐，帮助用户发现和选择合适的商品",
     "type": "product",
-    "mode_default": "natural",
     "is_default": true,
     "middleware_flags": {
       "todo_enabled": true,
@@ -33,7 +32,6 @@
     "name": "客服问答助手",
     "description": "基于 FAQ 知识库回答用户常见问题",
     "type": "faq",
-    "mode_default": "natural",
     "is_default": false,
     "middleware_flags": {
       "todo_enabled": false,
@@ -58,11 +56,9 @@
     "name": "内部知识库助手",
     "description": "基于内部文档知识库回答问题",
     "type": "kb",
-    "mode_default": "strict",
     "is_default": false,
     "middleware_flags": {
-      "memory_enabled": true,
-      "strict_mode_enabled": true
+      "memory_enabled": true
     },
     "tool_policy": {
       "min_tool_calls": 1,

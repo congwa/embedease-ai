@@ -13,7 +13,6 @@
     "name": "Agent名称",
     "description": "Agent描述",
     "type": "product|faq|kb",
-    "mode_default": "natural|free|strict",
     "is_default": true/false,
     "middleware_flags": { ... },
     "tool_policy": { ... },
@@ -33,16 +32,7 @@
 | `name` | string | Agent 显示名称 | ✅ | `"商品推荐助手"` |
 | `description` | string | Agent 功能描述 | ✅ | `"智能商品推荐"` |
 | `type` | string | Agent 类型：`product`/`faq`/`kb` | ✅ | `"product"` |
-| `mode_default` | string | 默认聊天模式 | ✅ | `"natural"` |
 | `is_default` | boolean | 是否为默认 Agent | ✅ | `true` |
-
-### 聊天模式说明
-
-| 模式 | 说明 | 适用场景 |
-|------|------|----------|
-| `natural` | 自然模式 | 商品推荐，非商品问题引导回商品 |
-| `free` | 自由模式 | 可聊任何话题，工具可用但不强制 |
-| `strict` | 严格模式 | 必须基于工具输出或历史对话回答 |
 
 ### 中间件配置
 
@@ -105,7 +95,6 @@
   "name": "商品推荐助手",
   "description": "智能商品推荐，帮助用户发现和选择合适的商品",
   "type": "product",
-  "mode_default": "natural",
   "is_default": true,
   "middleware_flags": {
     "todo_enabled": true,
@@ -139,7 +128,6 @@
   "name": "客服问答助手",
   "description": "基于 FAQ 知识库回答用户常见问题",
   "type": "faq",
-  "mode_default": "natural",
   "is_default": false,
   "middleware_flags": {
     "todo_enabled": false,
@@ -161,7 +149,7 @@
 }
 ```
 
-### 示例三：严格知识库助手
+### 示例三：知识库助手
 
 ```json
 {
@@ -169,11 +157,9 @@
   "name": "内部知识库助手",
   "description": "基于内部文档知识库回答问题",
   "type": "kb",
-  "mode_default": "strict",
   "is_default": false,
   "middleware_flags": {
-    "memory_enabled": true,
-    "strict_mode_enabled": true
+    "memory_enabled": true
   },
   "tool_policy": {
     "min_tool_calls": 1,
@@ -270,7 +256,6 @@ A: 仅对 `faq` 和 `kb` 类型的 Agent 必须，`product` 类型可选。
 
 ## 相关配置
 
-- `CHAT_MODE`: 全局默认聊天模式
 - `AGENT_TODO_ENABLED`: 全局 TODO 中间件开关
 - `AGENT_TOOL_LIMIT_ENABLED`: 全局工具限制开关
 - 更多 Agent 相关配置请查看 `.env.example`
