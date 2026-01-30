@@ -57,21 +57,7 @@ chat/
 
 ---
 
-#### 3. `test_chat_stream_strict_mode`
-
-**测试内容**：严格模式聊天流程
-
-**输入**："你好"（严格模式）
-
-**验证**：
-- 严格模式下有响应内容
-- 无工具调用时可能触发兜底逻辑
-
-**保证**：严格模式正常工作，能约束 AI 行为
-
----
-
-#### 4. `test_chat_stream_event_sequence`
+#### 3. `test_chat_stream_event_sequence`
 
 **测试内容**：事件序列正确性
 

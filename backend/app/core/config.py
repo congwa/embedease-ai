@@ -290,7 +290,7 @@ class Settings(BaseSettings):
     # ========== 默认 Agent 配置 ==========
     # 通过配置文件定义默认 Agent，启动时自动写入数据库（幂等）
     # 格式：JSON 数组，每个元素定义一个 Agent 及其知识库配置
-    # 支持的字段：id, name, description, type, system_prompt, mode_default,
+    # 支持的字段：id, name, description, type, system_prompt,
     #            middleware_flags, tool_policy, tool_categories, is_default,
     #            knowledge_config (嵌套对象)
     # 优先级：接口修改 > 配置注入 > 代码默认

@@ -61,8 +61,6 @@
 | `test_faq_prompt_answers_question` | FAQ 提示词 | AI 能直接回答或引导用户的常见问题 |
 | `test_kb_prompt_references_data` | 知识库提示词 | AI 在无数据时明确表示需要检索 |
 | `test_custom_prompt_is_helpful` | 自定义提示词 | AI 保持有帮助的通用助手行为 |
-| `test_strict_mode_suffix_effect` | 严格模式后缀 | 严格模式能约束 AI 仅基于数据回答 |
-| `test_free_mode_suffix_effect` | 自由模式后缀 | 自由模式允许 AI 自由交流 |
 
 ---
 

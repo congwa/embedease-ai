@@ -41,7 +41,6 @@ import {
   AGENT_TYPE_OPTIONS,
   deleteSkill,
   getSkill,
-  MODE_OPTIONS,
   Skill,
   SkillCategory,
   SKILL_CATEGORY_LABELS,
@@ -70,7 +69,6 @@ export default function SkillDetailPage() {
   const [editTriggerKeywords, setEditTriggerKeywords] = useState("");
   const [editAlwaysApply, setEditAlwaysApply] = useState(false);
   const [editApplicableAgents, setEditApplicableAgents] = useState<string[]>([]);
-  const [editApplicableModes, setEditApplicableModes] = useState<string[]>([]);
   const [editIsActive, setEditIsActive] = useState(true);
 
   const loadSkill = useCallback(async () => {
@@ -88,7 +86,6 @@ export default function SkillDetailPage() {
       setEditTriggerKeywords(data.trigger_keywords.join(", "));
       setEditAlwaysApply(data.always_apply);
       setEditApplicableAgents(data.applicable_agents);
-      setEditApplicableModes(data.applicable_modes);
       setEditIsActive(data.is_active);
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
@@ -104,12 +101,6 @@ export default function SkillDetailPage() {
   const toggleAgent = (agent: string) => {
     setEditApplicableAgents((prev) =>
       prev.includes(agent) ? prev.filter((a) => a !== agent) : [...prev, agent]
-    );
-  };
-
-  const toggleMode = (mode: string) => {
-    setEditApplicableModes((prev) =>
-      prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
     );
   };
 
@@ -142,7 +133,6 @@ export default function SkillDetailPage() {
           .filter(Boolean),
         always_apply: editAlwaysApply,
         applicable_agents: editApplicableAgents,
-        applicable_modes: editApplicableModes,
         is_active: editIsActive,
       });
       setSkill(updated);
@@ -176,7 +166,6 @@ export default function SkillDetailPage() {
       setEditTriggerKeywords(skill.trigger_keywords.join(", "));
       setEditAlwaysApply(skill.always_apply);
       setEditApplicableAgents(skill.applicable_agents);
-      setEditApplicableModes(skill.applicable_modes);
       setEditIsActive(skill.is_active);
     }
     setIsEditing(false);
@@ -467,25 +456,6 @@ export default function SkillDetailPage() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>适用模式</Label>
-                <div className="flex flex-wrap gap-2">
-                  {MODE_OPTIONS.map((option) => (
-                    <Badge
-                      key={option.value}
-                      variant={
-                        editApplicableModes.includes(option.value)
-                          ? "default"
-                          : "outline"
-                      }
-                      className="cursor-pointer"
-                      onClick={() => toggleMode(option.value)}
-                    >
-                      {option.label}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
             </>
           ) : (
             <>
@@ -497,21 +467,6 @@ export default function SkillDetailPage() {
                       <Badge key={a} variant="outline">
                         {AGENT_TYPE_OPTIONS.find((o) => o.value === a)?.label ||
                           a}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">全部</span>
-                  )}
-                </div>
-              </div>
-              <Separator />
-              <div>
-                <Label className="text-muted-foreground">适用模式</Label>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {skill.applicable_modes.length > 0 ? (
-                    skill.applicable_modes.map((m) => (
-                      <Badge key={m} variant="outline">
-                        {MODE_OPTIONS.find((o) => o.value === m)?.label || m}
                       </Badge>
                     ))
                   ) : (

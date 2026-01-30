@@ -152,7 +152,6 @@ class TestSkillRead:
             "trigger_intents": [],
             "always_apply": False,
             "applicable_agents": [],
-            "applicable_modes": [],
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }
@@ -189,7 +188,6 @@ class TestSkillListResponse:
             trigger_intents=[],
             always_apply=False,
             applicable_agents=[],
-            applicable_modes=[],
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )

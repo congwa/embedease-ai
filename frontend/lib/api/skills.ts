@@ -19,7 +19,6 @@ export interface Skill {
   trigger_intents: string[];
   always_apply: boolean;
   applicable_agents: string[];
-  applicable_modes: string[];
   type: SkillType;
   version: string;
   author: string | null;
@@ -45,7 +44,6 @@ export interface SkillCreate {
   trigger_intents?: string[];
   always_apply?: boolean;
   applicable_agents?: string[];
-  applicable_modes?: string[];
 }
 
 export interface SkillUpdate {
@@ -57,7 +55,6 @@ export interface SkillUpdate {
   trigger_intents?: string[];
   always_apply?: boolean;
   applicable_agents?: string[];
-  applicable_modes?: string[];
   is_active?: boolean;
 }
 

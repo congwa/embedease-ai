@@ -155,9 +155,6 @@ class SkillGenerator:
         if not skill.applicable_agents:
             suggestions.append("建议指定适用的 Agent 类型")
 
-        if not skill.applicable_modes:
-            suggestions.append("建议指定适用的回答模式")
-
         if skill.always_apply and len(skill.content) > 500:
             suggestions.append("始终应用的技能内容较长，可能影响性能")
 

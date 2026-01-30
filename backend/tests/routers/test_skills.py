@@ -128,7 +128,6 @@ class TestCreateSkillEndpoint:
         mock_skill.trigger_intents = []
         mock_skill.always_apply = False
         mock_skill.applicable_agents = []
-        mock_skill.applicable_modes = []
         mock_skill.created_at = datetime.now()
         mock_skill.updated_at = datetime.now()
 
@@ -178,7 +177,6 @@ class TestGetSkillEndpoint:
         mock_skill.trigger_intents = []
         mock_skill.always_apply = False
         mock_skill.applicable_agents = []
-        mock_skill.applicable_modes = []
         mock_skill.created_at = datetime.now()
         mock_skill.updated_at = datetime.now()
 

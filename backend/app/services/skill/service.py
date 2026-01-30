@@ -210,12 +210,11 @@ class SkillService:
     async def get_applicable_skills(
         self,
         agent_type: str,
-        mode: str,
         message: str | None = None,
     ) -> list[Skill]:
         """获取适用的技能
 
-        根据 agent_type、mode 和用户消息匹配：
+        根据 agent_type 和用户消息匹配：
         1. always_apply=True 的技能
         2. 关键词匹配的技能
         3. 意图匹配的技能

@@ -29,7 +29,6 @@ import { PromptEditor } from "@/components/admin";
 import {
   AGENT_TYPE_OPTIONS,
   createSkill,
-  MODE_OPTIONS,
   SkillCategory,
   SKILL_CATEGORY_LABELS,
 } from "@/lib/api/skills";
@@ -47,17 +46,10 @@ export default function CreateSkillPage() {
   const [triggerKeywords, setTriggerKeywords] = useState("");
   const [alwaysApply, setAlwaysApply] = useState(false);
   const [applicableAgents, setApplicableAgents] = useState<string[]>([]);
-  const [applicableModes, setApplicableModes] = useState<string[]>([]);
 
   const toggleAgent = (agent: string) => {
     setApplicableAgents((prev) =>
       prev.includes(agent) ? prev.filter((a) => a !== agent) : [...prev, agent]
-    );
-  };
-
-  const toggleMode = (mode: string) => {
-    setApplicableModes((prev) =>
-      prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
     );
   };
 
@@ -92,7 +84,6 @@ export default function CreateSkillPage() {
           .filter(Boolean),
         always_apply: alwaysApply,
         applicable_agents: applicableAgents,
-        applicable_modes: applicableModes,
       });
       router.push("/admin/skills");
     } catch (e) {
@@ -269,25 +260,6 @@ export default function CreateSkillPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>适用模式（留空表示全部）</Label>
-              <div className="flex flex-wrap gap-2">
-                {MODE_OPTIONS.map((option) => (
-                  <Badge
-                    key={option.value}
-                    variant={
-                      applicableModes.includes(option.value)
-                        ? "default"
-                        : "outline"
-                    }
-                    className="cursor-pointer"
-                    onClick={() => toggleMode(option.value)}
-                  >
-                    {option.label}
-                  </Badge>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
 

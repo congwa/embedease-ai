@@ -184,7 +184,6 @@ class TestSkillServiceList:
         mock_skill.trigger_intents = []
         mock_skill.always_apply = False
         mock_skill.applicable_agents = []
-        mock_skill.applicable_modes = []
         mock_skill.created_at = MagicMock()
         mock_skill.updated_at = MagicMock()
 
