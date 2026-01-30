@@ -191,6 +191,18 @@ class Settings(BaseSettings):
     AGENT_NOISE_FILTER_PRESERVE_HEAD: int = 500  # 截断时保留头部字符数
     AGENT_NOISE_FILTER_PRESERVE_TAIL: int = 1000  # 截断时保留尾部字符数
 
+    # ========== Agent PII 检测中间件配置 ==========
+    # 检测并处理个人敏感信息（PII: Personally Identifiable Information）
+    # 支持多规则配置，每条规则可独立设置类型、策略、应用范围
+    AGENT_PII_ENABLED: bool = False  # 是否启用 PIIMiddleware
+    # 默认规则（JSON 数组），每条规则包含:
+    # - pii_type: 类型名称（内置: email/credit_card/ip/mac_address/url，或自定义）
+    # - strategy: 处理策略（block/redact/mask/hash）
+    # - detector: 自定义正则（内置类型留空）
+    # - apply_to_input/apply_to_output/apply_to_tool_results: 应用范围
+    # - enabled: 规则开关
+    AGENT_PII_DEFAULT_RULES: str = '[{"pii_type":"email","strategy":"redact","apply_to_input":true,"apply_to_output":true,"enabled":true},{"pii_type":"credit_card","strategy":"mask","apply_to_input":true,"apply_to_output":true,"enabled":true},{"pii_type":"phone_cn","strategy":"redact","detector":"1[3-9]\\\\d{9}","apply_to_input":true,"apply_to_output":true,"enabled":false}]'
+
     # ========== Supervisor 多 Agent 编排配置 ==========
     # 全局开关（关闭后所有 Supervisor Agent 回退到单 Agent 模式）
     SUPERVISOR_ENABLED: bool = False

@@ -180,6 +180,33 @@ class MiddlewareFlagsSchema(BaseModel):
         default=None, ge=100, le=5000, description="截断时保留尾部字符数"
     )
 
+    # ========== PII 检测配置 ==========
+    pii_enabled: bool | None = Field(default=None, description="PII 检测总开关")
+    pii_rules: list["PIIRuleSchema"] | None = Field(
+        default=None, description="PII 检测规则列表"
+    )
+
+
+class PIIRuleSchema(BaseModel):
+    """PII 检测规则"""
+
+    id: str | None = Field(default=None, description="规则 ID")
+    pii_type: str = Field(..., min_length=1, max_length=50, description="PII 类型名称")
+    strategy: str = Field(
+        default="redact", description="处理策略: block/redact/mask/hash"
+    )
+    detector: str | None = Field(
+        default=None, max_length=500, description="自定义正则表达式（内置类型留空）"
+    )
+    apply_to_input: bool = Field(default=True, description="应用于用户输入")
+    apply_to_output: bool = Field(default=False, description="应用于 Agent 输出")
+    apply_to_tool_results: bool = Field(default=False, description="应用于工具结果")
+    enabled: bool = Field(default=True, description="规则开关")
+
+
+# 更新 MiddlewareFlagsSchema 的 forward reference
+MiddlewareFlagsSchema.model_rebuild()
+
 
 # ========== Knowledge Config ==========
 

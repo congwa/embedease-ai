@@ -52,6 +52,22 @@ export interface MiddlewareFlags {
   noise_filter_max_chars?: number | null;
   noise_filter_preserve_head?: number | null;
   noise_filter_preserve_tail?: number | null;
+
+  // PII 检测配置
+  pii_enabled?: boolean | null;
+  pii_rules?: PIIRule[] | null;
+}
+
+// PII 检测规则
+export interface PIIRule {
+  id?: string;
+  pii_type: string;
+  strategy: "block" | "redact" | "mask" | "hash";
+  detector?: string | null;
+  apply_to_input: boolean;
+  apply_to_output: boolean;
+  apply_to_tool_results: boolean;
+  enabled: boolean;
 }
 
 // ========== Supervisor 配置类型 ==========

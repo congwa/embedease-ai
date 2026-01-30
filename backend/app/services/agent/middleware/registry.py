@@ -140,6 +140,43 @@ def _get_middleware_specs(model: Any) -> list[MiddlewareSpec]:
             preserve_tail_chars=settings.AGENT_NOISE_FILTER_PRESERVE_TAIL,
         )
 
+    def _build_pii_middlewares():
+        """构建 PII 检测中间件列表（支持多规则）"""
+        import json
+        from langchain.agents.middleware.pii import PIIMiddleware
+
+        middlewares = []
+
+        # 解析默认规则
+        try:
+            rules = json.loads(settings.AGENT_PII_DEFAULT_RULES)
+        except (json.JSONDecodeError, TypeError):
+            rules = []
+
+        for rule in rules:
+            if not rule.get("enabled", True):
+                continue
+
+            pii_type = rule.get("pii_type")
+            if not pii_type:
+                continue
+
+            try:
+                middleware = PIIMiddleware(
+                    pii_type=pii_type,
+                    strategy=rule.get("strategy", "redact"),
+                    detector=rule.get("detector"),
+                    apply_to_input=rule.get("apply_to_input", True),
+                    apply_to_output=rule.get("apply_to_output", False),
+                    apply_to_tool_results=rule.get("apply_to_tool_results", False),
+                )
+                middlewares.append(middleware)
+                logger.debug(f"PIIMiddleware 规则已加载: {pii_type}")
+            except Exception as e:
+                logger.warning(f"PIIMiddleware 规则加载失败: {pii_type}", error=str(e))
+
+        return middlewares if middlewares else None
+
     def _build_summarization_middleware():
         """构建上下文压缩中间件（增强版：支持多触发条件）"""
         from langchain.chat_models import init_chat_model
@@ -188,6 +225,13 @@ def _get_middleware_specs(model: Any) -> list[MiddlewareSpec]:
             order=10,
             enabled=settings.MEMORY_ENABLED and settings.MEMORY_ORCHESTRATION_ENABLED,
             factory=MemoryOrchestrationMiddleware,
+        ),
+        # Order 15: PII 检测（记忆之后、响应净化之前）
+        MiddlewareSpec(
+            name="PIIDetection",
+            order=15,
+            enabled=settings.AGENT_PII_ENABLED,
+            factory=_build_pii_middlewares,
         ),
         # Order 20: 响应安全过滤
         MiddlewareSpec(
@@ -356,6 +400,42 @@ def build_middlewares_for_agent(config: "AgentConfig", model: Any) -> list[Any]:
     if _is_enabled("memory_enabled", "MEMORY_ENABLED") and settings.MEMORY_ORCHESTRATION_ENABLED:
         middlewares.append(MemoryOrchestrationMiddleware())
         logger.debug("✓ MemoryOrchestration (order=10)", agent_id=config.agent_id)
+
+    # Order 15: PII 检测（支持多规则）
+    if _is_enabled("pii_enabled", "AGENT_PII_ENABLED"):
+        import json
+        from langchain.agents.middleware.pii import PIIMiddleware
+
+        # 获取规则（优先 Agent 配置，fallback 到全局默认）
+        pii_rules = _get("pii_rules", None)
+        if pii_rules is None:
+            try:
+                pii_rules = json.loads(settings.AGENT_PII_DEFAULT_RULES)
+            except (json.JSONDecodeError, TypeError):
+                pii_rules = []
+
+        pii_count = 0
+        for rule in pii_rules:
+            if not rule.get("enabled", True):
+                continue
+            pii_type = rule.get("pii_type")
+            if not pii_type:
+                continue
+            try:
+                middlewares.append(PIIMiddleware(
+                    pii_type=pii_type,
+                    strategy=rule.get("strategy", "redact"),
+                    detector=rule.get("detector"),
+                    apply_to_input=rule.get("apply_to_input", True),
+                    apply_to_output=rule.get("apply_to_output", False),
+                    apply_to_tool_results=rule.get("apply_to_tool_results", False),
+                ))
+                pii_count += 1
+            except Exception as e:
+                logger.warning(f"PIIMiddleware 规则加载失败: {pii_type}", error=str(e))
+
+        if pii_count > 0:
+            logger.debug(f"✓ PIIDetection (order=15, rules={pii_count})", agent_id=config.agent_id)
 
     # Order 20: 响应安全过滤
     middlewares.append(ResponseSanitizationMiddleware(

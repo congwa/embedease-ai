@@ -12,6 +12,7 @@ import {
   Layers,
   Sparkles,
   Settings,
+  Shield,
 } from "lucide-react";
 import type { MiddlewareInfo, MiddlewarePipelineInfoExtended } from "./types";
 
@@ -53,6 +54,11 @@ export const MIDDLEWARE_LABELS: Record<string, MiddlewareInfo> = {
     desc: "限制上下文长度节省 token",
     icon: Layers,
   },
+  pii_enabled: {
+    label: "PII 检测",
+    desc: "检测并处理个人敏感信息",
+    icon: Shield,
+  },
 };
 
 export function getMiddlewareLabel(key: string): MiddlewareInfo {
@@ -76,6 +82,16 @@ export const MIDDLEWARE_PIPELINE_LABELS: Record<string, MiddlewarePipelineInfoEx
       "对话开始时加载用户历史记忆",
       "对话过程中捕获重要信息",
       "对话结束时保存新记忆",
+    ],
+  },
+  PIIDetection: {
+    label: "隐私保护",
+    desc: "检测和处理个人敏感信息",
+    icon: Shield,
+    details: [
+      "检测邮箱、信用卡、IP 等敏感信息",
+      "支持 block/redact/mask/hash 策略",
+      "可配置检测范围（输入/输出）",
     ],
   },
   ResponseSanitization: {

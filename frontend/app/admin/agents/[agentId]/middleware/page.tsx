@@ -1,10 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAgentDetail } from "@/lib/hooks/use-agents";
-import { updateAgent, type MiddlewareFlags } from "@/lib/api/agents";
+import { updateAgent, type MiddlewareFlags, type PIIRule } from "@/lib/api/agents";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PIIConfigCard } from "@/components/admin/pii";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -307,6 +308,14 @@ export default function MiddlewareConfigPage() {
           </CardContent>
         )}
       </Card>
+
+      {/* PII 检测配置 */}
+      <PIIConfigCard
+        enabled={getBoolValue("pii_enabled")}
+        rules={(getValue("pii_rules") as PIIRule[]) || []}
+        onEnabledChange={(v) => handleChange("pii_enabled", v)}
+        onRulesChange={(rules) => handleChange("pii_rules", rules)}
+      />
 
       {/* 基础中间件开关 */}
       <Card>
