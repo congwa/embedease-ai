@@ -10,6 +10,8 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 
+from langchain.agents.structured_output import ProviderStrategy
+
 from app.core.config import settings
 from app.core.llm import get_chat_model
 from app.core.logging import get_logger
@@ -26,12 +28,16 @@ logger = get_logger("agent.factory")
 
 
 
-def get_response_format_for_type(agent_type: str) -> type | None:
-    """根据 Agent 类型获取结构化输出格式"""
+def get_response_format_for_type(agent_type: str) -> ProviderStrategy | None:
+    """根据 Agent 类型获取结构化输出格式（启用 strict 模式）
+    
+    strict=True 时，模型必须严格按照 JSON Schema 输出，
+    不符合 schema 的响应会在模型侧被拒绝。
+    """
     if agent_type == "product":
         from app.schemas.recommendation import RecommendationResult
 
-        return RecommendationResult
+        return ProviderStrategy(RecommendationResult, strict=True)
     elif agent_type == "faq":
         # FAQ 暂不使用结构化输出
         return None
