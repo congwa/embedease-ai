@@ -34,6 +34,9 @@ export { AGENT_TYPE_LABELS, getAgentTypeLabel } from "./agent-types";
 // 工具名称
 export { TOOL_NAME_LABELS, getToolNameLabel } from "./tools";
 
+// 工具策略字段
+export { TOOL_POLICY_FIELD_LABELS, getToolPolicyFieldLabel, type ToolPolicyFieldInfo } from "./tool-policies";
+
 // 策略配置项
 export { POLICY_FIELD_LABELS, getPolicyFieldLabel } from "./policies";
 
