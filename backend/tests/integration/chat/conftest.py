@@ -131,11 +131,7 @@ async def ensure_db_initialized():
             )
             # 预加载 agent 配置
             await asyncio.wait_for(
-                agent_service.get_agent_config(mode="natural"),
-                timeout=30
-            )
-            await asyncio.wait_for(
-                agent_service.get_agent_config(mode="strict"),
+                agent_service.get_agent_config(),
                 timeout=30
             )
         except asyncio.TimeoutError:

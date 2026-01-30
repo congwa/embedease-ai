@@ -31,7 +31,6 @@ export interface MiddlewareFlags {
   tool_retry_enabled?: boolean | null;
   tool_limit_enabled?: boolean | null;
   memory_enabled?: boolean | null;
-  strict_mode_enabled?: boolean | null;
 
   // 滑动窗口配置
   sliding_window_enabled?: boolean | null;
