@@ -100,12 +100,10 @@ chat_models/
 ## v1 使用方式
 
 ```python
-from app.core.chat_models import (
-    create_chat_model,
-    parse_content_blocks,
-)
+from app.core.chat_models import create_chat_model, parse_content_blocks
+from app.services.agent.streams import StreamingResponseHandler
 
-# 创建模型（强制 v1 输出）
+# 创建模型（默认 v1）
 model = create_chat_model(
     model="...",
     base_url="...",
@@ -113,7 +111,10 @@ model = create_chat_model(
     provider="siliconflow",
 )
 
-# 解析消息内容（v1 方式）
+# StreamingResponseHandler 自动检测版本
+handler = StreamingResponseHandler(emitter=emitter, model=model)
+
+# 或手动解析
 parsed = parse_content_blocks(message)
 print(parsed.text)       # 合并后的文本
 print(parsed.reasoning)  # 合并后的推理
@@ -121,14 +122,44 @@ print(parsed.reasoning)  # 合并后的推理
 
 ---
 
+## v0 兼容模式（回退）
+
+```python
+# 创建 v0 模型
+model = create_chat_model(..., use_v0=True)
+
+# StreamingResponseHandler 自动检测为 v0，使用 model.extract_reasoning()
+handler = StreamingResponseHandler(emitter=emitter, model=model)
+```
+
+---
+
+## 版本自动检测机制
+
+`StreamingResponseHandler` 根据 `model._chat_model_version` 属性自动选择解析方式：
+
+```python
+from app.core.chat_models import is_v1_model
+
+is_v1_model(model)  # True: v1, False: v0
+```
+
+**设计优势**：
+- 调用方只需在 `create_chat_model` 时指定版本
+- `StreamingResponseHandler` 自动跟随，无需额外参数
+- 避免版本不一致问题
+
+---
+
 ## v1 vs v0 对比
 
-| 特性 | v1（当前） | v0（兼容层） |
+| 特性 | v1（默认） | v0（兼容层） |
 |------|-----------|-------------|
 | 输出格式 | 强制 `output_version="v1"` | 默认 v0 |
 | 内容解析 | `parse_content_blocks()` | `model.extract_reasoning()` |
 | 数据结构 | LangChain 标准 `ContentBlock` | 自定义 `ReasoningChunk` |
-| 依赖 | 无需 model 引用 | 需要 model 实例 |
+| 版本标识 | `_chat_model_version="v1"` | 无该属性 |
+| Handler 依赖 | 无需 model 引用 | 需要 model 实例 |
 
 ---
 
