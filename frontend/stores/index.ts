@@ -9,6 +9,12 @@ export { useAgentStore, type Agent } from "./agent-store";
 export { useRealtimeStore, type RealtimeState } from "./realtime-store";
 export { useSupportStore, type SupportState } from "./support-store";
 export {
+  useSupportWorkbenchStore,
+  type SupportWorkbenchState,
+  type ConversationWithPreview,
+  type UserConversationGroup,
+} from "./support-workbench-store";
+export {
   useSystemStore,
   type SystemFeatures,
   type FeatureStatus,
