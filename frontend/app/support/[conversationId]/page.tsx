@@ -4,12 +4,9 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  ArrowUp,
   Phone,
   PhoneOff,
   User,
-  Bot,
-  Headphones,
   Circle,
   Plus,
   ImagePlus,
@@ -421,40 +418,29 @@ export default function SupportChatPage() {
     const nextMsg = messages[index + 1];
     const canAddToFAQ = faqAgent && isUser && nextMsg?.role === "assistant" && !isWithdrawn;
 
+    // 系统消息居中显示
     if (isSystem) {
       return (
-        <div key={message.id} className="flex justify-center my-2">
-          <div className="px-3 py-1 text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded-full">
+        <div key={message.id} className="flex justify-center my-4">
+          <div className="px-4 py-1.5 text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded-full">
             {message.content}
           </div>
         </div>
       );
     }
 
-    // 已撤回消息的显示
+    // 已撤回消息
     if (isWithdrawn) {
       return (
         <div
           key={message.id}
           className={cn(
-            "flex gap-3 mb-4",
-            isUser ? "flex-row" : "flex-row-reverse"
+            "flex w-full mb-3",
+            isUser ? "justify-end" : "justify-start"
           )}
         >
-          <div
-            className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-300 dark:bg-zinc-600"
-            )}
-          >
-            {isUser && <User className="h-4 w-4 text-white" />}
-            {isAI && <Bot className="h-4 w-4 text-white" />}
-            {isAgent && <Headphones className="h-4 w-4 text-white" />}
-          </div>
-          <div className="max-w-[70%] rounded-2xl px-4 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 italic">
-            <div className="text-sm">[此消息已被客服撤回]</div>
-            <div className="text-xs mt-1 opacity-70">
-              {new Date(message.created_at).toLocaleTimeString()}
-            </div>
+          <div className="max-w-[75%] rounded-3xl px-5 py-2.5 bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 italic text-sm">
+            [此消息已被客服撤回]
           </div>
         </div>
       );
@@ -464,29 +450,39 @@ export default function SupportChatPage() {
       <div
         key={message.id}
         className={cn(
-          "group flex gap-3 mb-4",
-          isUser ? "flex-row" : "flex-row-reverse"
+          "group flex w-full mb-3",
+          isUser ? "justify-end" : "justify-start"
         )}
       >
-        {/* 头像 */}
-        <div
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-            isUser && "bg-blue-500",
-            isAI && "bg-orange-500",
-            isAgent && "bg-green-500"
+        <div className="flex items-end gap-2 max-w-[75%]">
+          {/* 操作菜单 - 左侧（用户消息时） */}
+          {isUser && canOperate && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 mb-1">
+                  <MoreHorizontal className="h-4 w-4 text-zinc-400" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-32">
+                <DropdownMenuItem onClick={() => openEditDialog(message)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  编辑
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openWithdrawDialog(message)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  撤回
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-        >
-          {isUser && <User className="h-4 w-4 text-white" />}
-          {isAI && <Bot className="h-4 w-4 text-white" />}
-          {isAgent && <Headphones className="h-4 w-4 text-white" />}
-        </div>
 
-        {/* 消息内容 */}
-        <div className="flex items-start gap-1">
+          {/* 消息气泡 */}
           <div
             className={cn(
-              "max-w-[70%] rounded-2xl px-4 py-2",
+              "rounded-3xl px-5 py-2.5",
               isUser && "bg-blue-500 text-white",
               isAI && "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100",
               isAgent && "bg-green-500 text-white"
@@ -512,45 +508,50 @@ export default function SupportChatPage() {
                 ))}
               </div>
             )}
+            {/* 消息内容 */}
             {message.content && (
-              <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+              <div className={cn(
+                "support-message-content text-sm prose prose-sm max-w-none",
+                (isUser || isAgent) ? "prose-invert" : "dark:prose-invert"
+              )}>
                 <Markdown>{message.content}</Markdown>
               </div>
             )}
+            {/* 时间和标签 */}
             <div
               className={cn(
-                "flex items-center gap-2 text-xs mt-1",
-                isUser || isAgent ? "text-white opacity-70" : "text-zinc-500"
+                "flex items-center gap-2 text-[10px] mt-1.5",
+                (isUser || isAgent) ? "text-white/70" : "text-zinc-400"
               )}
             >
               <span>
-                {new Date(message.created_at).toLocaleTimeString()}
-                {isEdited && " (已编辑)"}
-                {isAI && " · AI"}
-                {isAgent && message.operator && ` · ${message.operator}`}
+                {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
+              {isEdited && <span>· 已编辑</span>}
+              {isAI && <span>· AI</span>}
+              {isAgent && message.operator && <span>· 客服</span>}
               {canAddToFAQ && (
                 <button
                   onClick={() => handleAddToFAQ(message.content, nextMsg.content)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 transition-colors"
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 transition-colors"
                 >
-                  <Plus className="h-3 w-3" />
-                  加入 FAQ
+                  <Plus className="h-2.5 w-2.5" />
+                  FAQ
                 </button>
               )}
             </div>
           </div>
 
-          {/* 操作菜单 - 仅对可操作的消息显示 */}
-          {canOperate && (
+          {/* 操作菜单 - 右侧（AI/客服消息时） */}
+          {!isUser && canOperate && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                  <MoreHorizontal className="h-4 w-4 text-zinc-500" />
+                <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 mb-1">
+                  <MoreHorizontal className="h-4 w-4 text-zinc-400" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-32">
-                {(isUser || isAgent) && (
+                {isAgent && (
                   <DropdownMenuItem onClick={() => openEditDialog(message)}>
                     <Pencil className="h-4 w-4 mr-2" />
                     编辑
@@ -583,7 +584,7 @@ export default function SupportChatPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-50 dark:bg-zinc-900">
+    <div className="flex h-screen flex-col bg-zinc-900">
       {/* 顶部栏 */}
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-center gap-3">
@@ -686,8 +687,8 @@ export default function SupportChatPage() {
       )}
 
       {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="mx-auto max-w-3xl">
+      <div className="flex-1 overflow-y-auto p-4 bg-zinc-900">
+        <div className="mx-auto max-w-3xl space-y-1">
           {messages.length === 0 ? (
             <div className="text-center text-zinc-500 py-10">
               暂无消息
@@ -698,15 +699,12 @@ export default function SupportChatPage() {
           
           {/* 用户正在输入 */}
           {userTyping && (
-            <div className="flex gap-3 mb-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500">
-                <User className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl px-4 py-2">
+            <div className="flex w-full justify-end mb-3">
+              <div className="bg-blue-500/20 rounded-3xl px-5 py-2.5">
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" />
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]" />
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
                 </div>
               </div>
             </div>
@@ -717,62 +715,76 @@ export default function SupportChatPage() {
       </div>
 
       {/* 输入区域 */}
-      <div className="shrink-0 border-t border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="shrink-0 px-3 pb-3 md:px-5 md:pb-5 bg-zinc-900">
         <div className="mx-auto max-w-3xl">
-          {/* 待发送图片预览 */}
-          {pendingImages.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {pendingImages.map((img) => (
-                <div key={img.id} className="relative group">
-                  <img
-                    src={img.thumbnail_url || img.url}
-                    alt={img.filename || "待发送图片"}
-                    className="h-16 w-16 rounded-lg object-cover"
-                  />
-                  <button
-                    onClick={() => removePendingImage(img.id)}
-                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
+          {effectiveHandoffState !== "human" ? (
+            /* 未接入时显示提示 */
+            <div className="flex items-center justify-center py-4">
+              <div className="px-4 py-2 rounded-full bg-zinc-800 text-zinc-400 text-sm">
+                请先点击「接入」开始客服介入
+              </div>
             </div>
+          ) : (
+            <>
+              {/* 待发送图片预览 */}
+              {pendingImages.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3 px-2">
+                  {pendingImages.map((img) => (
+                    <div key={img.id} className="relative group">
+                      <img
+                        src={img.thumbnail_url || img.url}
+                        alt={img.filename || "待发送图片"}
+                        className="h-16 w-16 rounded-lg object-cover border border-zinc-700"
+                      />
+                      <button
+                        onClick={() => removePendingImage(img.id)}
+                        className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* 隐藏的文件输入 */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              {/* 输入框容器 - 深色主题 */}
+              <div 
+                className="relative [--chat-bg-input:#27272a] [--chat-border-color:#3f3f46] [--chat-border-focus:#52525b] [--chat-text-primary:#fafafa] [--chat-text-secondary:#a1a1aa] [--chat-text-tertiary:#71717a]"
+              >
+                <ChatRichInput
+                  value={inputValue}
+                  onValueChange={setInputValue}
+                  onSubmit={handleSend}
+                  placeholder="输入消息..."
+                  disabled={false}
+                  isLoading={false}
+                  showToolbar={true}
+                  className="flex-1"
+                  imageButton={
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700",
+                        "disabled:opacity-50 disabled:cursor-not-allowed"
+                      )}
+                    >
+                      <ImagePlus className={cn("h-4 w-4", isUploading && "animate-pulse")} />
+                    </button>
+                  }
+                />
+              </div>
+            </>
           )}
-          <div className="flex gap-2">
-            {/* 隐藏的文件输入 */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-            {/* 图片上传按钮 */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={effectiveHandoffState !== "human" || isUploading}
-              className="h-11 w-11 rounded-xl"
-            >
-              <ImagePlus className={cn("h-5 w-5", isUploading && "animate-pulse")} />
-            </Button>
-            <ChatRichInput
-              value={inputValue}
-              onValueChange={setInputValue}
-              onSubmit={handleSend}
-              placeholder={
-                effectiveHandoffState === "human"
-                  ? "输入消息..."
-                  : "请先点击「接入」开始客服介入"
-              }
-              disabled={effectiveHandoffState !== "human"}
-              isLoading={false}
-              className="flex-1"
-            />
-          </div>
         </div>
       </div>
 

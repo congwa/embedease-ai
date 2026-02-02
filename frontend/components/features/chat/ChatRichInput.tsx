@@ -25,6 +25,7 @@ interface ChatRichInputProps {
   isLoading?: boolean;
   className?: string;
   showToolbar?: boolean;
+  imageButton?: React.ReactNode;
 }
 
 export function ChatRichInput({
@@ -36,6 +37,7 @@ export function ChatRichInput({
   isLoading = false,
   className,
   showToolbar = true,
+  imageButton,
 }: ChatRichInputProps) {
   const theme = useChatThemeOptional();
   
@@ -218,19 +220,22 @@ export function ChatRichInput({
           </TooltipProvider>
         )}
 
-        <Button
-          type="button"
-          size="icon"
-          className={cn("h-8 w-8", sendButtonClass)}
-          onClick={onSubmit}
-          disabled={!canSubmit || disabled}
-        >
-          {isLoading ? (
-            <Square className="h-4 w-4" />
-          ) : (
-            <ArrowUp className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="flex items-center gap-1">
+          {imageButton}
+          <Button
+            type="button"
+            size="icon"
+            className={cn("h-8 w-8", sendButtonClass)}
+            onClick={onSubmit}
+            disabled={!canSubmit || disabled}
+          >
+            {isLoading ? (
+              <Square className="h-4 w-4" />
+            ) : (
+              <ArrowUp className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
