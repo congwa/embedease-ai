@@ -1,28 +1,38 @@
-"""模型创建工厂（多态架构）
+"""模型创建工厂 - 支持 v0/v1 切换
 
 ============================================================
 核心职责
 ============================================================
 
 - 提供 `create_chat_model` 函数：对外统一创建入口
-- 根据 provider 和 profile 自动选择合适的模型实现
+- 默认使用 v1 输出格式（output_version="v1"）
+- 支持通过 `use_v0=True` 切换到兼容层
 
 ============================================================
-选择逻辑
+v1 vs v0
 ============================================================
 
-1. 检查 profile.reasoning_output 判断是否为推理模型
-2. 非推理模型 → StandardChatModel（直接使用 LangChain OpenAI）
-3. 推理模型 → 根据 provider 选择对应的实现类
+v1（默认）：
+- 强制 output_version="v1"
+- AIMessage.content 直接存储 content_blocks
+- 使用 parse_content_blocks() 按类型分流
+
+v0（兼容层）：
+- 自定义 ReasoningChunk 结构
+- 通过 model.extract_reasoning() 提取推理
+- 需要显式传入 use_v0=True
 
 ============================================================
-扩展方式
+切换方式
 ============================================================
 
-新增平台只需：
-1. 在 `providers/` 下创建新的实现类
-2. 在本文件的 `REASONING_MODEL_REGISTRY` 中注册
-3. Agent 层无需任何修改
+```python
+# 默认使用 v1
+model = create_chat_model(...)
+
+# 切换到 v0（紧急回退）
+model = create_chat_model(..., use_v0=True)
+```
 """
 
 from __future__ import annotations
@@ -31,29 +41,17 @@ from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 
-from app.core.chat_models.base import StandardChatModel
 from app.core.logging import get_logger
 
 logger = get_logger("chat_models.registry")
 
 
-# ============================================================
-# 推理模型注册表
-# ============================================================
-# 新增平台只需在此添加映射，无需修改其他代码
-# key: provider 名称（小写）
-# value: 模型类的导入路径和类名
-
-REASONING_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
+# v0 推理模型注册表（兼容层使用）
+V0_REASONING_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
     "siliconflow": (
-        "app.core.chat_models.providers.reasoning_content",
+        "app.core.chat_models.v0.providers.reasoning_content",
         "SiliconFlowReasoningChatModel",
     ),
-    # 未来新增平台示例：
-    # "moonshot": (
-    #     "app.core.chat_models.providers.moonshot",
-    #     "MoonshotReasoningChatModel",
-    # ),
 }
 
 
@@ -63,41 +61,79 @@ def create_chat_model(
     api_key: str,
     provider: str,
     profile: dict[str, Any] | None = None,
+    use_v0: bool = False,
     **kwargs: Any,
 ) -> BaseChatModel:
-    """创建聊天模型实例（统一入口）
+    """创建模型实例（统一入口）
 
-    这是对外提供的统一接口，Agent 层只需调用此函数即可。
-    内部根据 provider 和 profile 自动选择合适的实现。
+    默认使用 v1 输出格式，可通过 use_v0=True 切换到兼容层。
 
     Args:
         model: 模型名称
         base_url: API 基础 URL
         api_key: API Key
         provider: 提供商标识（如 siliconflow, openai）
-        profile: 模型能力配置（可选，包含 reasoning_output 等信息）
+        profile: 模型能力配置（可选）
+        use_v0: 是否使用 v0 兼容层（默认 False，使用 v1）
         **kwargs: 其他参数（temperature, max_tokens 等）
 
     Returns:
         配置好的模型实例
-
-    选择逻辑：
-        1. reasoning_output=False → StandardChatModel
-        2. reasoning_output=True + provider 在注册表中 → 对应的推理模型
-        3. reasoning_output=True + provider 不在注册表中 → StandardChatModel（降级）
     """
     # 提取 profile 信息
     if profile is None:
         profile = kwargs.pop("profile", {})
 
-    # 判断是否为推理模型
     is_reasoning_model = profile.get("reasoning_output", False) if profile else False
+
+    if use_v0:
+        return _create_v0_model(model, base_url, api_key, provider, is_reasoning_model, **kwargs)
+    else:
+        return _create_v1_model(model, base_url, api_key, provider, is_reasoning_model, **kwargs)
+
+
+def _create_v1_model(
+    model: str,
+    base_url: str,
+    api_key: str,
+    provider: str,
+    is_reasoning_model: bool,
+    **kwargs: Any,
+) -> BaseChatModel:
+    """创建 v1 模型（默认）"""
+    from app.core.chat_models.v1.models import V1ChatModel
+
+    logger.info(
+        "创建 v1 模型",
+        model=model,
+        provider=provider,
+        reasoning_output=is_reasoning_model,
+    )
+
+    return V1ChatModel(
+        model=model,
+        openai_api_base=base_url,
+        openai_api_key=api_key,
+        **kwargs,
+    )
+
+
+def _create_v0_model(
+    model: str,
+    base_url: str,
+    api_key: str,
+    provider: str,
+    is_reasoning_model: bool,
+    **kwargs: Any,
+) -> BaseChatModel:
+    """创建 v0 模型（兼容层）"""
+    from app.core.chat_models.v0.base import StandardChatModel
+
     provider_lower = provider.lower()
 
     if not is_reasoning_model:
-        # 普通模型，使用标准实现
         logger.info(
-            "创建标准模型",
+            "创建 v0 标准模型",
             model=model,
             provider=provider,
         )
@@ -109,16 +145,15 @@ def create_chat_model(
         )
 
     # 推理模型：从注册表查找对应实现
-    if provider_lower in REASONING_MODEL_REGISTRY:
-        module_path, class_name = REASONING_MODEL_REGISTRY[provider_lower]
+    if provider_lower in V0_REASONING_MODEL_REGISTRY:
+        module_path, class_name = V0_REASONING_MODEL_REGISTRY[provider_lower]
 
-        # 动态导入模型类
         import importlib
         module = importlib.import_module(module_path)
         model_class = getattr(module, class_name)
 
         logger.info(
-            "创建推理模型",
+            "创建 v0 推理模型",
             model=model,
             provider=provider,
             model_class=class_name,
@@ -132,10 +167,10 @@ def create_chat_model(
 
     # provider 不在注册表中，降级为标准模型
     logger.warning(
-        "未找到推理模型实现，降级为标准模型",
+        "v0 未找到推理模型实现，降级为标准模型",
         model=model,
         provider=provider,
-        registered_providers=list(REASONING_MODEL_REGISTRY.keys()),
+        registered_providers=list(V0_REASONING_MODEL_REGISTRY.keys()),
     )
     return StandardChatModel(
         model=model,

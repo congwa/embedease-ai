@@ -1,72 +1,85 @@
-"""Chat Models 统一入口（多态架构）
+"""Chat Models 统一入口 - v1 版本
 
 ============================================================
 核心设计
 ============================================================
 
-本模块采用**多态架构**，让不同平台在各自的子类中完成推理内容的提取与归一化，
-Agent 层只消费统一的 `ReasoningChunk` 结构。
+本模块强制使用 LangChain v1 输出格式，基于 content_blocks 标准化消息内容。
 
-**关键约束**：
-- 不再使用 `additional_kwargs["reasoning_content"]`
-- Agent 层通过 `model.extract_reasoning(message)` 获取推理内容
-- 新增平台只需继承 `BaseReasoningChatModel` 并在 registry 注册
+**关键特性**：
+- 强制 `output_version="v1"`，不可配置
+- 使用 LangChain 标准 `content_blocks` 而非自定义结构
+- 按块类型（text/reasoning/tool_call）分流处理
 
 ============================================================
 目录结构
 ============================================================
 
-- `base.py`：定义 ReasoningChunk 结构和 BaseReasoningChatModel 抽象基类
-- `registry.py`：模型创建工厂，根据 provider 选择实现
-- `providers/`：各平台具体实现
-  - `reasoning_content.py`：SiliconFlow 实现
+- `v1/`：v1 标准实现（当前使用）
+  - `types.py`：类型定义和类型守卫
+  - `parser.py`：内容块解析器
+  - `models.py`：模型基类
+- `v0/`：兼容层（已废弃，供紧急回退）
+- `registry.py`：模型创建工厂
 
 ============================================================
 使用方式
 ============================================================
 
 ```python
-from app.core.chat_models import create_chat_model
+from app.core.chat_models import create_chat_model, parse_content_blocks
 
-# 创建模型（自动选择实现）
+# 创建模型（强制 v1 输出）
 model = create_chat_model(
     model="...",
     base_url="...",
     api_key="...",
     provider="siliconflow",
-    profile={"reasoning_output": True},
 )
 
-# Agent 层获取推理内容
-reasoning = model.extract_reasoning(message, raw_chunk=chunk)
-if reasoning:
-    print(reasoning.delta)  # 推理增量文本
+# 解析消息内容（v1 方式）
+parsed = parse_content_blocks(message)
+print(parsed.text)       # 合并后的文本
+print(parsed.reasoning)  # 合并后的推理
 ```
 """
 
 from __future__ import annotations
 
-# 基类和统一结构（供扩展使用）
-from app.core.chat_models.base import (
-    BaseReasoningChatModel,
-    ReasoningChunk,
-    StandardChatModel,
+from app.core.chat_models.v1 import (
+    V1ChatModel,
+    ParsedContent,
+    parse_content_blocks,
+    parse_content_blocks_from_chunk,
+    is_text_block,
+    is_reasoning_block,
+    is_tool_call_block,
+    is_v1_model,
+    ContentBlock,
+    TextContentBlock,
+    ReasoningContentBlock,
+    ToolCallBlock,
 )
-
-# SiliconFlow 实现（供调试使用）
-from app.core.chat_models.providers.reasoning_content import SiliconFlowReasoningChatModel
-
-# 统一入口（外部只需使用这个）
 from app.core.chat_models.registry import create_chat_model
 
 __all__ = [
     # 统一入口
     "create_chat_model",
-    # 统一结构
-    "ReasoningChunk",
-    # 基类
-    "BaseReasoningChatModel",
-    "StandardChatModel",
-    # 实现类
-    "SiliconFlowReasoningChatModel",
+    # v1 模型
+    "V1ChatModel",
+    # v1 解析器
+    "ParsedContent",
+    "parse_content_blocks",
+    "parse_content_blocks_from_chunk",
+    # v1 类型守卫
+    "is_text_block",
+    "is_reasoning_block",
+    "is_tool_call_block",
+    # 版本检测
+    "is_v1_model",
+    # v1 类型
+    "ContentBlock",
+    "TextContentBlock",
+    "ReasoningContentBlock",
+    "ToolCallBlock",
 ]

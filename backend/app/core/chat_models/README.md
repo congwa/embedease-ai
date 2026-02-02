@@ -54,33 +54,25 @@
       ```python
       {
         "type": "reasoning",
-        "summary": [{"index": ..., "type": "summary_text", "text": "..."}],
+        "reasoning": "...",
         "index": current_index,
         "id": "msg_..."  # 某些事件里会有
       }
       ```
-  - `additional_kwargs` 在这条路径里主要用于：
-    - `parsed`（结构化输出解析结果等）
-    - **不是 reasoning 的主要落点**（reasoning 主要在 `content` blocks 里）
 
-- **兼容层（[_compat._convert_to_v03_ai_message](cci:1://file:///Users/wang/code/github/langchain/libs/partners/openai/langchain_openai/chat_models/_compat.py:80:0-149:18)）**
-  - 如果 `output_version == "v0"`，LangChain 会把 `content` 里的 `{"type":"reasoning", ...}` **挪到** `message.additional_kwargs["reasoning"]`
-  - 注意：它用的是 key `"reasoning"`，不是 `"reasoning_content"`  
-  - 这就是你要“向后兼容”时必须面对的差异之一：  
-    - v0.3 风格：reasoning 在 `additional_kwargs["reasoning"]`（dict 形态）
-    - Responses/v1 风格：reasoning 在 `content` blocks（list[dict] 形态）
+---
 
-## Chat Models 多态架构
+## Chat Models v1 架构
 
 ## 核心设计
 
-本模块采用**多态架构**，让不同平台（SiliconFlow 等）在各自的子类中完成推理内容的提取与归一化，
-Agent 层只消费统一的 `ReasoningChunk` 结构。
+本模块强制使用 **LangChain v1 输出格式**，基于 `content_blocks` 标准化消息内容。
 
-**关键约束**：
-- **不再使用** `additional_kwargs["reasoning_content"]`
-- Agent 层通过 `model.extract_reasoning(message)` 获取推理内容
-- 新增平台只需继承 `BaseReasoningChatModel` 并在 registry 注册
+**关键特性**：
+- **强制** `output_version="v1"`，不可配置
+- 使用 LangChain 标准 `content_blocks` 而非自定义结构
+- 按块类型（text/reasoning/tool_call）分流处理
+- **移除** 对 `model.extract_reasoning()` 的依赖
 
 ---
 
@@ -88,17 +80,59 @@ Agent 层只消费统一的 `ReasoningChunk` 结构。
 
 ```
 chat_models/
-├── __init__.py          # 统一入口
-├── base.py              # ReasoningChunk 结构 + BaseReasoningChatModel 抽象基类
-├── registry.py          # 模型创建工厂，根据 provider 选择实现
-├── providers/
-│   └── reasoning_content.py  # SiliconFlow 实现
+├── __init__.py          # 统一入口（导出 v1 API）
+├── registry.py          # 模型创建工厂（强制 v1）
+├── v1/                  # ✨ v1 标准实现
+│   ├── __init__.py
+│   ├── types.py         # 类型定义、类型守卫
+│   ├── parser.py        # 内容块解析器
+│   └── models.py        # 模型基类（强制 v1 输出）
+├── v0/                  # 兼容层（已废弃）
+│   ├── __init__.py
+│   ├── base.py          # 旧版 ReasoningChunk 结构
+│   └── providers/
+│       └── reasoning_content.py  # 旧版 SiliconFlow 实现
 └── README.md            # 本文档
 ```
 
 ---
 
-## 统一数据结构
+## v1 使用方式
+
+```python
+from app.core.chat_models import (
+    create_chat_model,
+    parse_content_blocks,
+)
+
+# 创建模型（强制 v1 输出）
+model = create_chat_model(
+    model="...",
+    base_url="...",
+    api_key="...",
+    provider="siliconflow",
+)
+
+# 解析消息内容（v1 方式）
+parsed = parse_content_blocks(message)
+print(parsed.text)       # 合并后的文本
+print(parsed.reasoning)  # 合并后的推理
+```
+
+---
+
+## v1 vs v0 对比
+
+| 特性 | v1（当前） | v0（兼容层） |
+|------|-----------|-------------|
+| 输出格式 | 强制 `output_version="v1"` | 默认 v0 |
+| 内容解析 | `parse_content_blocks()` | `model.extract_reasoning()` |
+| 数据结构 | LangChain 标准 `ContentBlock` | 自定义 `ReasoningChunk` |
+| 依赖 | 无需 model 引用 | 需要 model 实例 |
+
+---
+
+## 标准内容块类型
 
 ```python
 @dataclass(frozen=True, slots=True)

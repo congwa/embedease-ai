@@ -1,4 +1,6 @@
-"""SiliconFlow（硅基流动）推理模型实现
+"""SiliconFlow（硅基流动）推理模型实现（v0 兼容层 - 已废弃）
+
+⚠️ 本模块已废弃，请使用 app.core.chat_models.v1
 
 ============================================================
 平台特性
@@ -30,10 +32,10 @@ SiliconFlow 使用 OpenAI 兼容模式，但推理字段与 OpenAI 原生不同�
 
 from typing import Any
 
-from app.core.chat_models.base import BaseReasoningChatModel, ReasoningChunk
+from app.core.chat_models.v0.base import BaseReasoningChatModel, ReasoningChunk
 from app.core.logging import get_logger
 
-logger = get_logger("chat_models.siliconflow")
+logger = get_logger("chat_models.v0.siliconflow")
 
 
 class SiliconFlowReasoningChatModel(BaseReasoningChatModel):

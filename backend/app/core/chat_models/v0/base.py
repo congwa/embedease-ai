@@ -1,4 +1,6 @@
-"""推理模型基类定义（多态架构）
+"""推理模型基类定义（v0 兼容层 - 已废弃）
+
+⚠️ 本模块已废弃，请使用 app.core.chat_models.v1
 
 ============================================================
 核心设计理念
@@ -58,10 +60,6 @@ from typing import Any
 
 from langchain_openai import ChatOpenAI
 
-# ============================================================
-# 统一数据结构
-# ============================================================
-
 
 @dataclass(frozen=True, slots=True)
 class ReasoningChunk:
@@ -78,11 +76,6 @@ class ReasoningChunk:
     delta: str
     provider: str = "unknown"
     source: str = "unknown"
-
-
-# ============================================================
-# 基类定义
-# ============================================================
 
 
 class BaseReasoningChatModel(ChatOpenAI, ABC):
