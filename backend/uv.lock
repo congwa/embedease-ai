@@ -293,7 +293,7 @@ wheels = [
 ]
 
 [[package]]
-name = "embed-ai-agent"
+name = "embedeaseai-agent"
 version = "0.1.15"
 source = { virtual = "." }
 dependencies = [

@@ -54,6 +54,14 @@ V0_REASONING_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
     ),
 }
 
+# v1 推理模型注册表（需要特殊处理 reasoning_content 的提供商）
+V1_REASONING_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
+    "siliconflow": (
+        "app.core.chat_models.v1.providers.siliconflow",
+        "SiliconFlowV1ChatModel",
+    ),
+}
+
 
 def create_chat_model(
     model: str,
@@ -100,11 +108,39 @@ def _create_v1_model(
     is_reasoning_model: bool,
     **kwargs: Any,
 ) -> BaseChatModel:
-    """创建 v1 模型（默认）"""
+    """创建 v1 模型（默认）
+    
+    对于需要特殊处理 reasoning_content 的提供商（如硅基流动），
+    使用注册表中的专用模型类。
+    """
     from app.core.chat_models.v1.models import V1ChatModel
 
+    provider_lower = provider.lower()
+
+    # 推理模型：从注册表查找专用实现
+    if is_reasoning_model and provider_lower in V1_REASONING_MODEL_REGISTRY:
+        module_path, class_name = V1_REASONING_MODEL_REGISTRY[provider_lower]
+
+        import importlib
+        module = importlib.import_module(module_path)
+        model_class = getattr(module, class_name)
+
+        logger.info(
+            "创建 v1 推理模型",
+            model=model,
+            provider=provider,
+            model_class=class_name,
+        )
+        return model_class(
+            model=model,
+            openai_api_base=base_url,
+            openai_api_key=api_key,
+            **kwargs,
+        )
+
+    # 标准 v1 模型
     logger.info(
-        "创建 v1 模型",
+        "创建 v1 标准模型",
         model=model,
         provider=provider,
         reasoning_output=is_reasoning_model,
