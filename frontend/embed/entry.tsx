@@ -12,7 +12,7 @@ interface EmbedConfig {
 
 declare global {
   interface Window {
-    EmbedAiChat: {
+    EmbedeaseAIChat: {
       init: (config?: EmbedConfig) => void;
       destroy: () => void;
     };
@@ -25,13 +25,13 @@ let container: HTMLDivElement | null = null;
 function init(config: EmbedConfig = {}) {
   // 防止重复初始化
   if (container) {
-    console.warn("[EmbedAiChat] Already initialized");
+    console.warn("[EmbedeaseAIChat] Already initialized");
     return;
   }
 
   // 创建容器
   container = document.createElement("div");
-  container.id = "embed-ai-chat-root";
+  container.id = "embedeaseai-chat-root";
   container.style.cssText = "position: fixed; z-index: 2147483647;";
   document.body.appendChild(container);
 
@@ -39,7 +39,7 @@ function init(config: EmbedConfig = {}) {
   root = createRoot(container);
   root.render(<EmbedWidget config={config} />);
 
-  console.log("[EmbedAiChat] Initialized", config);
+  console.log("[EmbedeaseAIChat] Initialized", config);
 }
 
 function destroy() {
@@ -51,11 +51,11 @@ function destroy() {
     container.remove();
     container = null;
   }
-  console.log("[EmbedAiChat] Destroyed");
+  console.log("[EmbedeaseAIChat] Destroyed");
 }
 
 // 暴露全局 API
-window.EmbedAiChat = { init, destroy };
+window.EmbedeaseAIChat = { init, destroy };
 
 // 自动初始化（如果 script 标签有 data-auto-init 属性）
 const currentScript = document.currentScript as HTMLScriptElement | null;

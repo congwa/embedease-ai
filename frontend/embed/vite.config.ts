@@ -52,8 +52,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "entry.tsx"),
-      name: "EmbedAiChat",
-      fileName: () => "embed-ai-chat.js",
+      name: "EmbedeaseAIChat",
+      fileName: () => "embedeaseai-chat.js",
       formats: ["iife"],
     },
     rollupOptions: {

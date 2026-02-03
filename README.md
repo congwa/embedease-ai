@@ -525,7 +525,7 @@ graph TD
 ```html
 <!-- 只需一行代码 -->
 <script 
-  src="https://your-cdn.com/embed-ai-chat.js"
+  src="https://your-cdn.com/embedeaseai-chat.js"
   data-auto-init
   data-api-base-url="https://your-backend.com"
   data-title="商品推荐助手">
@@ -738,7 +738,7 @@ pnpm lint              # 前端
 ```bash
 cd frontend
 pnpm build:embed
-# 产物在 dist/embed/embed-ai-chat.js
+# 产物在 dist/embed/embedeaseai-chat.js
 ```
 
 ---
@@ -777,14 +777,14 @@ pnpm build:embed
 
 ### 步骤 2：上传 JS 文件
 
-将 `dist/embed/embed-ai-chat.js` 上传到你的 CDN 或静态服务器。
+将 `dist/embed/embedeaseai-chat.js` 上传到你的 CDN 或静态服务器。
 
 ### 步骤 3：在网站中引入
 
 ```html
 <!-- 自动初始化（推荐） -->
 <script
-  src="https://your-cdn.com/embed-ai-chat.js"
+  src="https://your-cdn.com/embedeaseai-chat.js"
   data-auto-init
   data-api-base-url="https://your-backend.com"
   data-position="bottom-right"
@@ -796,9 +796,9 @@ pnpm build:embed
 或者手动控制：
 
 ```html
-<script src="https://your-cdn.com/embed-ai-chat.js"></script>
+<script src="https://your-cdn.com/embedeaseai-chat.js"></script>
 <script>
-  window.EmbedAiChat.init({
+  window.EmbedeaseAIChat.init({
     apiBaseUrl: "https://your-backend.com",
     position: "bottom-right",
     title: "商品推荐助手",
@@ -806,7 +806,7 @@ pnpm build:embed
   });
   
   // 需要时销毁
-  // window.EmbedAiChat.destroy();
+  // window.EmbedeaseAIChat.destroy();
 </script>
 ```
 

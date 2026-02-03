@@ -288,7 +288,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SiliconFlow 推理实现文档化** (`backend/app/core/chat_models/providers/reasoning_content.py`, `backend/app/core/chat_models/README.md`): 以 `SiliconFlowReasoningChatModel` 封装 `reasoning_content` 字段的提取流程，并补充多态架构设计/扩展指南，方便后续按平台扩展。
 - **推理模型注册表** (`backend/app/core/chat_models/registry.py`): 引入 `REASONING_MODEL_REGISTRY`，集中声明 provider → 模型实现的映射，新增平台只需注册即可被自动选择。
 - **右下角浮窗聊天组件** (`frontend/components/features/embed/FloatingChatWidget.tsx`, `frontend/components/features/embed/EmbedChatContent.tsx`, `frontend/app/layout.tsx`): 在开发体验页默认渲染可折叠的浮动聊天窗口，支持单会话清空按钮和最小化，方便快速演示。
-- **嵌入式脚本打包管线** (`frontend/embed/entry.tsx`, `frontend/embed/EmbedWidget.tsx`, `frontend/embed/embed.css`, `frontend/embed/vite.config.ts`, `frontend/embed/demo.html`): 新增纯 JS Widget 入口与 UI，实现 `window.EmbedAiChat.init()` API，并通过 Vite 打包为单文件 `embed-ai-chat.js`，可直接在第三方站点以 `<script>` 内嵌。
+- **嵌入式脚本打包管线** (`frontend/embed/entry.tsx`, `frontend/embed/EmbedWidget.tsx`, `frontend/embed/embed.css`, `frontend/embed/vite.config.ts`, `frontend/embed/demo.html`): 新增纯 JS Widget 入口与 UI，实现 `window.EmbedeaseAIChat.init()` API，并通过 Vite 打包为单文件 `embedeaseai-chat.js`，可直接在第三方站点以 `<script>` 内嵌。
 - **构建脚本与依赖** (`frontend/package.json`): 添加 `pnpm build:embed` 命令及 `vite`、`@vitejs/plugin-react`、`terser` 依赖，确保嵌入脚本能够独立打包。
 - **README 演示入口** (`README.md`): 在文档顶部加入 `docs/agent0.mp4` 演示视频按钮，访客打开仓库即可直接观看。
 - **记忆专用模型配置** (`backend/app/core/config.py`, `backend/.env.example`, `backend/app/core/llm.py`, `backend/app/services/memory/fact_memory.py`, `backend/app/services/memory/graph_memory.py`): 引入 `MEMORY_MODEL/MEMORY_PROVIDER/MEMORY_API_KEY/MEMORY_BASE_URL` 配置与 `get_memory_model()`，记忆抽取可选用独立模型，避免与主聊天模型抢配额。

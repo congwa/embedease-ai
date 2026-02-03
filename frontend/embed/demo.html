@@ -53,15 +53,15 @@
     
     <h3>方式一：自动初始化</h3>
     <pre><code>&lt;script 
-  src="https://your-cdn.com/embed-ai-chat.js" 
+  src="https://your-cdn.com/embedeaseai-chat.js" 
   data-auto-init
   data-api-base-url="https://your-api.com"
 &gt;&lt;/script&gt;</code></pre>
 
     <h3>方式二：手动初始化</h3>
-    <pre><code>&lt;script src="https://your-cdn.com/embed-ai-chat.js"&gt;&lt;/script&gt;
+    <pre><code>&lt;script src="https://your-cdn.com/embedeaseai-chat.js"&gt;&lt;/script&gt;
 &lt;script&gt;
-  window.EmbedAiChat.init({
+  window.EmbedeaseAIChat.init({
     apiBaseUrl: 'https://your-api.com',
     position: 'bottom-right', // 或 'bottom-left'
     title: '商品推荐助手',
@@ -70,7 +70,7 @@
 &lt;/script&gt;</code></pre>
 
     <h3>销毁实例</h3>
-    <pre><code>window.EmbedAiChat.destroy();</code></pre>
+    <pre><code>window.EmbedeaseAIChat.destroy();</code></pre>
 
     <div class="note">
       <strong>注意：</strong>确保 <code>apiBaseUrl</code> 指向正确的后端 API 地址，并且后端已配置 CORS 允许跨域请求。
@@ -116,6 +116,6 @@
   </div>
 
   <!-- 加载构建后的嵌入脚本 -->
-  <script src="../dist/embed/embed-ai-chat.js" data-auto-init data-api-base-url=""></script>
+  <script src="../dist/embed/embedeaseai-chat.js" data-auto-init data-api-base-url=""></script>
 </body>
 </html>

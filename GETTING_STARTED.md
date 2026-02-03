@@ -382,7 +382,7 @@ pnpm build:embed
 然后在你的网站中引入：
 ```html
 <script
-  src="https://your-cdn.com/embed-ai-chat.js"
+  src="https://your-cdn.com/embedeaseai-chat.js"
   data-auto-init
   data-api-base-url="https://your-backend.com">
 </script>
