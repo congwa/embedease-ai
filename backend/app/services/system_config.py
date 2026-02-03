@@ -208,8 +208,9 @@ class SystemConfigService:
 
         return await self.get_config_masked()
 
-    async def test_config(self, data: ConfigTestRequest) -> ConfigTestResponse:
-        """测试配置是否可用"""
+    @staticmethod
+    async def test_config(data: ConfigTestRequest) -> ConfigTestResponse:
+        """测试配置是否可用（不需要数据库）"""
         import httpx
 
         try:
@@ -265,8 +266,9 @@ class SystemConfigService:
                 message=f"测试失败: {str(e)}",
             )
 
-    def get_provider_presets(self) -> ProviderPresetsResponse:
-        """获取提供商预设列表"""
+    @staticmethod
+    def get_provider_presets() -> ProviderPresetsResponse:
+        """获取提供商预设列表（不需要数据库）"""
         items = [
             ProviderPreset(
                 id=key,

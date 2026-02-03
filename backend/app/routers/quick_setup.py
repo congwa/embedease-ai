@@ -150,31 +150,29 @@ async def get_current_mode() -> dict[str, str | None]:
 
 
 @router.post("/essential/complete", response_model=EssentialSetupResponse)
-async def complete_essential_setup(
-    data: EssentialSetupRequest,
-    db: AsyncSession = Depends(get_db_session),
-):
+async def complete_essential_setup(data: EssentialSetupRequest):
     """完成精简配置（最小可用配置）
     
     执行以下操作：
     1. 设置运行模式（single/supervisor）
-    2. 验证 LLM API 连通性
-    3. 保存 LLM 配置到系统配置
-    4. 创建默认 Agent
+    2. 验证 LLM API 连通性（外部 HTTP，不持有 db）
+    3. 保存 LLM 配置到系统配置（需要 db）
+    4. 创建默认 Agent（需要 db）
     5. 更新 Quick Setup 状态
     """
     import uuid
+    from app.core.database import get_db_context
     from app.services.system_config import SystemConfigService, SupervisorGlobalConfigService
-    from app.schemas.system_config import QuickConfigUpdate, PROVIDER_PRESETS, SupervisorGlobalConfigUpdate
+    from app.schemas.system_config import PROVIDER_PRESETS, SupervisorGlobalConfigUpdate, FullConfigUpdate
     from app.services.agent.core.config import DEFAULT_PROMPTS, DEFAULT_TOOL_CATEGORIES, DEFAULT_TOOL_POLICIES
     
     try:
         state_manager = get_state_manager()
         
-        # 1. 设置模式
+        # 1. 设置模式（不需要 db）
         state_manager.set_mode(data.mode)
         
-        # 2. 验证 LLM API
+        # 2. 验证 LLM API（外部 HTTP 请求，不持有 db 连接）
         llm_ok = await _validate_llm_api(
             provider=data.llm_provider,
             api_key=data.llm_api_key,
@@ -186,10 +184,7 @@ async def complete_essential_setup(
                 message="LLM API 连接失败，请检查 API Key 和配置",
             )
         
-        # 3. 保存 LLM 配置到系统配置
-        config_service = SystemConfigService(db)
-        
-        # 确定 base_url
+        # 准备配置数据（不需要 db）
         provider_urls = {
             "openai": "https://api.openai.com/v1",
             "siliconflow": "https://api.siliconflow.cn/v1",
@@ -198,29 +193,59 @@ async def complete_essential_setup(
             "anthropic": "https://api.anthropic.com/v1",
         }
         base_url = data.llm_base_url or provider_urls.get(data.llm_provider, settings.LLM_BASE_URL)
-        
-        # 获取 embedding 配置预设
-        preset = PROVIDER_PRESETS.get(data.llm_provider, PROVIDER_PRESETS.get("siliconflow", {}))
-        
-        # 使用完整配置更新（包含模型选择）
-        from app.schemas.system_config import FullConfigUpdate
-        
-        # Embedding 配置：不填则使用 LLM 的配置
         embedding_api_key = data.embedding_api_key if data.embedding_api_key else None
         embedding_base_url = data.embedding_base_url if data.embedding_base_url else None
         
-        await config_service.update_full_config(FullConfigUpdate(
-            llm_provider=data.llm_provider,
-            llm_api_key=data.llm_api_key,
-            llm_base_url=base_url,
-            llm_chat_model=data.llm_model,
-            embedding_provider=data.llm_provider,
-            embedding_api_key=embedding_api_key,
-            embedding_base_url=embedding_base_url,
-            embedding_model=data.embedding_model,
-            embedding_dimension=data.embedding_dimension,
-            rerank_enabled=False,
-        ))
+        agent_name = data.agent_name or f"默认{_get_agent_type_name(data.agent_type)}助手"
+        system_prompt = DEFAULT_PROMPTS.get(data.agent_type, DEFAULT_PROMPTS.get("custom", ""))
+        tool_categories = DEFAULT_TOOL_CATEGORIES.get(data.agent_type)
+        tool_policy = DEFAULT_TOOL_POLICIES.get(data.agent_type)
+        
+        agent_id = str(uuid.uuid4())
+        
+        # 3. 数据库操作：验证通过后才获取 db session，快速写入后释放
+        async with get_db_context() as db:
+            # 保存 LLM 配置
+            config_service = SystemConfigService(db)
+            await config_service.update_full_config(FullConfigUpdate(
+                llm_provider=data.llm_provider,
+                llm_api_key=data.llm_api_key,
+                llm_base_url=base_url,
+                llm_chat_model=data.llm_model,
+                embedding_provider=data.llm_provider,
+                embedding_api_key=embedding_api_key,
+                embedding_base_url=embedding_base_url,
+                embedding_model=data.embedding_model,
+                embedding_dimension=data.embedding_dimension,
+                rerank_enabled=False,
+            ))
+            
+            # 设置运行模式
+            supervisor_service = SupervisorGlobalConfigService(db)
+            await supervisor_service.update_config(
+                SupervisorGlobalConfigUpdate(enabled=(data.mode == "supervisor"))
+            )
+            
+            # 创建默认 Agent
+            agent = Agent(
+                id=agent_id,
+                name=agent_name,
+                description=f"通过快速配置创建的{_get_agent_type_name(data.agent_type)} Agent",
+                type=data.agent_type,
+                system_prompt=system_prompt,
+                tool_categories=tool_categories,
+                tool_policy=tool_policy,
+                status="enabled",
+                is_default=True,
+            )
+            
+            # 取消其他默认 Agent
+            await db.execute(
+                Agent.__table__.update().where(Agent.is_default == True).values(is_default=False)  # noqa: E712
+            )
+            
+            db.add(agent)
+            # get_db_context 会自动 commit
         
         logger.info(
             "已保存 LLM 和 Embedding 配置",
@@ -230,59 +255,26 @@ async def complete_essential_setup(
             base_url=base_url,
         )
         
-        # 2. 设置运行模式
-        supervisor_service = SupervisorGlobalConfigService(db)
-        await supervisor_service.update_config(
-            SupervisorGlobalConfigUpdate(enabled=(data.mode == "supervisor"))
-        )
-        
-        # 3. 创建默认 Agent
-        agent_name = data.agent_name or f"默认{_get_agent_type_name(data.agent_type)}助手"
-        system_prompt = DEFAULT_PROMPTS.get(data.agent_type, DEFAULT_PROMPTS.get("custom", ""))
-        tool_categories = DEFAULT_TOOL_CATEGORIES.get(data.agent_type)
-        tool_policy = DEFAULT_TOOL_POLICIES.get(data.agent_type)
-        
-        agent = Agent(
-            id=str(uuid.uuid4()),
-            name=agent_name,
-            description=f"通过快速配置创建的{_get_agent_type_name(data.agent_type)} Agent",
-            type=data.agent_type,
-            system_prompt=system_prompt,
-            tool_categories=tool_categories,
-            tool_policy=tool_policy,
-            status="enabled",
-            is_default=True,
-        )
-        
-        # 取消其他默认 Agent
-        await db.execute(
-            Agent.__table__.update().where(Agent.is_default == True).values(is_default=False)  # noqa: E712
-        )
-        
-        db.add(agent)
-        await db.commit()
-        
-        # 4. 更新 Quick Setup 状态
-        state_manager = get_state_manager()
+        # 4. 更新 Quick Setup 状态（不需要 db）
         essential_data = {
             "mode": data.mode,
             "llm_provider": data.llm_provider,
             "llm_model": data.llm_model,
             "agent_type": data.agent_type,
-            "agent_id": agent.id,
+            "agent_id": agent_id,
         }
-        state = state_manager.complete_essential(agent.id, essential_data)
+        state = state_manager.complete_essential(agent_id, essential_data)
         
         logger.info(
             "完成精简配置",
             mode=data.mode,
-            agent_id=agent.id,
+            agent_id=agent_id,
             agent_type=data.agent_type,
         )
         
         return EssentialSetupResponse(
             success=True,
-            agent_id=agent.id,
+            agent_id=agent_id,
             message="精简配置完成，系统已可正常使用",
             state=state,
         )

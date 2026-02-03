@@ -35,10 +35,9 @@ async def get_system_config(db: AsyncSession = Depends(get_db_session)):
 
 
 @router.get("/providers", response_model=ProviderPresetsResponse)
-async def get_provider_presets(db: AsyncSession = Depends(get_db_session)):
-    """获取提供商预设列表"""
-    service = SystemConfigService(db)
-    return service.get_provider_presets()
+async def get_provider_presets():
+    """获取提供商预设列表（不需要数据库）"""
+    return SystemConfigService.get_provider_presets()
 
 
 @router.post("/quick", response_model=SystemConfigReadMasked)
@@ -76,16 +75,12 @@ async def update_full_config(
 
 
 @router.post("/test", response_model=ConfigTestResponse)
-async def test_config(
-    data: ConfigTestRequest,
-    db: AsyncSession = Depends(get_db_session),
-):
-    """测试配置是否可用
+async def test_config(data: ConfigTestRequest):
+    """测试配置是否可用（不需要数据库）
 
     在保存前测试 API Key 和 Base URL 是否正确。
     """
-    service = SystemConfigService(db)
-    return await service.test_config(data)
+    return await SystemConfigService.test_config(data)
 
 
 @router.get("/status")

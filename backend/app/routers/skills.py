@@ -119,11 +119,8 @@ async def delete_skill(
 
 
 @router.post("/generate", response_model=SkillGenerateResponse)
-async def generate_skill(
-    data: SkillGenerateRequest,
-    db: AsyncSession = Depends(get_db_session),
-):
-    """AI 生成技能"""
+async def generate_skill(data: SkillGenerateRequest):
+    """AI 生成技能（不需要数据库）"""
     generator = SkillGenerator()
     try:
         return await generator.generate(data)

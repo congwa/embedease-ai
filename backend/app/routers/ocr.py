@@ -5,12 +5,10 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.dependencies import get_db_session
 from app.core.logging import get_logger
 
 router = APIRouter(prefix="/api/v1/admin/ocr", tags=["ocr"])
@@ -73,9 +71,7 @@ class OcrProcessResponse(BaseModel):
 
 
 @router.get("/health", response_model=OcrHealthResponse)
-async def check_ocr_health(
-    db: AsyncSession = Depends(get_db_session),
-):
+async def check_ocr_health():
     """检查所有 OCR 处理器的健康状态"""
     from app.services.ocr.factory import OcrProcessorFactory
 
@@ -104,10 +100,7 @@ async def check_ocr_health(
 
 
 @router.get("/health/{processor_type}", response_model=OcrHealthStatus)
-async def check_processor_health(
-    processor_type: str,
-    db: AsyncSession = Depends(get_db_session),
-):
+async def check_processor_health(processor_type: str):
     """检查指定 OCR 处理器的健康状态"""
     from app.services.ocr.factory import OcrProcessorFactory
 
@@ -133,9 +126,7 @@ async def check_processor_health(
 
 
 @router.get("/config", response_model=OcrConfigResponse)
-async def get_ocr_config(
-    db: AsyncSession = Depends(get_db_session),
-):
+async def get_ocr_config():
     """获取 OCR 配置信息"""
     from app.services.ocr.factory import OcrProcessorFactory
 
@@ -155,7 +146,6 @@ async def get_ocr_config(
 async def process_file(
     file: UploadFile = File(...),
     processor_type: str | None = Query(None, description="处理器类型"),
-    db: AsyncSession = Depends(get_db_session),
 ):
     """处理上传的文件并返回 OCR 结果"""
     import os
@@ -240,9 +230,7 @@ async def process_file(
 
 
 @router.get("/providers")
-async def list_providers(
-    db: AsyncSession = Depends(get_db_session),
-):
+async def list_providers():
     """列出所有可用的 OCR 处理器"""
     from app.services.ocr.factory import OcrProcessorFactory
 
