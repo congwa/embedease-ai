@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.16] - 2025-01-31
+
+### 核心亮点
+
+本版本聚焦于 **Chat SDK 模块化** 与 **客服工作台优化**，新增完整的前端 Chat SDK 和 React Hooks 绑定，重构客服工作台为现代气泡式布局，优化多项性能和体验细节。
+
+### Added
+
+- **@embedease/chat-sdk**: 前端聊天核心 SDK
+  - `ChatClient` - SSE 流式聊天客户端
+  - Timeline 模块 - 聊天消息状态管理
+  - WebSocket 模块 - 实时双向通信（心跳、重连、离线队列）
+
+- **@embedease/chat-sdk-react**: React Hooks 封装
+  - `useChat` - 完整聊天功能 Hook
+  - `useTimeline` - 独立 Timeline 状态管理
+  - `useWebSocket` - 独立 WebSocket 连接管理
+
+- **langgraph-agent-kit**: LangGraph Agent 流式处理工具包
+  - `StreamOrchestrator` - 流式编排器
+  - 中间件系统和工具注册表
+
+- **版本管理增强**: `update_version.py` 支持 SDK 包版本同步和一致性检查
+
+- **版本发布工作流**: `.windsurf/workflows/create-tag.md` 完整的 Tag 发布流程
+
+### Changed
+
+- **客服工作台重构**: 左右分栏布局，新增用户分组和会话预览功能，首次加载优化
+- **聊天页面优化**: 现代气泡式布局，移除 SSE 支持网关，统一使用 WebSocket
+- **推理模型架构**: v1 推理模型注册表，支持提供商级别特殊处理
+- **chat_models v1 架构**: 移除多态设计，强制使用 LangChain 标准输出
+- **API 端点优化**: 移除不必要的数据库依赖，提升性能
+- **嵌入式脚本命名**: 统一为 `embedeaseai-chat`
+
+### Fixed
+
+- 客服状态切换重复提示问题
+- 硅基流动推理模型内容显示问题
+
+### Documentation
+
+- 日志配置速查表和界面预览
+- chat_models v1/v0 版本切换说明
+
+---
+
 ## [0.1.15] - 2026-01-30
 
 ### 核心亮点
