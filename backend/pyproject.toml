@@ -5,6 +5,7 @@ description = "商品推荐 Agent - 基于 LangChain v1.2"
 requires-python = ">=3.13"
 
 dependencies = [
+  "langgraph-agent-kit",
   "aiofiles>=24.1.0",
   "aiosqlite>=0.22.1",
   "apscheduler>=3.10.0",
@@ -51,6 +52,12 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 ignore = ["E501", "W293"]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+langgraph-agent-kit = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

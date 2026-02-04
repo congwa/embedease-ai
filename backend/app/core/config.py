@@ -243,6 +243,12 @@ class Settings(BaseSettings):
     AGENT_CONTEXT_EDITING_EXCLUDE_TOOLS: str = "[]"  # 不清理的工具名列表（JSON 数组）
     AGENT_CONTEXT_EDITING_PLACEHOLDER: str = "[cleared]"  # 清理后的占位符
 
+    # ========== Agent SDK 切换配置 ==========
+    # SDK 切换开关（默认启用 SDK）
+    # True: 使用 langgraph-agent-kit SDK 实现
+    # False: 使用旧实现（legacy）
+    USE_AGENT_SDK: bool = True
+
     # ========== Supervisor 多 Agent 编排配置 ==========
     # 全局开关（关闭后所有 Supervisor Agent 回退到单 Agent 模式）
     SUPERVISOR_ENABLED: bool = False

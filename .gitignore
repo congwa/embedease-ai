@@ -107,3 +107,8 @@ backend/tests/test_page_parser.py
 .windsurfchatopen/
 .windsurfrules
 
+
+docs/agent-sdk-planning.md
+docs/backend-sdk-migration-planning.md
+docs/frontend-chat-sdk-migration-plan.md
+docs/frontend-chat-sdk-planning.md

@@ -6,20 +6,24 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { ChatEvent, ImageAttachment } from "@/types/chat";
 import { getConversationMessages } from "@/lib/api/conversations";
-import { streamChat, type StreamChatController } from "@/lib/api/chat";
+import { getApiBaseUrl } from "@/lib/api/client";
+import {
+  createChatStreamClient,
+  createTimelineManager,
+  type IChatStreamClient,
+  type ITimelineManager,
+} from "@/lib/chat-adapter";
 import {
   type TimelineState,
   type TimelineItem,
   createInitialState,
-  addUserMessage,
-  startAssistantTurn,
-  timelineReducer,
-  clearTurn,
-  endTurn,
   historyToTimeline,
 } from "@/lib/timeline-utils";
 import { useUserStore } from "./user-store";
 import { useConversationStore } from "./conversation-store";
+
+// 创建全局 Timeline 管理器实例
+const globalTimelineManager = createTimelineManager();
 
 interface ChatState {
   timelineState: TimelineState;
@@ -27,7 +31,7 @@ interface ChatState {
   isLoadingMore: boolean;
   error: string | null;
   isHumanMode: boolean;
-  streamController: StreamChatController | null;
+  _streamClient: IChatStreamClient | null;
   isStreaming: boolean;
   // 分页状态
   nextCursor: string | null;
@@ -57,12 +61,12 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()(
   subscribeWithSelector((set, get) => ({
-    timelineState: createInitialState(),
+    timelineState: globalTimelineManager.getState(),
     isLoading: false,
     isLoadingMore: false,
     error: null,
     isHumanMode: false,
-    streamController: null,
+    _streamClient: null,
     isStreaming: false,
     nextCursor: null,
     hasMore: false,
@@ -74,7 +78,8 @@ export const useChatStore = create<ChatState>()(
 
     loadMessages: async (conversationId: string) => {
       if (!conversationId) {
-        set({ timelineState: createInitialState(), nextCursor: null, hasMore: false });
+        globalTimelineManager.reset();
+        set({ timelineState: globalTimelineManager.getState(), nextCursor: null, hasMore: false });
         return;
       }
 
@@ -92,10 +97,12 @@ export const useChatStore = create<ChatState>()(
           content: msg.content,
           products: msg.products ? JSON.parse(msg.products) : undefined,
         }));
-        const newState = historyToTimeline(messages);
+        
+        // 使用 Timeline 管理器从历史初始化
+        globalTimelineManager.initFromHistory(messages);
 
         set({
-          timelineState: newState,
+          timelineState: globalTimelineManager.getState(),
           nextCursor: response.next_cursor,
           hasMore: response.has_more,
           isLoading: false,
@@ -128,18 +135,23 @@ export const useChatStore = create<ChatState>()(
         }));
         
         // 将旧消息添加到现有 timeline 的前面
-        const currentTimeline = get().timelineState.timeline;
+        // 注意：loadMoreMessages 使用直接操作 state，因为 Timeline 管理器目前不支持 prepend
+        const currentTimeline = globalTimelineManager.getState().timeline;
         const olderTimeline = historyToTimeline(olderMessages).timeline;
         
-        set((state) => ({
-          timelineState: {
-            ...state.timelineState,
-            timeline: [...olderTimeline, ...currentTimeline],
-          },
+        // 更新 Timeline 管理器状态
+        const newState = {
+          ...globalTimelineManager.getState(),
+          timeline: [...olderTimeline, ...currentTimeline],
+        };
+        globalTimelineManager.setState(newState);
+        
+        set({
+          timelineState: globalTimelineManager.getState(),
           nextCursor: response.next_cursor,
           hasMore: response.has_more,
           isLoadingMore: false,
-        }));
+        });
       } catch (err) {
         console.error("[ChatStore] 加载更多消息失败:", err);
         set({ isLoadingMore: false });
@@ -170,42 +182,35 @@ export const useChatStore = create<ChatState>()(
 
       const userMessageId = crypto.randomUUID();
       
-      // 如果是新会话，清空 timeline 并同时添加用户消息（原子操作）
+      // 如果是新会话，重置 Timeline 管理器
       if (isNewConversation) {
-        const freshState = createInitialState();
-        set({ timelineState: addUserMessage(freshState, userMessageId, content.trim(), images) });
-      } else {
-        set((state) => ({
-          timelineState: addUserMessage(state.timelineState, userMessageId, content.trim(), images),
-        }));
+        globalTimelineManager.reset();
       }
+      
+      // 使用 Timeline 管理器添加用户消息
+      globalTimelineManager.addUserMessage(userMessageId, content.trim(), images);
+      set({ timelineState: globalTimelineManager.getState() });
 
       const assistantTurnId = crypto.randomUUID();
-      set((state) => ({
-        timelineState: startAssistantTurn(state.timelineState, assistantTurnId),
-        isStreaming: true,
-      }));
+      globalTimelineManager.startAssistantTurn(assistantTurnId);
+      set({ timelineState: globalTimelineManager.getState(), isStreaming: true });
 
-      const controller: StreamChatController = { abort: () => {} };
-      set({ streamController: controller });
+      // 使用 Adapter 创建 SSE 客户端
+      const client = createChatStreamClient(getApiBaseUrl());
+      set({ _streamClient: client });
 
       try {
-        for await (const event of streamChat(
-          {
-            user_id: userId,
-            conversation_id: conversationId,
-            message: content.trim(),
-            images,
-          },
-          controller
-        )) {
+        for await (const event of client.stream({
+          user_id: userId,
+          conversation_id: conversationId,
+          message: content.trim(),
+          images,
+        })) {
           get()._handleEvent(event);
         }
 
-        set((state) => ({
-          timelineState: endTurn(state.timelineState),
-          isStreaming: false,
-        }));
+        globalTimelineManager.endTurn();
+        set({ timelineState: globalTimelineManager.getState(), isStreaming: false });
 
         if (get().timelineState.timeline.length <= 2) {
           const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
@@ -214,33 +219,32 @@ export const useChatStore = create<ChatState>()(
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
           set({ error: err.message });
-          set((state) => ({
-            timelineState: clearTurn(state.timelineState, assistantTurnId),
-          }));
+          globalTimelineManager.clearTurn(assistantTurnId);
+          set({ timelineState: globalTimelineManager.getState() });
         }
       } finally {
-        set({ streamController: null, isStreaming: false });
+        set({ _streamClient: null, isStreaming: false });
       }
     },
 
     clearMessages: () => {
+      globalTimelineManager.reset();
       set({
-        timelineState: createInitialState(),
+        timelineState: globalTimelineManager.getState(),
         error: null,
       });
     },
 
     abortStream: () => {
-      const controller = get().streamController;
-      if (controller) {
-        controller.abort();
+      const client = get()._streamClient;
+      if (client) {
+        client.abort();
         const currentTurnId = get().timelineState.activeTurn.turnId;
         if (currentTurnId) {
-          set((state) => ({
-            timelineState: clearTurn(state.timelineState, currentTurnId),
-          }));
+          globalTimelineManager.clearTurn(currentTurnId);
+          set({ timelineState: globalTimelineManager.getState() });
         }
-        set({ streamController: null, isStreaming: false });
+        set({ _streamClient: null, isStreaming: false });
       }
     },
 
@@ -249,8 +253,10 @@ export const useChatStore = create<ChatState>()(
     },
 
     _handleEvent: (event: ChatEvent) => {
+      // 使用 Timeline 管理器处理事件
+      globalTimelineManager.dispatch(event);
+      
       set((state) => {
-        let newTimelineState = timelineReducer(state.timelineState, event);
         let newHumanMode = state.isHumanMode;
         let newAgentId = state.currentAgentId;
         let newAgentName = state.currentAgentName;
@@ -274,7 +280,7 @@ export const useChatStore = create<ChatState>()(
         }
 
         return {
-          timelineState: newTimelineState,
+          timelineState: globalTimelineManager.getState(),
           isHumanMode: newHumanMode,
           currentAgentId: newAgentId,
           currentAgentName: newAgentName,
@@ -283,17 +289,18 @@ export const useChatStore = create<ChatState>()(
     },
 
     _reset: () => {
-      const controller = get().streamController;
-      if (controller) {
-        controller.abort();
+      const client = get()._streamClient;
+      if (client) {
+        client.abort();
       }
+      globalTimelineManager.reset();
       set({
-        timelineState: createInitialState(),
+        timelineState: globalTimelineManager.getState(),
         isLoading: false,
         isLoadingMore: false,
         error: null,
         isHumanMode: false,
-        streamController: null,
+        _streamClient: null,
         isStreaming: false,
         nextCursor: null,
         hasMore: false,
@@ -334,9 +341,8 @@ export const useChatStore = create<ChatState>()(
     // 人工模式：只添加用户消息到 timeline，不触发 AI 响应
     addUserMessageOnly: (content: string) => {
       const userMessageId = crypto.randomUUID();
-      set((state) => ({
-        timelineState: addUserMessage(state.timelineState, userMessageId, content.trim()),
-      }));
+      globalTimelineManager.addUserMessage(userMessageId, content.trim());
+      set({ timelineState: globalTimelineManager.getState() });
     },
   }))
 );

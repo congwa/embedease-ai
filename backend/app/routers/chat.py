@@ -20,8 +20,10 @@ from app.schemas.suggested_question import (
     SuggestedQuestionPublicItem,
     SuggestedQuestionsPublicResponse,
 )
-from app.services.agent.core.service import agent_service
-from app.services.chat_stream import ChatStreamOrchestrator
+from app.services.chat_stream_adapter import (
+    get_chat_stream_orchestrator,
+    get_agent_service,
+)
 from app.services.conversation import ConversationService
 from app.services.streaming.sse import encode_sse
 from app.services.support.handoff import HandoffService
@@ -175,7 +177,11 @@ async def chat(
         # 注意：db=None 让工具自行创建短事务，避免嵌套
         async with get_db_context() as stream_db:
             stream_conversation_service = ConversationService(stream_db)
-            orchestrator = ChatStreamOrchestrator(
+            # 获取适配后的服务
+            agent_service = get_agent_service()
+            OrchestratorClass = get_chat_stream_orchestrator()
+            
+            orchestrator = OrchestratorClass(
                 conversation_service=stream_conversation_service,
                 agent_service=agent_service,
                 conversation_id=request_data.conversation_id,
