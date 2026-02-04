@@ -117,12 +117,44 @@ git push
 python3 -c "import re; print(re.search(r'^version = \"([^\"]+)\"', open('backend/pyproject.toml').read(), re.MULTILINE).group(1))"
 ```
 
-2. 创建 Tag：
+2. 从 CHANGELOG.md 中提取本版本的变更摘要，生成 Tag 消息：
+   - 读取 CHANGELOG.md 中对应版本的内容
+   - 提取「核心亮点」和主要变更项
+   - 生成多行 Tag 消息
+
+3. 创建 Tag（使用详细消息）：
 ```bash
-git tag -a v{VERSION} -m "Release v{VERSION}"
+git tag -a v{VERSION} -m "Release v{VERSION}
+
+## 核心亮点
+{从 CHANGELOG 提取的核心亮点}
+
+## 主要变更
+- {Added 项目列表}
+- {Changed 项目列表}
+- {Fixed 项目列表}
+
+详细变更请查看 CHANGELOG.md"
 ```
 
-3. 推送 Tag：
+**示例：**
+```bash
+git tag -a v0.1.16 -m "Release v0.1.16
+
+## 核心亮点
+Chat SDK 模块化 + 客服工作台优化
+
+## 主要变更
+- @embedease/chat-sdk: 前端聊天核心 SDK
+- @embedease/chat-sdk-react: React Hooks 封装
+- langgraph-agent-kit: LangGraph Agent 流式处理工具包
+- 客服工作台重构为左右分栏布局
+- 推理模型 v1 架构
+
+详细变更请查看 CHANGELOG.md"
+```
+
+4. 推送 Tag：
 ```bash
 git push origin v{VERSION}
 ```
