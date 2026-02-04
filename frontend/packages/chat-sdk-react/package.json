@@ -1,6 +1,6 @@
 {
   "name": "@embedease/chat-sdk-react",
-  "version": "0.1.0",
+  "version": "0.1.15",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
