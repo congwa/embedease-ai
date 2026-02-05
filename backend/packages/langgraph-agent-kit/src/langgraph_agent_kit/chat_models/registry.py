@@ -1,16 +1,9 @@
 """模型创建工厂 - 支持 v0/v1 切换
 
-============================================================
-核心职责
-============================================================
-
+核心职责：
 - 提供 `create_chat_model` 函数：对外统一创建入口
 - 默认使用 v1 输出格式（output_version="v1"）
 - 支持通过 `use_v0=True` 切换到兼容层
-
-============================================================
-v1 vs v0
-============================================================
 
 v1（默认）：
 - 强制 output_version="v1"
@@ -21,35 +14,22 @@ v0（兼容层）：
 - 自定义 ReasoningChunk 结构
 - 通过 model.extract_reasoning() 提取推理
 - 需要显式传入 use_v0=True
-
-============================================================
-切换方式
-============================================================
-
-```python
-# 默认使用 v1
-model = create_chat_model(...)
-
-# 切换到 v0（紧急回退）
-model = create_chat_model(..., use_v0=True)
-```
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 
-from app.core.logging import get_logger
-
-logger = get_logger("chat_models.registry")
+logger = logging.getLogger(__name__)
 
 
 # v0 推理模型注册表（兼容层使用）
 V0_REASONING_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
     "siliconflow": (
-        "app.core.chat_models.v0.providers.reasoning_content",
+        "langgraph_agent_kit.chat_models.v0.providers.siliconflow",
         "SiliconFlowReasoningChatModel",
     ),
 }
@@ -57,7 +37,7 @@ V0_REASONING_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
 # v1 推理模型注册表（需要特殊处理 reasoning_content 的提供商）
 V1_REASONING_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
     "siliconflow": (
-        "app.core.chat_models.v1.providers.siliconflow",
+        "langgraph_agent_kit.chat_models.v1.providers.siliconflow",
         "SiliconFlowV1ChatModel",
     ),
 }
@@ -113,7 +93,7 @@ def _create_v1_model(
     对于需要特殊处理 reasoning_content 的提供商（如硅基流动），
     使用注册表中的专用模型类。
     """
-    from app.core.chat_models.v1.models import V1ChatModel
+    from langgraph_agent_kit.chat_models.v1.models import V1ChatModel
 
     provider_lower = provider.lower()
 
@@ -126,10 +106,7 @@ def _create_v1_model(
         model_class = getattr(module, class_name)
 
         logger.info(
-            "创建 v1 推理模型",
-            model=model,
-            provider=provider,
-            model_class=class_name,
+            f"创建 v1 推理模型: model={model}, provider={provider}, class={class_name}"
         )
         return model_class(
             model=model,
@@ -140,10 +117,7 @@ def _create_v1_model(
 
     # 标准 v1 模型
     logger.info(
-        "创建 v1 标准模型",
-        model=model,
-        provider=provider,
-        reasoning_output=is_reasoning_model,
+        f"创建 v1 标准模型: model={model}, provider={provider}, reasoning={is_reasoning_model}"
     )
 
     return V1ChatModel(
@@ -163,15 +137,13 @@ def _create_v0_model(
     **kwargs: Any,
 ) -> BaseChatModel:
     """创建 v0 模型（兼容层）"""
-    from app.core.chat_models.v0.base import StandardChatModel
+    from langgraph_agent_kit.chat_models.v0.base import StandardChatModel
 
     provider_lower = provider.lower()
 
     if not is_reasoning_model:
         logger.info(
-            "创建 v0 标准模型",
-            model=model,
-            provider=provider,
+            f"创建 v0 标准模型: model={model}, provider={provider}"
         )
         return StandardChatModel(
             model=model,
@@ -189,10 +161,7 @@ def _create_v0_model(
         model_class = getattr(module, class_name)
 
         logger.info(
-            "创建 v0 推理模型",
-            model=model,
-            provider=provider,
-            model_class=class_name,
+            f"创建 v0 推理模型: model={model}, provider={provider}, class={class_name}"
         )
         return model_class(
             model=model,
@@ -203,10 +172,7 @@ def _create_v0_model(
 
     # provider 不在注册表中，降级为标准模型
     logger.warning(
-        "v0 未找到推理模型实现，降级为标准模型",
-        model=model,
-        provider=provider,
-        registered_providers=list(V0_REASONING_MODEL_REGISTRY.keys()),
+        f"v0 未找到推理模型实现，降级为标准模型: model={model}, provider={provider}"
     )
     return StandardChatModel(
         model=model,

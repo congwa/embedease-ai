@@ -9,7 +9,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, AIMessageChunk
 
-from app.core.chat_models.v1.types import (
+from langgraph_agent_kit.streaming.content_types import (
     is_text_block,
     is_reasoning_block,
     is_tool_call_block,
@@ -130,8 +130,6 @@ def parse_content_blocks(message: AIMessage | AIMessageChunk) -> ParsedContent:
             if isinstance(block, str) and block:
                 result.text_blocks.append({"type": "text", "text": block})
             continue
-        
-        block_type = get_block_type(block)
         
         if is_text_block(block):
             result.text_blocks.append(block)

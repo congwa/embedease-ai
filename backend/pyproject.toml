@@ -1,6 +1,6 @@
 [project]
 name = "embedeaseai-agent"
-version = "0.1.16"
+version = "0.1.17"
 description = "商品推荐 Agent - 基于 LangChain v1.2"
 requires-python = ">=3.13"
 

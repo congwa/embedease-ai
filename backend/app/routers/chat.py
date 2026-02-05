@@ -25,7 +25,7 @@ from app.services.chat_stream_adapter import (
     get_agent_service,
 )
 from app.services.conversation import ConversationService
-from app.services.streaming.sse import encode_sse
+from langgraph_agent_kit import encode_sse
 from app.services.support.handoff import HandoffService
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])

@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.runtime import Runtime
 
 from app.services.agent.middleware.llm_call_sse import SSEMiddleware
-from app.services.streaming.context import ChatContext
+from langgraph_agent_kit import ChatContext
 
 
 @dataclass

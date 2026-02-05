@@ -18,7 +18,7 @@ from app.core.logging import get_logger
 from app.schemas.agent import AgentConfig
 from app.services.agent.middleware.registry import build_middlewares_for_agent
 from app.services.agent.tools.registry import get_tools_for_agent
-from app.services.streaming.context import ChatContext
+from langgraph_agent_kit import ChatContext
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

@@ -18,12 +18,10 @@ v1 改用 LangChain 标准 content_blocks，直接从 message.content_blocks
 按块类型分流处理。
 """
 
-from app.core.chat_models.v0.base import (
+from langgraph_agent_kit import (
     ReasoningChunk,
     BaseReasoningChatModel,
     StandardChatModel,
-)
-from app.core.chat_models.v0.providers.reasoning_content import (
     SiliconFlowReasoningChatModel,
 )
 

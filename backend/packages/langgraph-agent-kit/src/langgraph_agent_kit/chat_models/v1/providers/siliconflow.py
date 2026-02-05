@@ -11,12 +11,9 @@ from typing import Any
 
 from langchain_core.outputs import ChatGenerationChunk
 
-from app.core.chat_models.v1.models import V1ChatModel
-from app.core.logging import get_logger
+from langgraph_agent_kit.chat_models.v1.models import V1ChatModel
 
 __all__ = ["SiliconFlowV1ChatModel"]
-
-logger = get_logger("chat_models.v1.siliconflow")
 
 
 class SiliconFlowV1ChatModel(V1ChatModel):
@@ -43,14 +40,6 @@ class SiliconFlowV1ChatModel(V1ChatModel):
         1. 调用父类方法获取标准 generation_chunk
         2. 从原始 chunk 的 delta.reasoning_content 提取思考内容
         3. 将 reasoning block 注入到 message.content 中
-        
-        Args:
-            chunk: 原始 API 响应 chunk
-            default_chunk_class: 默认的 chunk 类
-            base_generation_info: 基础生成信息
-        
-        Returns:
-            处理后的 ChatGenerationChunk
         """
         # 调用父类方法获取标准转换结果
         generation_chunk = super()._convert_chunk_to_generation_chunk(
@@ -102,12 +91,6 @@ class SiliconFlowV1ChatModel(V1ChatModel):
         """从原始 chunk 中提取 reasoning_content
         
         硅基流动的推理内容位于 choices[0].delta.reasoning_content
-        
-        Args:
-            chunk: 原始 API 响应 chunk
-        
-        Returns:
-            推理内容字符串，或 None
         """
         if not isinstance(chunk, dict):
             return None

@@ -8,8 +8,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.agent.streams.response_handler import (
-    StreamingResponseHandler,
+from langgraph_agent_kit import StreamingResponseHandler
+from app.services.agent.streams.business_handler import (
+    BusinessResponseHandler,
     normalize_products_payload,
 )
 
@@ -92,7 +93,7 @@ class TestStreamingResponseHandlerInit:
         assert handler.emitter is emitter
         assert handler.full_content == ""
         assert handler.full_reasoning == ""
-        assert handler.products_data is None
+        # SDK 版本没有 products_data，使用 BusinessResponseHandler 测试
 
     def test_init_with_conversation_id(self):
         """测试带会话 ID 初始化"""
@@ -105,14 +106,14 @@ class TestStreamingResponseHandlerInit:
 
 
 class TestStreamingResponseHandlerProducts:
-    """测试商品数据收集和推送逻辑"""
+    """测试商品数据收集和推送逻辑（使用 BusinessResponseHandler）"""
 
     @pytest.fixture
     def handler(self):
         """创建测试用的 handler"""
         emitter = MagicMock()
         emitter.aemit = AsyncMock()
-        return StreamingResponseHandler(
+        return BusinessResponseHandler(
             emitter=emitter,
             conversation_id="test-conv",
         )

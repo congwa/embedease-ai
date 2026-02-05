@@ -10,7 +10,7 @@ from app.services.skill.registry import SkillRegistry
 
 if TYPE_CHECKING:
     from app.models.skill import Skill
-    from app.services.streaming.emitter import DomainEmitter
+    from langgraph_agent_kit import DomainEmitter
 
 logger = get_logger("skill.injector")
 

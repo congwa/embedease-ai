@@ -37,7 +37,7 @@ print(parsed.reasoning)  # 合并后的推理
 ```
 """
 
-from app.core.chat_models.v1.types import (
+from langgraph_agent_kit import (
     ContentBlock,
     TextContentBlock,
     ReasoningContentBlock,
@@ -45,15 +45,12 @@ from app.core.chat_models.v1.types import (
     is_text_block,
     is_reasoning_block,
     is_tool_call_block,
-)
-from app.core.chat_models.v1.parser import (
     ParsedContent,
     parse_content_blocks,
     parse_content_blocks_from_chunk,
-)
-from app.core.chat_models.v1.models import (
     V1ChatModel,
     is_v1_model,
+    SiliconFlowV1ChatModel,
 )
 
 __all__ = [
@@ -72,6 +69,7 @@ __all__ = [
     "parse_content_blocks_from_chunk",
     # 模型
     "V1ChatModel",
+    "SiliconFlowV1ChatModel",
     # 版本检测
     "is_v1_model",
 ]

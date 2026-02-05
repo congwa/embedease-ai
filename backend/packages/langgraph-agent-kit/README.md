@@ -10,7 +10,11 @@
 - [API 参考](#api-参考)
   - [ChatStreamKit](#chatstreamkit)
   - [事件系统](#事件系统)
+  - [Payload TypedDict](#payload-typeddict)
   - [上下文管理](#上下文管理)
+  - [Chat Models](#chat-models)
+  - [Content Parser](#content-parser)
+  - [StreamingResponseHandler](#streamingresponsehandler)
   - [中间件](#中间件)
   - [工具](#工具)
   - [SSE 编码](#sse-编码)
@@ -299,6 +303,69 @@ event = make_event(
 
 ---
 
+### Payload TypedDict
+
+SDK 提供类型安全的 Payload 定义，支持 IDE 自动补全和类型检查。
+
+```python
+from langgraph_agent_kit import (
+    MetaStartPayload,
+    TextDeltaPayload,
+    ToolStartPayload,
+    ToolEndPayload,
+    LlmCallStartPayload,
+    LlmCallEndPayload,
+    ErrorPayload,
+    MemoryExtractionStartPayload,
+    MemoryExtractionCompletePayload,
+    MemoryProfileUpdatedPayload,
+    TodoItem,
+    TodosPayload,
+    ContextSummarizedPayload,
+    ContextTrimmedPayload,
+    AgentRoutedPayload,
+    AgentHandoffPayload,
+    AgentCompletePayload,
+    SkillActivatedPayload,
+    SkillLoadedPayload,
+    ModelRetryStartPayload,
+    ModelRetryFailedPayload,
+    ModelFallbackPayload,
+    ModelCallLimitExceededPayload,
+    ContextEditedPayload,
+)
+```
+
+#### 常用 Payload 类型
+
+| Payload | 字段 | 说明 |
+|---------|------|------|
+| `MetaStartPayload` | `user_message_id`, `assistant_message_id` | 流开始 |
+| `TextDeltaPayload` | `delta` | 文本增量 |
+| `ToolStartPayload` | `tool_call_id`, `name`, `input?` | 工具开始 |
+| `ToolEndPayload` | `tool_call_id`, `name`, `status?`, `count?`, `error?` | 工具结束 |
+| `LlmCallStartPayload` | `message_count`, `llm_call_id?` | LLM 调用开始 |
+| `LlmCallEndPayload` | `elapsed_ms`, `error?` | LLM 调用结束 |
+| `ErrorPayload` | `message`, `code?`, `detail?` | 错误信息 |
+| `TodosPayload` | `todos: list[TodoItem]` | TODO 列表 |
+| `ContextSummarizedPayload` | `messages_before`, `messages_after` | 上下文压缩 |
+
+#### 使用示例
+
+```python
+from langgraph_agent_kit import ToolEndPayload
+
+# 类型安全的 payload 构造
+payload: ToolEndPayload = {
+    "tool_call_id": "tc_123",
+    "name": "search",
+    "status": "success",
+    "count": 10,
+}
+```
+
+---
+
 ### 上下文管理
 
 #### ChatContext
@@ -337,6 +404,219 @@ emitter.emit("tool.progress", {"percent": 50})
 
 # 异步发射（严格顺序）
 await emitter.aemit("assistant.delta", {"delta": "你好"})
+```
+
+---
+
+### Chat Models
+
+SDK 提供统一的聊天模型基类和工厂函数，支持 v0/v1 双版本切换。
+
+#### 版本说明
+
+| 版本 | 说明 | 推理内容处理方式 |
+|------|------|------------------|
+| **v1（推荐）** | 使用 LangChain 标准 `content_blocks` | 直接从 `message.content` 按块类型分流 |
+| **v0（兼容）** | 使用自定义 `ReasoningChunk` 结构 | 通过 `model.extract_reasoning()` 提取 |
+
+#### create_chat_model()
+
+统一的模型创建入口。
+
+```python
+from langgraph_agent_kit import create_chat_model
+
+# 创建 v1 模型（默认）
+model = create_chat_model(
+    model="Qwen/Qwen3-8B",
+    base_url="https://api.siliconflow.cn/v1",
+    api_key="sk-xxx",
+    provider="siliconflow",
+    temperature=0.7,
+)
+
+# 创建 v0 兼容模型
+model_v0 = create_chat_model(
+    model="Qwen/Qwen3-8B",
+    base_url="https://api.siliconflow.cn/v1",
+    api_key="sk-xxx",
+    provider="siliconflow",
+    use_v0=True,  # 切换到 v0 兼容层
+)
+```
+
+#### V1ChatModel
+
+强制使用 LangChain v1 输出格式的模型基类。
+
+```python
+from langgraph_agent_kit import V1ChatModel, is_v1_model
+
+# 直接使用
+model = V1ChatModel(
+    model="gpt-4o-mini",
+    openai_api_base="https://api.openai.com/v1",
+    openai_api_key="sk-xxx",
+)
+
+# 版本检测
+if is_v1_model(model):
+    # 使用 content_blocks 解析
+    parsed = parse_content_blocks(message)
+```
+
+#### 提供商扩展
+
+SDK 内置了 SiliconFlow 的推理模型支持：
+
+```python
+from langgraph_agent_kit import (
+    SiliconFlowV1ChatModel,       # v1 版本
+    SiliconFlowReasoningChatModel, # v0 版本
+)
+
+# SiliconFlow 推理模型（自动处理 reasoning_content）
+model = SiliconFlowV1ChatModel(
+    model="Qwen/QwQ-32B",
+    openai_api_base="https://api.siliconflow.cn/v1",
+    openai_api_key="sk-xxx",
+)
+```
+
+#### 自定义提供商
+
+通过注册表扩展其他提供商：
+
+```python
+from langgraph_agent_kit import V1_REASONING_MODEL_REGISTRY
+
+# 注册新提供商
+V1_REASONING_MODEL_REGISTRY["deepseek"] = (
+    "my_package.providers.deepseek",
+    "DeepSeekV1ChatModel",
+)
+```
+
+---
+
+### Content Parser
+
+解析 LangChain v1 content_blocks 的工具函数。
+
+#### parse_content_blocks()
+
+```python
+from langgraph_agent_kit import (
+    parse_content_blocks,
+    ParsedContent,
+    is_text_block,
+    is_reasoning_block,
+    is_tool_call_block,
+)
+
+# 解析消息内容
+parsed: ParsedContent = parse_content_blocks(message)
+
+print(parsed.text)       # 合并后的文本
+print(parsed.reasoning)  # 合并后的推理内容
+print(parsed.tool_calls) # 工具调用列表
+```
+
+#### 类型守卫
+
+```python
+from langgraph_agent_kit import (
+    ContentBlock,
+    TextContentBlock,
+    ReasoningContentBlock,
+    ToolCallBlock,
+    is_text_block,
+    is_reasoning_block,
+    is_tool_call_block,
+    is_tool_call_chunk_block,
+    is_image_block,
+    get_block_type,
+)
+
+# 按块类型分流处理
+for block in message.content:
+    if is_text_block(block):
+        print(f"文本: {block['text']}")
+    elif is_reasoning_block(block):
+        print(f"推理: {block['reasoning']}")
+    elif is_tool_call_block(block):
+        print(f"工具调用: {block['name']}")
+```
+
+#### ParsedContent 结构
+
+```python
+@dataclass
+class ParsedContent:
+    text: str              # 合并后的文本
+    reasoning: str         # 合并后的推理
+    tool_calls: list[dict] # 工具调用列表
+    raw_blocks: list[dict] # 原始块列表
+```
+
+---
+
+### StreamingResponseHandler
+
+处理 LangGraph 流式输出的响应处理器，支持 v0/v1 双模式。
+
+```python
+from langgraph_agent_kit import StreamingResponseHandler
+
+# 创建处理器
+handler = StreamingResponseHandler(
+    emitter=emitter,
+    conversation_id="conv_123",
+    model=model,    # 可选，用于版本检测
+    mode="v1",      # "v1" | "v0" | "auto"
+)
+
+# 处理流式消息
+async for msg in agent.astream(...):
+    await handler.handle_message(msg)
+
+# 获取最终结果
+result = await handler.finalize()
+print(result.full_content)
+print(result.full_reasoning)
+```
+
+#### 自动版本检测
+
+```python
+# mode="auto" 时根据 model 自动检测版本
+handler = StreamingResponseHandler(
+    emitter=emitter,
+    model=model,
+    mode="auto",  # 如果 is_v1_model(model) 为 True 则使用 v1
+)
+```
+
+#### 继承扩展
+
+```python
+from langgraph_agent_kit import StreamingResponseHandler
+
+class MyHandler(StreamingResponseHandler):
+    """添加商品数据处理"""
+    
+    products_data: list[dict] | None = None
+    
+    async def _handle_tool_message(self, msg):
+        await super()._handle_tool_message(msg)
+        # 提取商品数据
+        self.products_data = extract_products(msg.content)
+    
+    async def finalize(self):
+        result = await super().finalize()
+        if self.products_data:
+            await self.emitter.aemit("assistant.products", {"items": self.products_data})
+        return result
 ```
 
 ---

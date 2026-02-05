@@ -300,7 +300,7 @@ wheels = [
 
 [[package]]
 name = "embedeaseai-agent"
-version = "0.1.15"
+version = "0.1.16"
 source = { virtual = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -742,7 +742,7 @@ wheels = [
 
 [[package]]
 name = "langgraph-agent-kit"
-version = "0.1.0"
+version = "0.1.16"
 source = { editable = "packages/langgraph-agent-kit" }
 dependencies = [
     { name = "langchain-core" },

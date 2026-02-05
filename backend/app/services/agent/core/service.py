@@ -33,8 +33,8 @@ from app.schemas.agent import AgentConfig
 from app.schemas.events import StreamEventType
 from app.services.agent.core.config import AgentConfigLoader, get_or_create_default_agent
 from app.services.agent.core.factory import build_agent
-from app.services.agent.streams import StreamingResponseHandler
-from app.services.streaming.context import ChatContext
+from app.services.agent.streams import BusinessResponseHandler
+from langgraph_agent_kit import ChatContext
 
 logger = get_logger("agent.service")
 
@@ -303,10 +303,9 @@ class AgentService:
                 pass
             return
 
-        # 使用流响应处理器
-        handler = StreamingResponseHandler(
+        # 使用业务扩展响应处理器
+        handler = BusinessResponseHandler(
             emitter=emitter,
-            model=model,
             conversation_id=conversation_id,
         )
 

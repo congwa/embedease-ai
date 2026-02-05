@@ -46,7 +46,7 @@ print(parsed.reasoning)  # 合并后的推理
 
 from __future__ import annotations
 
-from app.core.chat_models.v1 import (
+from langgraph_agent_kit import (
     V1ChatModel,
     ParsedContent,
     parse_content_blocks,
@@ -59,8 +59,8 @@ from app.core.chat_models.v1 import (
     TextContentBlock,
     ReasoningContentBlock,
     ToolCallBlock,
+    create_chat_model,
 )
-from app.core.chat_models.registry import create_chat_model
 
 __all__ = [
     # 统一入口

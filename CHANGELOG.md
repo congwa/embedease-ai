@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.17] - 2025-02-05
+
+### 核心亮点
+
+本版本完成 **SDK 完整迁移**，将 streaming 组件、chat_models（v0/v1）、Payload TypedDict 全部迁移到 `langgraph-agent-kit` SDK，简化项目结构，增强代码复用性。
+
+### Added
+
+- **langgraph-agent-kit 增强**
+  - `chat_models/` - v0/v1 双版本模型基类和 `create_chat_model()` 工厂
+  - `SiliconFlowV1ChatModel` / `SiliconFlowReasoningChatModel` - 硅基流动推理模型支持
+  - 24 个 Payload TypedDict 定义，支持 IDE 自动补全和类型检查
+  - `parse_content_blocks()` / `ParsedContent` - content_blocks 解析工具
+  - 类型守卫函数：`is_text_block`, `is_reasoning_block`, `is_tool_call_block` 等
+
+### Changed
+
+- **项目结构简化**：删除 12 个重复文件，统一使用 SDK 版本
+- **导入路径更新**：10+ 文件更新为从 SDK 导入
+- **BusinessResponseHandler**：继承 SDK 的 `StreamingResponseHandler`，添加商品数据处理
+- **README.md 更新**：补充 Chat Models、Content Parser、Payload TypedDict 文档
+
+### Fixed
+
+- 测试文件导入路径修复
+
+---
+
 ## [0.1.16] - 2025-01-31
 
 ### 核心亮点

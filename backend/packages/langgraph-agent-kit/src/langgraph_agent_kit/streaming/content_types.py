@@ -1,23 +1,37 @@
 """v1 内容块类型定义
 
-重导出 LangChain 标准类型，并提供类型守卫函数。
+提供 LangChain v1 content_blocks 的类型守卫函数。
 """
 
 from typing import Any, TypeGuard
 
-from langchain_core.messages.content import (
-    ContentBlock,
-    TextContentBlock,
-    ReasoningContentBlock,
-    ToolCall as ToolCallBlock,
-    ToolCallChunk,
-    InvalidToolCall,
-    ImageContentBlock,
-    AudioContentBlock,
-    VideoContentBlock,
-    FileContentBlock,
-    NonStandardContentBlock,
-)
+try:
+    from langchain_core.messages.content import (
+        ContentBlock,
+        TextContentBlock,
+        ReasoningContentBlock,
+        ToolCall as ToolCallBlock,
+        ToolCallChunk,
+        InvalidToolCall,
+        ImageContentBlock,
+        AudioContentBlock,
+        VideoContentBlock,
+        FileContentBlock,
+        NonStandardContentBlock,
+    )
+except ImportError:
+    # 兼容旧版本 langchain_core
+    ContentBlock = dict
+    TextContentBlock = dict
+    ReasoningContentBlock = dict
+    ToolCallBlock = dict
+    ToolCallChunk = dict
+    InvalidToolCall = dict
+    ImageContentBlock = dict
+    AudioContentBlock = dict
+    VideoContentBlock = dict
+    FileContentBlock = dict
+    NonStandardContentBlock = dict
 
 __all__ = [
     # LangChain 标准类型

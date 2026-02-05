@@ -1,6 +1,6 @@
 """推理模型基类定义（v0 兼容层 - 已废弃）
 
-⚠️ 本模块已废弃，请使用 app.core.chat_models.v1
+⚠️ 本模块已废弃，请使用 v1 模块
 
 ============================================================
 核心设计理念
@@ -29,27 +29,13 @@ class ReasoningChunk:
 ```
 
 ============================================================
-LangChain 两条 streaming 路径（供 provider 子类参考）
-============================================================
-
-路径 A：Chat Completions streaming
-- 原始结构：`chunk["choices"][0]["delta"]["reasoning_content"]`（SiliconFlow）
-- 原始结构：`chunk["choices"][0]["delta"]["reasoning"]`（OpenAI）
-- LangChain 不会自动放入 additional_kwargs
-
-路径 B：Responses API streaming
-- 原始结构：`message.content = [{"type": "reasoning", "summary": [...]}]`
-- LangChain 会把 reasoning 作为 content blocks
-
-============================================================
 扩展方式
 ============================================================
 
 新增平台只需：
-1. 在 `providers/` 下新建文件
-2. 继承 `BaseReasoningChatModel`
-3. 覆盖 `_normalize_reasoning_from_chunk(chunk, message)` 方法
-4. 在 `registry.py` 中注册
+1. 继承 `BaseReasoningChatModel`
+2. 覆盖 `_normalize_reasoning_from_chunk(chunk, message)` 方法
+3. 实现 `provider_name` 属性
 
 Agent 层代码无需任何修改。
 """
@@ -119,21 +105,6 @@ class BaseReasoningChatModel(ChatOpenAI, ABC):
         
         Returns:
             ReasoningChunk 或 None（无推理内容时返回 None）
-        
-        示例（SiliconFlow）：
-            ```python
-            def _normalize_reasoning_from_chunk(self, chunk, message):
-                if chunk:
-                    delta = chunk.get("choices", [{}])[0].get("delta", {})
-                    reasoning = delta.get("reasoning_content")
-                    if reasoning:
-                        return ReasoningChunk(
-                            delta=reasoning,
-                            provider="siliconflow",
-                            source="chunk.delta.reasoning_content",
-                        )
-                return None
-            ```
         """
         ...
 
@@ -151,13 +122,6 @@ class BaseReasoningChatModel(ChatOpenAI, ABC):
         
         Returns:
             ReasoningChunk 或 None
-        
-        使用示例（Agent 层）：
-            ```python
-            reasoning = model.extract_reasoning(msg, raw_chunk=chunk)
-            if reasoning:
-                await emitter.emit("reasoning_delta", {"delta": reasoning.delta})
-            ```
         """
         if message is None:
             return None
