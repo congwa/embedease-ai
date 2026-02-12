@@ -5,58 +5,54 @@ description: Handle README.md image references for GitHub and Gitee platforms. U
 
 # Readme Images
 
-根据目标平台（GitHub / Gitee）处理 README.md 中的图片引用方式。
+README.md 中的图片引用规范。
 
-## 规则
+## 核心规则
 
-### GitHub
-
-将项目中的图片上传到七牛云图床，在 README.md 中使用上传后的 URL。
-
-1. 使用 `qiniu-upload` skill 上传图片
-2. 用返回的 URL 替换本地路径
+**所有图片统一使用相对路径**，GitHub 和 Gitee 共用同一份 README，无需区分平台、无需转换。
 
 ```markdown
-![Cursor界面](http://qiniu.biomed168.com/pic/cursor.png)
-![参考图](http://qiniu.biomed168.com/pic/image.png)
+![功能截图](./docs/screenshots/feature.avif)
+![架构图](./images/architecture.png)
 ```
 
-### Gitee
+## 工作原理
 
-直接使用项目中的本地相对路径引用图片。
+- **GitHub**：自动解析为 `https://raw.githubusercontent.com/user/repo/branch/path`
+- **Gitee**：自动解析为 `https://gitee.com/user/repo/raw/branch/path`
+
+两个平台都官方支持相对路径，零外部依赖，最稳定。
+
+## 图片目录规范
+
+```
+project/
+├── README.md
+├── docs/
+│   └── screenshots/       # 推荐：功能截图
+│       ├── feature.avif
+│       └── demo.webp
+└── images/                # 备选：通用图片
+    └── logo.png
+```
+
+## 必须遵守
+
+1. **图片文件必须提交到仓库** — 两个平台都需要文件存在
+2. **使用相对路径** — 以 `./` 开头或直接写相对路径
+3. **不使用绝对 URL** — 不用 CDN、不用 raw.githubusercontent.com、不用七牛云
+4. **图片需压缩** — 遵循 `image-compress` skill 规则，确保图片 < 100KB
+5. **推荐格式** — avif > webp > png > jpg
+
+## 禁止的写法
 
 ```markdown
-![Cursor界面](cursor.png)
-![参考图](image.png)
+<!-- ❌ 七牛云 URL -->
+![图片](http://qiniu.biomed168.com/pic/screenshot.png)
+
+<!-- ❌ GitHub Raw URL -->
+![图片](https://raw.githubusercontent.com/user/repo/main/images/pic.png)
+
+<!-- ❌ jsdelivr CDN -->
+![图片](https://cdn.jsdelivr.net/gh/user/repo@main/images/pic.png)
 ```
-
-## 工作流
-
-### 为 GitHub 生成 README
-
-1. 找到 README.md 中所有图片引用 `![alt](path)`
-2. 收集所有本地图片文件路径
-3. 调用 `qiniu-upload` skill 的 `scripts/upload.py` 批量上传
-4. 将 README.md 中的本地路径替换为七牛云 URL
-
-### 为 Gitee 生成 README
-
-1. 找到 README.md 中所有图片引用 `![alt](url_or_path)`
-2. 如果包含七牛云 URL，提取文件名部分
-3. 将 URL 替换为本地相对路径（仅文件名）
-
-### 同时维护两个平台
-
-使用 `scripts/convert.py` 在两种格式之间转换：
-
-```bash
-# 本地路径 → 七牛云 URL（用于 GitHub）
-python3 scripts/convert.py --to github README.md
-
-# 七牛云 URL → 本地路径（用于 Gitee）
-python3 scripts/convert.py --to gitee README.md
-```
-
-## scripts/
-
-- **convert.py** — README 图片路径转换脚本，支持 GitHub/Gitee 双向转换

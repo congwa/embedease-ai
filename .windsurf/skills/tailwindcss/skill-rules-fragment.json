@@ -1,0 +1,39 @@
+{
+  "tailwindcss": {
+    "type": "domain",
+    "enforcement": "suggest",
+    "priority": "medium",
+    "promptTriggers": {
+      "keywords": [
+        "tailwind",
+        "tailwindcss",
+        "utility classes",
+        "@apply",
+        "tailwind.config",
+        "dark mode"
+      ],
+      "intentPatterns": [
+        "style.*with.*tailwind",
+        "add.*tailwind.*classes",
+        "configure.*tailwind",
+        "setup.*tailwind",
+        "customize.*theme",
+        "add.*dark.*mode"
+      ]
+    },
+    "fileTriggers": {
+      "pathPatterns": [
+        "**/tailwind.config.js",
+        "**/tailwind.config.ts",
+        "**/globals.css",
+        "**/*.css"
+      ],
+      "contentPatterns": [
+        "className=['\"].*flex",
+        "className=['\"].*grid",
+        "className=['\"].*bg-",
+        "@apply"
+      ]
+    }
+  }
+}
