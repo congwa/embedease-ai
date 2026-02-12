@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![演示动图](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/agent0.gif)
+![演示动图](docs/agent0.gif)
 
 **一款开箱即用的 AI 智能客服系统，帮助用户快速找到心仪商品**
 
@@ -12,15 +12,15 @@
 
 | 页面 | 截图 |
 |------|------|
-| 产品落地页 | ![落地页](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/landing-page.avif) |
-| 用户聊天界面 | ![聊天界面](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/chat-interface.avif) |
-| 管理后台仪表盘 | ![仪表盘](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/admin-dashboard.avif) |
-| 快速配置向导 | ![快速配置](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/quick-setup.avif) |
-| 单 Agent 模式 | ![单 Agent](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/single-mode.avif) |
-| 编排模式 | ![编排模式](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/multi-mode.avif) |
-| 技能管理 | ![技能管理](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/skills-list.avif) |
-| 系统设置 | ![系统设置](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/settings.avif) |
-| 客服工作台 | ![客服工作台](https://cdn.jsdelivr.net/gh/congwa/embedease-ai@main/docs/screenshots/support-workbench.avif) |
+| 产品落地页 | ![落地页](docs/screenshots/landing-page.avif) |
+| 用户聊天界面 | ![聊天界面](docs/screenshots/chat-interface.avif) |
+| 管理后台仪表盘 | ![仪表盘](docs/screenshots/admin-dashboard.avif) |
+| 快速配置向导 | ![快速配置](docs/screenshots/quick-setup.avif) |
+| 单 Agent 模式 | ![单 Agent](docs/screenshots/single-mode.avif) |
+| 编排模式 | ![编排模式](docs/screenshots/multi-mode.avif) |
+| 技能管理 | ![技能管理](docs/screenshots/skills-list.avif) |
+| 系统设置 | ![系统设置](docs/screenshots/settings.avif) |
+| 客服工作台 | ![客服工作台](docs/screenshots/support-workbench.avif) |
 
 <div align="center">
 

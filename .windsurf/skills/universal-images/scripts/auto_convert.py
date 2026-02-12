@@ -78,9 +78,8 @@ class UniversalImageConverter:
         
         for match in re.finditer(pattern, content):
             alt_text, path = match.groups()
-            # 只处理本地图片和GitHub Raw URL，跳过其他外部URL
-            if (not path.startswith(('http://', 'https://')) or 
-                'raw.githubusercontent.com' in path):
+            # 处理所有图片引用，除了badge等外部服务
+            if not any(service in path for service in ['img.shields.io', 'github.com/LuanRoger', 'github.com/actions']):
                 images.append((match.group(0), path))
         
         return images
@@ -119,10 +118,25 @@ class UniversalImageConverter:
     
     def convert_to_relative(self, image_path: str) -> str:
         """转换为相对路径"""
-        # 如果是URL，提取文件名
+        # 如果是GitHub Raw URL，提取相对路径
+        if 'raw.githubusercontent.com' in image_path:
+            # https://raw.githubusercontent.com/user/repo/main/path -> path
+            parts = image_path.split('/main/')
+            if len(parts) > 1:
+                return parts[1]
+        
+        # 如果是jsdelivr CDN URL，提取相对路径
+        if 'cdn.jsdelivr.net/gh' in image_path:
+            # https://cdn.jsdelivr.net/gh/user/repo@main/path -> path
+            parts = image_path.split('@main/')
+            if len(parts) > 1:
+                return parts[1]
+        
+        # 如果是其他外部URL，提取文件名
         if image_path.startswith(('http://', 'https://')):
             filename = image_path.split('/')[-1]
             return filename
+        
         return image_path
     
     def process_file(self, file_path: Path, platform: str, dry_run: bool = False) -> bool:
