@@ -33,8 +33,9 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "siliconflow"  # Embedding 提供商
     EMBEDDING_API_KEY: str | None = None  # 如为空则使用 LLM_API_KEY
     EMBEDDING_BASE_URL: str | None = None  # 如为空则使用 LLM_BASE_URL
-    EMBEDDING_MODEL: str = "Qwen/Qwen3-Embedding-8B"  # 嵌入模型 ID
-    EMBEDDING_DIMENSION: int = 4096  # 嵌入维度
+    EMBEDDING_MODEL: str = "Qwen/Qwen3-Embedding-4B"  # 嵌入模型 ID（SiliconFlow）
+    # Qwen3-Embedding-4B 支持的最大维度为 2560（8B 才支持 4096）
+    EMBEDDING_DIMENSION: int = 2560
 
     # ========== Rerank 配置 ==========
     RERANK_ENABLED: bool = False  # 是否启用 Rerank 重排序

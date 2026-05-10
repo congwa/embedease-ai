@@ -160,8 +160,8 @@ configure_llm() {
             LLM_PROVIDER="siliconflow"
             LLM_BASE_URL="https://api.siliconflow.cn/v1"
             LLM_CHAT_MODEL="moonshotai/Kimi-K2-Thinking"
-            EMBEDDING_MODEL="Qwen/Qwen3-Embedding-8B"
-            EMBEDDING_DIMENSION="4096"
+            EMBEDDING_MODEL="Qwen/Qwen3-Embedding-4B"
+            EMBEDDING_DIMENSION="2560"
             RERANK_MODEL="Qwen/Qwen3-Reranker-8B"
             
             print_info "请访问 https://cloud.siliconflow.cn 获取 API Key"

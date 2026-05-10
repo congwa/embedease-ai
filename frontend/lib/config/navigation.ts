@@ -50,6 +50,15 @@ export interface NavConfig {
 }
 
 /**
+ * 是否在 Agent 控制台展示「商品数据」入口（全局商品库）
+ *
+ * 自定义助手也可维护/使用同一商品库，故与「商品推荐」类型一并展示。
+ */
+export function agentHasProductCatalogNav(agentType: string): boolean {
+  return agentType === "product" || agentType === "custom";
+}
+
+/**
  * 单 Agent 模式 - 主菜单
  */
 export const singleModeMainNav: NavItem[] = [
@@ -95,7 +104,7 @@ export const getSingleAgentConsoleNav = (agentId: string, agentType: string): Na
   ];
 
   // 根据 Agent 类型添加特定菜单
-  if (agentType === "product") {
+  if (agentHasProductCatalogNav(agentType)) {
     baseItems.push({
       title: "商品数据",
       href: "/admin/products",
@@ -180,6 +189,15 @@ export const getMultiAgentConsoleNav = (agentId: string, agentType: string): Nav
       exact: true,
     },
   ];
+
+  if (agentHasProductCatalogNav(agentType)) {
+    baseItems.push({
+      title: "商品数据",
+      href: "/admin/products",
+      icon: Package,
+      exact: true,
+    });
+  }
 
   if (agentType === "faq") {
     baseItems.push({

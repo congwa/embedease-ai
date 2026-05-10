@@ -28,8 +28,8 @@ class TestGetProductPurchaseLinksOutput:
         result = {
             "product_id": "P001",
             "links": [
-                {"platform": "京东", "url": "https://jd.com/P001"},
-                {"platform": "淘宝", "url": "https://taobao.com/P001"},
+                {"platform": "京东", "url": "http://localhost:3000/products/P001"},
+                {"platform": "淘宝", "url": "http://localhost:3000/products/P001?channel=taobao"},
             ],
         }
         assert len(result["links"]) == 2
@@ -38,7 +38,7 @@ class TestGetProductPurchaseLinksOutput:
         """测试带价格的链接"""
         link = {
             "platform": "京东",
-            "url": "https://jd.com/P001",
+            "url": "http://localhost:3000/products/P001",
             "price": 2999,
             "in_stock": True,
         }
@@ -48,7 +48,7 @@ class TestGetProductPurchaseLinksOutput:
     def test_output_json_serializable(self):
         """测试输出可 JSON 序列化"""
         result = {
-            "links": [{"platform": "京东", "url": "https://jd.com"}],
+            "links": [{"platform": "京东", "url": "http://localhost:3000/products/P001"}],
         }
         json_str = json.dumps(result, ensure_ascii=False)
         assert "京东" in json_str
@@ -78,7 +78,7 @@ class TestPurchaseLinksEdgeCases:
         """测试缺货"""
         link = {
             "platform": "京东",
-            "url": "https://jd.com/P001",
+            "url": "http://localhost:3000/products/P001",
             "in_stock": False,
             "restock_date": "2024-02-01",
         }
@@ -87,14 +87,17 @@ class TestPurchaseLinksEdgeCases:
     def test_multiple_platforms(self):
         """测试多平台"""
         platforms = ["京东", "淘宝", "拼多多", "苏宁", "亚马逊"]
-        links = [{"platform": p, "url": f"https://{p}.com"} for p in platforms]
+        links = [
+            {"platform": p, "url": f"http://localhost:3000/products/demo-{i}"}
+            for i, p in enumerate(platforms)
+        ]
         assert len(links) == 5
 
     def test_affiliate_links(self):
         """测试联盟链接"""
         link = {
             "platform": "京东",
-            "url": "https://jd.com/P001?affiliate=abc123",
+            "url": "http://localhost:3000/products/P001?affiliate=abc123",
             "is_affiliate": True,
         }
         assert "affiliate" in link["url"]

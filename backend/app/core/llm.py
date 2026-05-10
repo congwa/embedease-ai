@@ -208,4 +208,5 @@ def get_embeddings() -> OpenAIEmbeddings:
         model=settings.EMBEDDING_MODEL,
         base_url=settings.effective_embedding_base_url,
         api_key=settings.effective_embedding_api_key,
+        dimensions=settings.EMBEDDING_DIMENSION,
     )

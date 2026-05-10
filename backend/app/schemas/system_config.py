@@ -18,8 +18,8 @@ class EmbeddingConfigBase(BaseModel):
     provider: str = Field(default="siliconflow", description="Embedding 提供商")
     api_key: str | None = Field(default=None, description="API Key（留空使用 LLM 的）")
     base_url: str | None = Field(default=None, description="Base URL（留空使用 LLM 的）")
-    model: str = Field(default="Qwen/Qwen3-Embedding-8B", description="Embedding 模型")
-    dimension: int = Field(default=4096, description="Embedding 维度")
+    model: str = Field(default="Qwen/Qwen3-Embedding-4B", description="Embedding 模型")
+    dimension: int = Field(default=2560, description="Embedding 维度（4B 最大 2560）")
 
 
 class RerankConfigBase(BaseModel):
@@ -139,8 +139,8 @@ PROVIDER_PRESETS: dict[str, dict[str, str]] = {
         "name": "SiliconFlow",
         "base_url": "https://api.siliconflow.cn/v1",
         "default_model": "moonshotai/Kimi-K2-Thinking",
-        "default_embedding_model": "Qwen/Qwen3-Embedding-8B",
-        "default_embedding_dimension": "4096",
+        "default_embedding_model": "Qwen/Qwen3-Embedding-4B",
+        "default_embedding_dimension": "2560",
     },
     "openai": {
         "name": "OpenAI",

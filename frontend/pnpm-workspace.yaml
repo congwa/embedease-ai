@@ -2,3 +2,7 @@
 # SDK 包（chat-sdk / chat-sdk-react）统一使用 pnpm workspace 协议引用
 packages:
   - 'packages/*'
+allowBuilds:
+  esbuild: false
+  sharp: false
+  unrs-resolver: false

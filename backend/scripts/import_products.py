@@ -122,9 +122,10 @@ async def import_products(json_path: str) -> None:
     # 创建 Qdrant 向量索引
     await create_vector_index(products_data)
 
-    # 关闭数据库连接
-    from app.core.database import engine
-    await engine.dispose()
+    # 关闭异步引擎连接池（Provider 模式无顶层 engine 导出）
+    from app.core.database import get_engine
+
+    await get_engine().dispose()
 
     print("[import] 导入完成!")
 
@@ -166,13 +167,35 @@ async def create_vector_index(products_data: list[dict]) -> None:
     """创建 Qdrant 向量索引"""
     print("[import] 开始创建向量索引...")
 
-    # 初始化嵌入模型
+    # 初始化嵌入模型（须为 /v1/embeddings 支持的模型，不能与 LLM 对话模型混用）
     embeddings = get_embeddings()
+    print(
+        f"[import] 嵌入配置: provider={settings.EMBEDDING_PROVIDER} "
+        f"model={settings.EMBEDDING_MODEL} dim={settings.EMBEDDING_DIMENSION}"
+    )
+    try:
+        await asyncio.to_thread(embeddings.embed_query, "ping")
+    except Exception as e:
+        err = str(e)
+        print(f"\n[error] 嵌入 API 不可用: {err}")
+        print(
+            "[info] 请使用「文本嵌入」模型，不要使用对话/补全模型作为 EMBEDDING_MODEL。\n"
+            "      SiliconFlow 示例（与 backend/.env.example 一致）：\n"
+            "        EMBEDDING_MODEL=Qwen/Qwen3-Embedding-4B\n"
+            "        EMBEDDING_DIMENSION=2560\n"
+            "      若 EMBEDDING_* 未设置，会回落到 LLM 的 key/base_url，但 model 仍须为嵌入模型。"
+        )
+        if "Model does not exist" in err or "20012" in err:
+            print(
+                "[info] 当前报错多为模型 ID 在嵌入接口不存在（例如误填了 DeepSeek-V4-Flash 等对话模型）。"
+            )
+        raise RuntimeError("嵌入模型校验失败，已中止 Qdrant 写入（未删除/重建集合）。") from e
 
     # 连接 Qdrant
     client = QdrantClient(
         host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT,
+        check_compatibility=False,
     )
 
     try:
@@ -299,7 +322,7 @@ def main():
     "description": "详细描述",
     "price": 299.00,
     "category": "分类",
-    "url": "https://example.com/product/P001"
+    "url": "http://localhost:3000/products/P001"
   }
 ]
 """)

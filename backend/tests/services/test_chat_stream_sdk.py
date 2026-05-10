@@ -220,7 +220,7 @@ class TestChatStreamOrchestratorSDKSync:
             user_message_id="um1",
             assistant_message_id="am1",
             agent_id="agent-123",
-            images=[{"id": "img1", "url": "https://example.com/1.jpg"}],
+            images=[{"id": "img1", "url": "http://localhost:3000/placeholders/product.svg"}],
             db=None,
         )
         assert orchestrator is not None

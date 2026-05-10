@@ -5,6 +5,7 @@ from app.services.agent.core.config import (
     DEFAULT_PROMPTS,
     DEFAULT_TOOL_CATEGORIES,
     DEFAULT_TOOL_POLICIES,
+    PRODUCT_TOOL_CATEGORIES,
 )
 
 
@@ -77,11 +78,12 @@ class TestDefaultToolCategories:
         assert "kb" in categories
 
     def test_custom_categories(self):
-        """测试 custom 类型类别"""
+        """测试 custom 类型默认与商品型共用工具类别（可搜/管商品）"""
         categories = DEFAULT_TOOL_CATEGORIES["custom"]
         assert isinstance(categories, list)
-        # custom 类型默认空类别
-        assert len(categories) == 0
+        assert categories == list(PRODUCT_TOOL_CATEGORIES)
+        assert "search" in categories
+        assert "purchase" in categories
 
     def test_product_has_core_categories(self):
         """测试 product 包含核心类别"""

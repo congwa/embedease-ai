@@ -77,7 +77,7 @@ export function AgentTypeStep({ step, onComplete, isLoading }: StepProps) {
       </div>
 
       {/* Type Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 max-w-4xl mx-auto">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 max-w-6xl mx-auto">
         {AGENT_TYPES.map((type) => {
           const Icon = type.icon;
           const isSelected = selectedType === type.id;

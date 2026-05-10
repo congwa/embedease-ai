@@ -137,7 +137,7 @@ SYSTEM_SKILLS = [
 """,
         "trigger_keywords": [],
         "trigger_intents": [],
-        "applicable_agents": ["product", "faq", "knowledge", "support"],
+        "applicable_agents": ["product", "faq", "knowledge", "kb", "support"],
         "always_apply": True,
     },
 ]

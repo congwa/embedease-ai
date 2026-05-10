@@ -423,7 +423,7 @@ export function ApiConfigStep({
             <Input
               value={embeddingModel}
               onChange={(e) => onEmbeddingModelChange(e.target.value)}
-              placeholder="如 text-embedding-3-small 或 Qwen/Qwen3-Embedding-8B"
+              placeholder="如 text-embedding-3-small 或 Qwen/Qwen3-Embedding-4B"
               className="w-full bg-zinc-900 border-zinc-800 text-white font-mono text-sm"
             />
           </div>
@@ -439,7 +439,7 @@ export function ApiConfigStep({
               className="w-full bg-zinc-900 border-zinc-800 text-white font-mono text-sm"
             />
             <p className="text-xs text-zinc-500">
-              常见维度：text-embedding-3-small=1536, Qwen3-Embedding-8B=4096
+              常见维度：text-embedding-3-small=1536；Qwen3-Embedding-4B 常用 2560（最大 2560）
             </p>
           </div>
 

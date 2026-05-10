@@ -54,8 +54,8 @@ class TestEmbeddingConfigBase:
         assert config.provider == "siliconflow"
         assert config.api_key is None
         assert config.base_url is None
-        assert config.model == "Qwen/Qwen3-Embedding-8B"
-        assert config.dimension == 4096
+        assert config.model == "Qwen/Qwen3-Embedding-4B"
+        assert config.dimension == 2560
 
     def test_custom_values(self):
         """测试自定义值"""

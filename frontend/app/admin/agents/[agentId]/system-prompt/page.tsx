@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, Loader2, AlertCircle } from "lucide-react";
 
@@ -19,8 +19,13 @@ import { updateAgent } from "@/lib/api/agents";
 
 export default function AgentSystemPromptPage() {
   const params = useParams();
-  const router = useRouter();
+  const pathname = usePathname();
   const agentId = params.agentId as string;
+  const agentBasePath = pathname.startsWith("/admin/single/agents")
+    ? "/admin/single/agents"
+    : pathname.startsWith("/admin/multi/agents")
+      ? "/admin/multi/agents"
+      : "/admin/agents";
   const { agent, refresh } = useAgentDetail({ agentId });
 
   const [editContent, setEditContent] = useState("");
@@ -75,7 +80,7 @@ export default function AgentSystemPromptPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
-            <Link href={`/admin/agents/${agentId}`}>
+            <Link href={`${agentBasePath}/${agentId}`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -88,7 +93,7 @@ export default function AgentSystemPromptPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild disabled={isSaving}>
-            <Link href={`/admin/agents/${agentId}`}>取消</Link>
+            <Link href={`${agentBasePath}/${agentId}`}>取消</Link>
           </Button>
           <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
             {isSaving ? (

@@ -309,8 +309,8 @@ class SystemConfigService:
             provider=getattr(settings, "EMBEDDING_PROVIDER", "siliconflow"),
             api_key=getattr(settings, "EMBEDDING_API_KEY", None),
             base_url=getattr(settings, "EMBEDDING_BASE_URL", None),
-            model=getattr(settings, "EMBEDDING_MODEL", "Qwen/Qwen3-Embedding-8B"),
-            dimension=getattr(settings, "EMBEDDING_DIMENSION", 4096),
+            model=getattr(settings, "EMBEDDING_MODEL", "Qwen/Qwen3-Embedding-4B"),
+            dimension=getattr(settings, "EMBEDDING_DIMENSION", 2560),
         )
 
         rerank = RerankConfigBase(

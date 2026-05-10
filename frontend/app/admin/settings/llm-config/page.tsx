@@ -79,8 +79,8 @@ export default function LLMConfigPage() {
     embedding_provider: "siliconflow",
     embedding_api_key: null,
     embedding_base_url: null,
-    embedding_model: "Qwen/Qwen3-Embedding-8B",
-    embedding_dimension: 4096,
+    embedding_model: "Qwen/Qwen3-Embedding-4B",
+    embedding_dimension: 2560,
     rerank_enabled: false,
     rerank_provider: null,
     rerank_api_key: null,
@@ -615,12 +615,12 @@ export default function LLMConfigPage() {
                     <Input
                       id="embedding-dimension"
                       type="number"
-                      placeholder="4096"
+                      placeholder="2560"
                       value={fullForm.embedding_dimension}
                       onChange={(e) =>
                         setFullForm((prev) => ({
                           ...prev,
-                          embedding_dimension: parseInt(e.target.value) || 4096,
+                          embedding_dimension: parseInt(e.target.value) || 2560,
                         }))
                       }
                     />

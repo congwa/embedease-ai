@@ -1,507 +1,514 @@
 [
     {
-        "id": "P0001",
-        "name": "Apple AirPods Pro 2",
-        "summary": "第二代主动降噪真无线耳机",
-        "description": "H2 芯片与自适应 EQ 带来更精准的降噪与沉浸式聆听体验，支持 MagSafe 充电与个性化空间音频。",
-        "price": 1899.0,
-        "category": "数码影音",
-        "url": "https://store.example.com/products/airpods-pro-2",
-        "tags": ["真无线", "主动降噪", "蓝牙 5.3"],
-        "brand": "Apple",
+        "id": "HS0001",
+        "name": "全屋深度保洁 4 小时",
+        "summary": "含厨房油污、卫生间除垢、地面除尘拖地、家具表面擦拭",
+        "description": "适合久未大扫除或搬家前整理。服务人员携带专业工具与环保清洁剂，按标准化流程分区作业，结束后可简单验收。不含外墙与高空作业。",
+        "price": 398.0,
+        "category": "家庭保洁",
+        "url": "http://localhost:3000/products/home-deep-clean-4h",
+        "tags": ["深度保洁", "上门", "计时服务"],
+        "brand": "安心到家",
         "image_urls": [
-            "https://cdn.example.com/images/P0001/main.jpg",
-            "https://cdn.example.com/images/P0001/side.jpg"
+            "http://localhost:3000/placeholders/product.svg?product=HS0001&i=0"
         ],
-        "specs": {
-            "芯片": "Apple H2",
-            "续航": "6 小时（单次）",
-            "充电接口": "Lightning / MagSafe"
-        },
-        "extra_metadata": {
-            "color": "白色",
-            "warranty": "1 年",
-            "launch_year": 2023
-        },
-        "source_site_id": "apple_flagship"
+        "specs": { "服务时长": "4 小时", "人数": "1 人", "适用面积": "≤90㎡ 建议" },
+        "extra_metadata": { "服务区域": "同城", "预约提前": "24 小时", "warranty": "不满意 2 小时内返工" },
+        "source_site_id": "home_services_catalog"
     },
     {
-        "id": "P0002",
-        "name": "Sony WH-1000XM5",
-        "summary": "旗舰级头戴式降噪耳机",
-        "description": "双芯降噪处理器结合 8 颗麦克风精准捕捉环境噪声，轻量化头梁设计适合长时间佩戴。",
-        "price": 2999.0,
-        "category": "数码影音",
-        "url": "https://store.example.com/products/sony-wh-1000xm5",
-        "tags": ["头戴式", "LDAC", "多设备连接"],
-        "brand": "Sony",
+        "id": "HS0002",
+        "name": "日常保洁 2 小时",
+        "summary": "地面清洁、台面擦拭、垃圾清理、简单收纳归位",
+        "description": "适合定期维护。不包含油烟机拆洗、冰箱内部深度清洁等重油污项目，可按需加购专项服务。",
+        "price": 128.0,
+        "category": "家庭保洁",
+        "url": "http://localhost:3000/products/home-daily-clean-2h",
+        "tags": ["日常保洁", "钟点工", "上门"],
+        "brand": "安心到家",
         "image_urls": [
-            "https://cdn.example.com/images/P0002/main.jpg"
+            "http://localhost:3000/placeholders/product.svg?product=HS0002&i=0"
         ],
-        "specs": {
-            "重量": "250 g",
-            "续航": "30 小时",
-            "接口": "USB-C"
-        },
-        "extra_metadata": {
-            "color": "曜石黑",
-            "noise_control": "ANC + Aware",
-            "availability": "in_stock"
-        },
-        "source_site_id": "sony_flagship"
+        "specs": { "服务时长": "2 小时", "人数": "1 人" },
+        "extra_metadata": { "服务区域": "同城", "availability": "in_stock" },
+        "source_site_id": "home_services_catalog"
     },
     {
-        "id": "P0003",
-        "name": "Nintendo Switch OLED",
-        "summary": "7 英寸 OLED 便携主机",
-        "description": "更高对比度的 OLED 屏幕与增强支架，带来更细腻的掌机体验，支持 TV/桌面/掌机三种模式。",
-        "price": 2599.0,
-        "category": "数码影音",
-        "url": "https://store.example.com/products/switch-oled",
-        "tags": ["游戏主机", "OLED", "多人娱乐"],
-        "brand": "Nintendo",
+        "id": "HS0003",
+        "name": "新房开荒保洁（按建面）",
+        "summary": "装修后首次清洁，除灰、除胶、窗槽清理等",
+        "description": "按房屋建筑面积计价，含地面、墙面浮灰、门窗内侧、橱柜外表面等。建筑垃圾清运需另议。",
+        "price": 8.0,
+        "category": "家庭保洁",
+        "url": "http://localhost:3000/products/post-renovation-cleaning",
+        "tags": ["开荒保洁", "装修后", "按平米"],
+        "brand": "优选家政",
         "image_urls": [
-            "https://cdn.example.com/images/P0003/main.jpg"
+            "http://localhost:3000/placeholders/product.svg?product=HS0003&i=0"
         ],
-        "specs": {
-            "存储": "64 GB",
-            "屏幕": "7\" OLED",
-            "接口": "USB-C / HDMI"
-        },
-        "extra_metadata": {
-            "color": "白色 Joy-Con",
-            "bundle": "含底座",
-            "warranty": "18 个月"
-        },
-        "source_site_id": "gamehub"
+        "specs": { "计价单位": "元/㎡", "起步面积": "60㎡" },
+        "extra_metadata": { "说明": "含基础除胶除漆点", "预约提前": "48 小时" },
+        "source_site_id": "home_services_catalog"
     },
     {
-        "id": "P0004",
-        "name": "DJI Mini 4 Pro",
-        "summary": "249g 级别避障航拍无人机",
-        "description": "全向避障 + 10-bit D-Log M 视频，支持 20km O4 传输，轻巧机身适合旅行随拍。",
-        "price": 6799.0,
-        "category": "数码影音",
-        "url": "https://store.example.com/products/dji-mini-4-pro",
-        "tags": ["航拍", "全向避障", "4K60fps"],
-        "brand": "DJI",
-        "image_urls": [
-            "https://cdn.example.com/images/P0004/main.jpg",
-            "https://cdn.example.com/images/P0004/folded.jpg"
-        ],
-        "specs": {
-            "重量": "249 g",
-            "飞行时间": "34 分钟",
-            "传感器": "1/1.3\" CMOS"
-        },
-        "extra_metadata": {
-            "color": "北极灰",
-            "package": "Fly More Combo",
-            "availability": "preorder"
-        },
-        "source_site_id": "dji_store"
-    },
-    {
-        "id": "P0005",
-        "name": "Kindle Paperwhite 第 11 代",
-        "summary": "6.8 英寸防水电子书阅读器",
-        "description": "300 PPI 墨水屏搭配可调冷暖前灯，IPX8 级防水支持浴缸阅读，USB-C 充电更方便。",
-        "price": 1199.0,
-        "category": "图书文具",
-        "url": "https://store.example.com/products/kindle-paperwhite-11",
-        "tags": ["电子书", "防水", "轻薄"],
-        "brand": "Amazon",
-        "image_urls": [
-            "https://cdn.example.com/images/P0005/main.jpg"
-        ],
-        "specs": {
-            "屏幕": "6.8\" 300 PPI",
-            "存储": "16 GB",
-            "防水": "IPX8"
-        },
-        "extra_metadata": {
-            "color": "石墨黑",
-            "bundle": "含广告版本",
-            "warranty": "1 年"
-        },
-        "source_site_id": "readers_club"
-    },
-    {
-        "id": "P0006",
-        "name": "Logitech MX Master 3S",
-        "summary": "旗舰级人体工学鼠标",
-        "description": "8K 精度光学传感与 MagSpeed 滚轮，支持三设备跨平台切换，适合设计与办公场景。",
-        "price": 899.0,
-        "category": "办公外设",
-        "url": "https://store.example.com/products/mx-master-3s",
-        "tags": ["蓝牙", "人体工学", "多设备"],
-        "brand": "Logitech",
-        "image_urls": [
-            "https://cdn.example.com/images/P0006/main.jpg"
-        ],
-        "specs": {
-            "传感器": "Darkfield 8K",
-            "连接": "Bluetooth / Logi Bolt",
-            "续航": "70 天"
-        },
-        "extra_metadata": {
-            "color": "石墨灰",
-            "package": "含 USB-C 线",
-            "availability": "in_stock"
-        },
-        "source_site_id": "logitech_store"
-    },
-    {
-        "id": "P0007",
-        "name": "Dyson V12 Detect Slim",
-        "summary": "激光可视化除尘吸尘器",
-        "description": "激光照亮微尘、LCD 显示吸入颗粒数量，轻量机身配备自动调节吸力的压电传感器。",
-        "price": 4890.0,
-        "category": "家居生活",
-        "url": "https://store.example.com/products/dyson-v12-detect",
-        "tags": ["吸尘器", "激光除尘", "无线"],
-        "brand": "Dyson",
-        "image_urls": [
-            "https://cdn.example.com/images/P0007/main.jpg"
-        ],
-        "specs": {
-            "重量": "2.2 kg",
-            "续航": "60 分钟",
-            "集尘盒": "0.35 L"
-        },
-        "extra_metadata": {
-            "color": "金绿配色",
-            "accessories": "含软绒滚筒等 7 件套",
-            "warranty": "2 年"
-        },
-        "source_site_id": "dyson_home"
-    },
-    {
-        "id": "P0008",
-        "name": "Le Creuset 珐琅铸铁锅 24cm",
-        "summary": "法式多功能炖煮锅",
-        "description": "搪瓷内胆受热均匀，适合炖汤/烘焙/面包，樱桃红配色点亮厨房。",
-        "price": 2699.0,
-        "category": "厨房电器",
-        "url": "https://store.example.com/products/lecreuset-24cm",
-        "tags": ["珐琅锅", "炖煮", "烘焙"],
-        "brand": "Le Creuset",
-        "image_urls": [
-            "https://cdn.example.com/images/P0008/main.jpg"
-        ],
-        "specs": {
-            "容量": "4.2 L",
-            "材质": "铸铁 + 珐琅",
-            "适用": "明火 / 电磁炉 / 烤箱"
-        },
-        "extra_metadata": {
-            "color": "樱桃红",
-            "origin": "France",
-            "warranty": "终身保修"
-        },
-        "source_site_id": "chef_select"
-    },
-    {
-        "id": "P0009",
-        "name": "KitchenAid Artisan 立式搅拌机",
-        "summary": "经典台式烘焙搅拌机",
-        "description": "325W 直流马达提供 10 档变速，配套和面钩、打蛋器与搅拌桨，适合家庭烘焙。",
-        "price": 4599.0,
-        "category": "厨房电器",
-        "url": "https://store.example.com/products/kitchenaid-artisan",
-        "tags": ["烘焙", "立式搅拌", "多附件"],
-        "brand": "KitchenAid",
-        "image_urls": [
-            "https://cdn.example.com/images/P0009/main.jpg",
-            "https://cdn.example.com/images/P0009/bowl.jpg"
-        ],
-        "specs": {
-            "容量": "4.8 L",
-            "功率": "325 W",
-            "档位": "10 档"
-        },
-        "extra_metadata": {
-            "color": "薄荷蓝",
-            "accessories": "3 个搅拌头",
-            "warranty": "5 年"
-        },
-        "source_site_id": "gourmet_lab"
-    },
-    {
-        "id": "P0010",
-        "name": "Nespresso Vertuo Lattissima",
-        "summary": "胶囊咖啡与奶泡一体机",
-        "description": "创新 Vertuo 萃取结合自动奶泡系统，一键制作拿铁/卡布奇诺，支持 5 种杯量。",
-        "price": 3299.0,
-        "category": "厨房电器",
-        "url": "https://store.example.com/products/nespresso-vertuo-lattissima",
-        "tags": ["咖啡机", "胶囊", "自动奶泡"],
-        "brand": "Nespresso",
-        "image_urls": [
-            "https://cdn.example.com/images/P0010/main.jpg"
-        ],
-        "specs": {
-            "水箱": "1.6 L",
-            "奶罐": "0.25 L",
-            "功率": "1500 W"
-        },
-        "extra_metadata": {
-            "color": "雾霾蓝",
-            "bundle": "附 12 粒体验胶囊",
-            "availability": "in_stock"
-        },
-        "source_site_id": "coffee_lab"
-    },
-    {
-        "id": "P0011",
-        "name": "Nike Air Zoom Pegasus 41",
-        "summary": "日常路跑缓震鞋",
-        "description": "ReactX 泡棉搭配双层 Zoom Air 提供回弹脚感，Flyknit 鞋面透气轻盈。",
-        "price": 1099.0,
-        "category": "运动户外",
-        "url": "https://store.example.com/products/nike-pegasus-41",
-        "tags": ["跑鞋", "缓震", "Flyknit"],
-        "brand": "Nike",
-        "image_urls": [
-            "https://cdn.example.com/images/P0011/main.jpg"
-        ],
-        "specs": {
-            "重量": "255 g（男 US9）",
-            "鞋面": "Flyknit",
-            "鞋底": "ReactX + Zoom Air"
-        },
-        "extra_metadata": {
-            "color": "白/橙",
-            "gender": "Unisex",
-            "season": "SS25"
-        },
-        "source_site_id": "nike_running"
-    },
-    {
-        "id": "P0012",
-        "name": "Arc'teryx Beta LT Jacket",
-        "summary": "轻量三层冲锋衣",
-        "description": "GORE-TEX C-KNIT 面料兼顾耐候与透气，简约剪裁适合徒步与都市通勤。",
-        "price": 4699.0,
-        "category": "运动户外",
-        "url": "https://store.example.com/products/arcteryx-beta-lt",
-        "tags": ["冲锋衣", "GORE-TEX", "轻量"],
-        "brand": "Arc'teryx",
-        "image_urls": [
-            "https://cdn.example.com/images/P0012/main.jpg"
-        ],
-        "specs": {
-            "面料": "3L GORE-TEX",
-            "重量": "395 g",
-            "防水等级": "28,000 mm"
-        },
-        "extra_metadata": {
-            "color": "Nimbus",
-            "fit": "Regular",
-            "warranty": "终身"
-        },
-        "source_site_id": "mountain_pro"
-    },
-    {
-        "id": "P0013",
-        "name": "Patagonia Black Hole 32L",
-        "summary": "多用途防泼水背包",
-        "description": "采用 100% 再生聚酯面料，带有加厚笔记本仓与前置网袋，适合周末短途与通勤。",
-        "price": 1299.0,
-        "category": "运动户外",
-        "url": "https://store.example.com/products/patagonia-black-hole-32",
-        "tags": ["背包", "防泼水", "可持续"],
-        "brand": "Patagonia",
-        "image_urls": [
-            "https://cdn.example.com/images/P0013/main.jpg"
-        ],
-        "specs": {
-            "容量": "32 L",
-            "尺寸": "53 x 33 x 19 cm",
-            "材质": "再生聚酯 + TPU"
-        },
-        "extra_metadata": {
-            "color": "Forge Grey",
-            "origin": "Vietnam",
-            "warranty": "Ironclad"
-        },
-        "source_site_id": "patagonia_cn"
-    },
-    {
-        "id": "P0014",
-        "name": "UNIQLO U AIRism Cotton T 恤",
-        "summary": "日常透气基础款",
-        "description": "AIRism 内里与棉质表层融合，手感柔软且速干，宽松版型易于搭配。",
-        "price": 99.0,
-        "category": "服饰鞋包",
-        "url": "https://store.example.com/products/uniqlo-airism-u-tee",
-        "tags": ["基础款", "速干", "中性"],
-        "brand": "UNIQLO",
-        "image_urls": [
-            "https://cdn.example.com/images/P0014/main.jpg"
-        ],
-        "specs": {
-            "材质": "AIRism + 棉",
-            "版型": "Relaxed",
-            "尺码": "XS-XXL"
-        },
-        "extra_metadata": {
-            "color": "军绿色",
-            "season": "SS25",
-            "care": "机洗"
-        },
-        "source_site_id": "uniqlo_online"
-    },
-    {
-        "id": "P0015",
-        "name": "RIMOWA Original Cabin 35L",
-        "summary": "铝镁合金登机箱",
-        "description": "经典沟槽箱体搭配 Multiwheel 系统，TSA 密码锁保障旅途安全。",
-        "price": 10800.0,
-        "category": "服饰鞋包",
-        "url": "https://store.example.com/products/rimowa-original-cabin",
-        "tags": ["旅行箱", "铝合金", "登机尺寸"],
-        "brand": "RIMOWA",
-        "image_urls": [
-            "https://cdn.example.com/images/P0015/main.jpg"
-        ],
-        "specs": {
-            "容量": "35 L",
-            "尺寸": "55 x 40 x 23 cm",
-            "重量": "4.3 kg"
-        },
-        "extra_metadata": {
-            "color": "银色",
-            "wheels": "Multiwheel",
-            "warranty": "5 年"
-        },
-        "source_site_id": "rimowa_cn"
-    },
-    {
-        "id": "P0016",
-        "name": "SK-II 护肤精华露 230ml",
-        "summary": "Pitera 神仙水经典容量",
-        "description": "富含 90% 以上 Pitera，改善肤色暗沉与粗糙，帮助肌肤保持水润透亮。",
-        "price": 1540.0,
-        "category": "美妆个护",
-        "url": "https://store.example.com/products/sk2-fte-230",
-        "tags": ["精华水", "美白", "保湿"],
-        "brand": "SK-II",
-        "image_urls": [
-            "https://cdn.example.com/images/P0016/main.jpg"
-        ],
-        "specs": {
-            "容量": "230 ml",
-            "肤质": "所有肤质",
-            "产地": "Japan"
-        },
-        "extra_metadata": {
-            "shelf_life": "3 年",
-            "warranty": "正品保障",
-            "availability": "in_stock"
-        },
-        "source_site_id": "beauty_select"
-    },
-    {
-        "id": "P0017",
-        "name": "La Roche-Posay 安得利清透防晒乳",
-        "summary": "轻薄不搓泥的日常防晒",
-        "description": "XL-PROTECT 专利过滤系统，SPF50+ PA++++，舒缓敏感肤质。",
+        "id": "HS0004",
+        "name": "全屋玻璃双面清洁",
+        "summary": "窗框窗槽擦拭，玻璃内外去污（非高空外墙）",
+        "description": "适用于普通住宅可安全操作的窗户；复式挑高、无护栏或需高空作业场所需现场评估另报价。",
         "price": 268.0,
-        "category": "美妆个护",
-        "url": "https://store.example.com/products/lrp-anthelios-fluid",
-        "tags": ["防晒", "敏感肌", "轻薄"],
-        "brand": "La Roche-Posay",
+        "category": "家庭保洁",
+        "url": "http://localhost:3000/products/window-cleaning-dual",
+        "tags": ["擦玻璃", "去污", "上门"],
+        "brand": "安心到家",
         "image_urls": [
-            "https://cdn.example.com/images/P0017/main.jpg"
+            "http://localhost:3000/placeholders/product.svg?product=HS0004&i=0"
         ],
-        "specs": {
-            "容量": "50 ml",
-            "SPF": "50+",
-            "PA": "++++"
-        },
-        "extra_metadata": {
-            "texture": "流动乳液",
-            "fragrance": "无香",
-            "origin": "France"
-        },
-        "source_site_id": "derma_store"
+        "specs": { "参考面积": "≤100㎡ 窗户量", "人数": "2 人" },
+        "extra_metadata": { "安全说明": "不含外墙吊绳作业" },
+        "source_site_id": "home_services_catalog"
     },
     {
-        "id": "P0018",
-        "name": "Philips Sonicare 9900 Prestige",
-        "summary": "AI 智能护齿电动牙刷",
-        "description": "SenseIQ 技术实时调节力度，配合 A3 刷头一体清洁牙龈与牙面。",
-        "price": 2399.0,
-        "category": "个护电器",
-        "url": "https://store.example.com/products/sonicare-9900",
-        "tags": ["电动牙刷", "SenseIQ", "USB-C"],
-        "brand": "Philips",
+        "id": "HS0005",
+        "name": "厨房重油污深度清洁",
+        "summary": "灶台、墙面油渍、橱柜门面、洗菜池及五金件",
+        "description": "使用除油剂与蒸汽辅助，针对顽固油垢分层处理。不含电器内部拆洗，油烟机全拆请选专项服务。",
+        "price": 228.0,
+        "category": "家庭保洁",
+        "url": "http://localhost:3000/products/kitchen-heavy-oil-clean",
+        "tags": ["厨房", "除油污", "深度清洁"],
+        "brand": "优选家政",
         "image_urls": [
-            "https://cdn.example.com/images/P0018/main.jpg",
-            "https://cdn.example.com/images/P0018/case.jpg"
+            "http://localhost:3000/placeholders/product.svg?product=HS0005&i=0"
         ],
-        "specs": {
-            "模式": "Clean/White+ 等 5 种",
-            "续航": "2 周",
-            "充电": "USB-C 旅行盒"
-        },
-        "extra_metadata": {
-            "color": "香槟金",
-            "warranty": "2 年",
-            "replacement": "A3 刷头"
-        },
-        "source_site_id": "care_plus"
+        "specs": { "服务时长": "约 3 小时", "人数": "1 人" },
+        "extra_metadata": { "环保": "低刺激配方可选" },
+        "source_site_id": "home_services_catalog"
     },
     {
-        "id": "P0019",
-        "name": "LEGO NASA 土星五号火箭",
-        "summary": "1900+ 颗粒收藏级积木",
-        "description": "高度一米的比例模型，可拆解三级火箭结构，附指令舱与登月舱。",
-        "price": 1099.0,
-        "category": "玩具乐器",
-        "url": "https://store.example.com/products/lego-saturn-v",
-        "tags": ["LEGO Ideas", "航天", "收藏"],
-        "brand": "LEGO",
+        "id": "HS0006",
+        "name": "卫生间除垢消毒保洁",
+        "summary": "马桶、淋浴区水垢、镜面五金、地漏表面清洁与消毒",
+        "description": "含洁具表面除垢、防霉处理（硅胶发霉严重需更换另议）。不提供管道疏通，可另购疏通服务。",
+        "price": 158.0,
+        "category": "家庭保洁",
+        "url": "http://localhost:3000/products/bathroom-descale-sanitize",
+        "tags": ["卫生间", "除垢", "消毒"],
+        "brand": "安心到家",
         "image_urls": [
-            "https://cdn.example.com/images/P0019/main.jpg"
+            "http://localhost:3000/placeholders/product.svg?product=HS0006&i=0"
         ],
-        "specs": {
-            "颗粒数": "1969 pcs",
-            "高度": "100 cm",
-            "适龄": "14+"
-        },
-        "extra_metadata": {
-            "series": "21309",
-            "availability": "in_stock",
-            "warranty": "7 天无忧退"
-        },
-        "source_site_id": "lego_store"
+        "specs": { "服务时长": "约 2 小时", "消毒": "含表面消毒" },
+        "extra_metadata": { "适用": "单卫生间套餐，双卫加价" },
+        "source_site_id": "home_services_catalog"
     },
     {
-        "id": "P0020",
-        "name": "KitchenAid Artisan Go Cordless",
-        "summary": "无绳手持料理棒套装",
-        "description": "可拆卸搅拌杆 + 刀具 + 奶泡器，USB-C 快充 2 小时即可续航 20 分钟。",
-        "price": 1899.0,
-        "category": "厨房电器",
-        "url": "https://store.example.com/products/kitchenaid-go-cordless",
-        "tags": ["料理棒", "无绳", "多功能"],
-        "brand": "KitchenAid",
+        "id": "HS0007",
+        "name": "新房除甲醛（母婴友好型）",
+        "summary": "光触媒/分解型药剂喷涂 + 通风方案建议，附简易检测对比",
+        "description": "施工前关闭门窗测一次，施工后按指引通风复测。效果受材料释放周期影响，极端超标需综合治理方案。",
+        "price": 45.0,
+        "category": "空气净化",
+        "url": "http://localhost:3000/products/formaldehyde-removal-baby-safe",
+        "tags": ["除甲醛", "新房", "母婴"],
+        "brand": "净界空气",
         "image_urls": [
-            "https://cdn.example.com/images/P0020/main.jpg"
+            "http://localhost:3000/placeholders/product.svg?product=HS0007&i=0",
+            "http://localhost:3000/placeholders/product.svg?product=HS0007&i=1"
         ],
-        "specs": {
-            "功率": "180 W",
-            "续航": "20 分钟",
-            "配件": "搅拌杯/奶泡器/切碎杯"
-        },
-        "extra_metadata": {
-            "color": "星辰白",
-            "warranty": "3 年",
-            "availability": "preorder"
-        },
-        "source_site_id": "smart_kitchen"
+        "specs": { "计价单位": "元/㎡（建面）", "质保": "1 年内免费复查 1 次" },
+        "extra_metadata": { "药剂": "分解型为主", "预约提前": "48 小时" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0008",
+        "name": "室内甲醛检测（CMA 可选）",
+        "summary": "多点采样，出具报告；可选 CMA 实验室检测加价",
+        "description": "常规快检当场出数；CMA 报告需采样送实验室，周期以实验室为准。",
+        "price": 299.0,
+        "category": "空气净化",
+        "url": "http://localhost:3000/products/formaldehyde-test",
+        "tags": ["甲醛检测", "空气质量", "上门"],
+        "brand": "净界空气",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0008&i=0"
+        ],
+        "specs": { "采样点": "2–3 点", "报告": "电子版" },
+        "extra_metadata": { "CMA": "可选加价" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0009",
+        "name": "空调挂机蒸汽拆洗",
+        "summary": "拆洗风轮、蒸发器、接水槽，高温蒸汽杀菌",
+        "description": "适用于常见壁挂式空调。特殊机型或安装位置无法拆洗时改半拆或协商退款。",
+        "price": 138.0,
+        "category": "家电清洗",
+        "url": "http://localhost:3000/products/ac-wall-mount-clean",
+        "tags": ["空调清洗", "蒸汽", "杀菌"],
+        "brand": "洁电管家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0009&i=0"
+        ],
+        "specs": { "台数": "1 台挂机", "时长": "约 60–90 分钟" },
+        "extra_metadata": { "附加": "加氟另计" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0010",
+        "name": "家用中央空调风口清洗",
+        "summary": "风口拆卸清洗消毒，回风滤网更换（含基础滤网）",
+        "description": "不含主机内部深度检修；风管内部清洗需现场勘查另报价。",
+        "price": 88.0,
+        "category": "家电清洗",
+        "url": "http://localhost:3000/products/central-ac-vent-clean",
+        "tags": ["中央空调", "风口", "消毒"],
+        "brand": "洁电管家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0010&i=0"
+        ],
+        "specs": { "计价单位": "元/风口", "起步": "4 个风口" },
+        "extra_metadata": { "滤网": "含标准滤网 1 套" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0011",
+        "name": "冰箱深度清洁除味",
+        "summary": "断电除霜、内胆擦拭、密封条除霉、臭氧或食品级除味",
+        "description": "对开门/多门冰箱按容积加价。老旧冰箱制冷异常请先检修再清洗。",
+        "price": 168.0,
+        "category": "家电清洗",
+        "url": "http://localhost:3000/products/fridge-deep-clean",
+        "tags": ["冰箱", "除味", "杀菌"],
+        "brand": "洁电管家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0011&i=0"
+        ],
+        "specs": { "适用容积": "≤400L 基础价" },
+        "extra_metadata": { "除味": "食品级方案" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0012",
+        "name": "滚筒洗衣机拆洗杀菌",
+        "summary": "拆洗内筒夹缝污垢，高温冲洗，装回试机",
+        "description": "部分一体不可拆机型改免拆冲洗并说明。清洗后建议使用筒自洁程序空转一次。",
+        "price": 268.0,
+        "category": "家电清洗",
+        "url": "http://localhost:3000/products/washing-machine-drum-clean",
+        "tags": ["洗衣机", "拆洗", "除霉"],
+        "brand": "洁电管家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0012&i=0"
+        ],
+        "specs": { "类型": "滚筒为主", "时长": "约 2 小时" },
+        "extra_metadata": { "试机": "含排水测试" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0013",
+        "name": "油烟机全拆深度清洗",
+        "summary": "风轮、蜗壳、油网拆卸浸泡去油，整机复原试机",
+        "description": "欧式/侧吸常见机型；集成灶或特殊结构需现场确认能否全拆。",
+        "price": 238.0,
+        "category": "家电清洗",
+        "url": "http://localhost:3000/products/range-hood-full-clean",
+        "tags": ["油烟机", "除油", "拆洗"],
+        "brand": "优选家政",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0013&i=0"
+        ],
+        "specs": { "台数": "1 台", "防污垫": "含地面防护" },
+        "extra_metadata": { "附加": "更换油网另计" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0014",
+        "name": "地暖管道脉冲冲洗",
+        "summary": "脉冲冲洗分路，排污观察，恢复系统压力检测",
+        "description": "适用于水地暖；清洗周期建议 2–3 年。不含分水器更换与漏点维修。",
+        "price": 15.0,
+        "category": "家电清洗",
+        "url": "http://localhost:3000/products/floor-heating-flush",
+        "tags": ["地暖", "冲洗", "上门"],
+        "brand": "暖家服务",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0014&i=0"
+        ],
+        "specs": { "计价单位": "元/路", "起步": "6 路" },
+        "extra_metadata": { "季节": "建议非供暖期预约" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0015",
+        "name": "布艺沙发蒸汽清洗",
+        "summary": "吸尘 + 蒸汽抽洗，除渍除螨，快干处理",
+        "description": "真皮沙发改护理套餐。严重渗透污渍不保证完全去除，以现场评估为准。",
+        "price": 188.0,
+        "category": "家居养护",
+        "url": "http://localhost:3000/products/fabric-sofa-steam-clean",
+        "tags": ["沙发", "蒸汽", "除螨"],
+        "brand": "焕新家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0015&i=0"
+        ],
+        "specs": { "计价": "三座沙发基础价", "时长": "约 2 小时" },
+        "extra_metadata": { "干燥": "建议开窗通风 4–6 小时" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0016",
+        "name": "床垫除螨杀菌（双面）",
+        "summary": "除螨仪+紫外线/蒸汽（视面料）处理，双面吸尘",
+        "description": "乳胶/记忆棉等不耐高温面料改用干吸与低频拍打方案。",
+        "price": 158.0,
+        "category": "家居养护",
+        "url": "http://localhost:3000/products/mattress-dustmite-uv",
+        "tags": ["床垫", "除螨", "杀菌"],
+        "brand": "焕新家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0016&i=0"
+        ],
+        "specs": { "尺寸": "1.8m 床基础价", "双面": "是" },
+        "extra_metadata": { "过敏友好": "可说明敏感体质" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0017",
+        "name": "地毯高温抽洗",
+        "summary": "移动式高温抽洗机，去污除味，局部除渍预处理",
+        "description": "羊毛等天然纤维降低水温；大面积整铺地毯按㎡加价。",
+        "price": 25.0,
+        "category": "家居养护",
+        "url": "http://localhost:3000/products/carpet-hot-water-extract",
+        "tags": ["地毯", "高温清洗", "除味"],
+        "brand": "焕新家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0017&i=0"
+        ],
+        "specs": { "计价单位": "元/㎡", "起步": "10㎡" },
+        "extra_metadata": { "干燥": "6–12 小时自然干" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0018",
+        "name": "窗帘拆洗烘干安装",
+        "summary": "上门拆卸、厂洗或现场洗（视面料）、烘干后安装复原",
+        "description": "厚重绒布、真丝等特殊面料干洗加价。轨道维修另计。",
+        "price": 35.0,
+        "category": "家居养护",
+        "url": "http://localhost:3000/products/curtain-wash-install",
+        "tags": ["窗帘", "拆洗", "安装"],
+        "brand": "优选家政",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0018&i=0"
+        ],
+        "specs": { "计价单位": "元/kg", "起步": "8kg" },
+        "extra_metadata": { "周期": "往返 3–5 工作日" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0019",
+        "name": "日式收纳整理 4 小时",
+        "summary": "分类、标签、动线优化，衣柜/客厅/儿童房任选 1–2 区",
+        "description": "不含采购收纳盒费用；可提供清单建议自购或代购另计。",
+        "price": 498.0,
+        "category": "收纳整理",
+        "url": "http://localhost:3000/products/japanese-organize-4h",
+        "tags": ["收纳", "整理师", "上门"],
+        "brand": "理享家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0019&i=0"
+        ],
+        "specs": { "时长": "4 小时", "人数": "1 人" },
+        "extra_metadata": { "认证": "持证整理师优先派单" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0020",
+        "name": "衣橱换季整理 + 分类收纳",
+        "summary": "衣物分类、折叠陈列、过季收纳装箱贴签",
+        "description": "含基础防尘袋；真空压缩袋、百纳箱可代购。",
+        "price": 358.0,
+        "category": "收纳整理",
+        "url": "http://localhost:3000/products/wardrobe-seasonal-organize",
+        "tags": ["衣橱", "换季", "收纳"],
+        "brand": "理享家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0020&i=0"
+        ],
+        "specs": { "参考": "双开门衣柜基础价", "时长": "约 3 小时" },
+        "extra_metadata": { "说明": "奢侈品皮包仅建议陈列不动护理" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0021",
+        "name": "搬家打包 + 新家复原整理",
+        "summary": "易碎防护、箱号标签、新家按区拆箱归位",
+        "description": "不含运输车辆与重物搬运；可与搬家公司衔接时间。",
+        "price": 888.0,
+        "category": "收纳整理",
+        "url": "http://localhost:3000/products/move-pack-unpack-organize",
+        "tags": ["搬家", "打包", "复原"],
+        "brand": "理享家",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0021&i=0"
+        ],
+        "specs": { "参考": "一居室基础套餐", "纸箱": "含 15 个标准箱" },
+        "extra_metadata": { "加时": "超时按小时计费" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0022",
+        "name": "月嫂 26 天住家（银牌）",
+        "summary": "新生儿护理、产妇月子餐、基础家务，持证上岗",
+        "description": "具体服务清单以合同为准；法定节假日加班费按政策。",
+        "price": 12800.0,
+        "category": "月嫂育儿",
+        "url": "http://localhost:3000/products/confinement-nanny-26d-silver",
+        "tags": ["月嫂", "住家", "月子"],
+        "brand": "贝护母婴",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0022&i=0",
+            "http://localhost:3000/placeholders/product.svg?product=HS0022&i=1"
+        ],
+        "specs": { "天数": "26 天", "等级": "银牌" },
+        "extra_metadata": { "面试": "可视频 2 选 1", "保险": "含家政险" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0023",
+        "name": "上门催乳通乳单次",
+        "summary": "无痛手法 + 冷热敷指导，哺乳姿势纠正建议",
+        "description": "急性乳腺炎伴高热请先就医；服务后不适请及时复诊。",
+        "price": 398.0,
+        "category": "月嫂育儿",
+        "url": "http://localhost:3000/products/lactation-massage-once",
+        "tags": ["催乳", "通乳", "母乳"],
+        "brand": "贝护母婴",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0023&i=0"
+        ],
+        "specs": { "时长": "约 60 分钟", "证书": "持证催乳师" },
+        "extra_metadata": { "隐私": "一次性床单物料" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0024",
+        "name": "育儿嫂白班 26 天",
+        "summary": "带娃辅食、早教互动、简单家务，早到晚走",
+        "description": "工作时间一般 9:00–18:00，可协商；不含住家夜间陪护。",
+        "price": 7800.0,
+        "category": "月嫂育儿",
+        "url": "http://localhost:3000/products/daytime-nanny-26d",
+        "tags": ["育儿嫂", "白班", "早教"],
+        "brand": "贝护母婴",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0024&i=0"
+        ],
+        "specs": { "天数": "26 天", "休息": "单休可协商" },
+        "extra_metadata": { "体检": "含健康证核验" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0025",
+        "name": "居家老人日间陪护 8 小时",
+        "summary": "陪伴、用药提醒、简单餐食、轻度家务、外出陪同（市内）",
+        "description": "不含医疗护理操作（如注射、导尿）；失能重度护理建议选护工套餐。",
+        "price": 320.0,
+        "category": "养老陪护",
+        "url": "http://localhost:3000/products/elder-day-care-8h",
+        "tags": ["陪护", "老人", "日间"],
+        "brand": "孝心伴",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0025&i=0"
+        ],
+        "specs": { "时长": "8 小时/天", "人数": "1 人" },
+        "extra_metadata": { "说明": "法定节假日加价" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0026",
+        "name": "宠物猫狗上门洗澡美容（小型犬）",
+        "summary": "洗澡、吹干、剪指甲、耳道清洁，基础造型",
+        "description": "攻击性较强或未完成免疫的宠物可能拒单；大型犬、长毛复杂造型加价。",
+        "price": 158.0,
+        "category": "宠物服务",
+        "url": "http://localhost:3000/products/pet-grooming-small-dog",
+        "tags": ["宠物", "上门", "洗澡"],
+        "brand": "爪爪到府",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0026&i=0"
+        ],
+        "specs": { "体重": "≤10kg 犬或猫基础价", "时长": "约 90 分钟" },
+        "extra_metadata": { "物料": "一次性毛巾" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0027",
+        "name": "室内绿植租摆 + 月度养护",
+        "summary": "方案设计、送货上门、每月上门浇水修剪除虫",
+        "description": "植物自然死亡在质保条款内可更换；特殊大型绿植运费另计。",
+        "price": 599.0,
+        "category": "家居养护",
+        "url": "http://localhost:3000/products/plant-rental-monthly-care",
+        "tags": ["绿植", "租摆", "养护"],
+        "brand": "一叶空间",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0027&i=0"
+        ],
+        "specs": { "周期": "按月订阅", "面积": "≤80㎡ 公区方案" },
+        "extra_metadata": { "合约": "最低 3 个月" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0028",
+        "name": "全屋蟑螂胶饵综合治理",
+        "summary": "勘查布点、胶饵 + 滞留喷洒（厨房重点）、防再入侵建议",
+        "description": "有宠物或孕妇家庭提前说明以调整药剂；严重德国小蠊需多次上门套餐。",
+        "price": 368.0,
+        "category": "消毒除虫",
+        "url": "http://localhost:3000/products/cockroach-gel-bait-treatment",
+        "tags": ["除蟑螂", "消杀", "上门"],
+        "brand": "净卫虫控",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0028&i=0"
+        ],
+        "specs": { "质保": "90 天内复发免费补点 1 次", "户型": "≤100㎡ 基础价" },
+        "extra_metadata": { "资质": "持证消杀员" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0029",
+        "name": "家电维修上门检测费（可抵扣）",
+        "summary": "工程师上门检测故障点，出具维修方案与报价",
+        "description": "同意维修则检测费抵扣维修费；不同意仅收取检测费。不含配件费。",
+        "price": 50.0,
+        "category": "维修安装",
+        "url": "http://localhost:3000/products/appliance-inspection-fee",
+        "tags": ["家电维修", "上门", "检测"],
+        "brand": "快修侠",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0029&i=0"
+        ],
+        "specs": { "范围": "空调/洗衣机/冰箱/烟机等", "抵扣": "可抵扣" },
+        "extra_metadata": { "时效": "同城 24–48 小时上门" },
+        "source_site_id": "home_services_catalog"
+    },
+    {
+        "id": "HS0030",
+        "name": "家具灯具安装（按件计价）",
+        "summary": "床、桌、柜、吸顶灯/吊灯等安装，含基础打孔",
+        "description": "混凝土特殊墙体或高空复杂吊灯需现场确认加价；不含大型吊装设备。",
+        "price": 80.0,
+        "category": "维修安装",
+        "url": "http://localhost:3000/products/furniture-light-install-per-item",
+        "tags": ["安装", "家具", "灯具"],
+        "brand": "快修侠",
+        "image_urls": [
+            "http://localhost:3000/placeholders/product.svg?product=HS0030&i=0"
+        ],
+        "specs": { "计价单位": "元/件", "起步": "2 件起约" },
+        "extra_metadata": { "说明": "含普通膨胀螺丝" },
+        "source_site_id": "home_services_catalog"
     }
 ]
-

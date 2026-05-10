@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useAgentStore } from "@/stores";
 import { PageHeader } from "@/components/admin";
+import { agentHasProductCatalogNav } from "@/lib/config/navigation";
 
 export default function SingleAgentWorkspacePage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function SingleAgentWorkspacePage() {
       { label: "推荐问题", href: `/admin/single/agents/${agentId}/suggested-questions`, icon: HelpCircle, description: "引导用户提问" },
     ];
 
-    if (agentType === "product") {
+    if (agentHasProductCatalogNav(agentType)) {
       links.push({ label: "商品数据", href: "/admin/products", icon: Package, description: "管理商品信息" });
     }
     if (agentType === "faq" || agentType === "kb") {

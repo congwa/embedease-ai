@@ -6,7 +6,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ========== 枚举类型 ==========
 
@@ -68,6 +68,8 @@ class GreetingConfigUpdate(BaseModel):
 
 class ToolPolicySchema(BaseModel):
     """工具调用策略"""
+
+    model_config = {"extra": "ignore"}
 
     min_tool_calls: int = Field(default=0, description="最小工具调用次数")
     allow_direct_answer: bool = Field(default=True, description="是否允许直接回答")
@@ -330,6 +332,14 @@ class AgentBase(BaseModel):
     description: str | None = Field(default=None, max_length=500)
     type: AgentTypeEnum = Field(default="product")
     system_prompt: str = Field(..., min_length=1)
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _normalize_legacy_agent_type(cls, v: object) -> object:
+        """历史库中可能存在已下线的 order 类型，对外统一视为 custom。"""
+        if v == "order":
+            return "custom"
+        return v
     middleware_flags: dict[str, Any] | None = Field(default=None)
     tool_policy: dict[str, Any] | None = Field(default=None)
     tool_categories: list[str] | None = Field(default=None)
@@ -541,6 +551,13 @@ class AgentConfig(BaseModel):
     name: str
     type: AgentTypeEnum
     system_prompt: str
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _normalize_legacy_agent_type(cls, v: object) -> object:
+        if v == "order":
+            return "custom"
+        return v
 
     # 工具配置
     tool_categories: list[str] | None = None

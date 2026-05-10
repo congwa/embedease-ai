@@ -36,7 +36,7 @@ query: str  # 用户的搜索需求描述
     "name": "索尼 WH-1000XM5 无线降噪耳机",
     "price": 2999.0,
     "summary": "索尼 WH-1000XM5 是索尼最新一代旗舰降噪耳机...",
-    "url": "https://example.com/product/P001",
+    "url": "http://localhost:3000/products/P001",
     "category": "电子产品/耳机"
   }
 ]
@@ -86,7 +86,7 @@ product_id: str  # 商品ID，如 "P001"
   "price": 2999.0,
   "category": "电子产品/耳机",
   "description": "索尼 WH-1000XM5 是索尼最新一代旗舰降噪耳机。采用全新设计的 8 个麦克风系统...",
-  "url": "https://example.com/product/P001"
+  "url": "http://localhost:3000/products/P001"
 }
 ```
 
@@ -132,7 +132,7 @@ product_ids: list[str]  # 商品ID列表，至少2个
       "price": 2999.0,
       "category": "电子产品/耳机",
       "description": "索尼 WH-1000XM5 是索尼最新一代...",
-      "url": "https://example.com/product/P001"
+      "url": "http://localhost:3000/products/P001"
     },
     {
       "id": "P002",
@@ -140,7 +140,7 @@ product_ids: list[str]  # 商品ID列表，至少2个
       "price": 1899.0,
       "category": "电子产品/耳机",
       "description": "Apple AirPods Pro 2 配备全新 H2 芯片...",
-      "url": "https://example.com/product/P002"
+      "url": "http://localhost:3000/products/P002"
     }
   ],
   "comparison_points": {
@@ -201,7 +201,7 @@ max_price: float | None = None  # 最高价格（元）
     "name": "Nike Air Zoom Pegasus 40",
     "price": 899.0,
     "summary": "Nike Pegasus 40 是经典跑鞋系列的最新款...",
-    "url": "https://example.com/product/P004",
+    "url": "http://localhost:3000/products/P004",
     "category": "运动/跑步鞋"
   }
 ]

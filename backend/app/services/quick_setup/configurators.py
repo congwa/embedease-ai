@@ -531,7 +531,17 @@ class CustomAgentConfigurator(AgentTypeConfigurator):
 
     @property
     def default_tool_categories(self) -> list[str]:
-        return []
+        # 与 ProductAgentConfigurator 一致，默认即可使用商品检索/对比等能力
+        return [
+            "search",
+            "query",
+            "compare",
+            "filter",
+            "category",
+            "featured",
+            "purchase",
+            "guide",
+        ]
 
     @property
     def default_middleware_flags(self) -> dict[str, bool]:
@@ -545,7 +555,9 @@ class CustomAgentConfigurator(AgentTypeConfigurator):
 
     @property
     def system_prompt_template(self) -> str | None:
-        return "你是一个智能助手。请根据用户的问题提供帮助。"
+        return """你是一个智能助手，可根据用户问题提供帮助。
+
+当用户询问商品、价格、对比、购买方式或库存相关信息时，请使用商品检索与查询类工具，基于真实商品数据回答，不要编造。"""
 
     def get_step_configs(self) -> list[AgentTypeStepConfig]:
         return [
@@ -556,6 +568,7 @@ class CustomAgentConfigurator(AgentTypeConfigurator):
                 description_override="自由配置工具类别、中间件和知识源",
                 fields=self.get_knowledge_step_fields(),
                 hints=[
+                    "默认已启用商品库相关工具类别，可在下方调整",
                     "自定义类型可绑定任意知识源（FAQ/KB/Product）",
                     "通过 AgentModeOverride 可为不同场景定义专属模式",
                     "middleware_flags 完全自定义，按需启用",
@@ -589,10 +602,14 @@ class CustomAgentConfigurator(AgentTypeConfigurator):
                     {"value": "query", "label": "查询"},
                     {"value": "compare", "label": "比较"},
                     {"value": "filter", "label": "筛选"},
+                    {"value": "category", "label": "类目"},
+                    {"value": "featured", "label": "精选"},
+                    {"value": "purchase", "label": "购买链接"},
+                    {"value": "guide", "label": "导购"},
                     {"value": "faq_search", "label": "FAQ 搜索"},
                     {"value": "kb_search", "label": "知识库搜索"},
                 ],
-                description="选择可用的工具类别",
+                description="选择可用的工具类别（默认含商品库全套，可按需增减）",
                 group="tools",
             ),
             AgentTypeField(

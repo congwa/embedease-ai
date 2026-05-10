@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { type ChatThemeId, type ChatThemeConfig, getTheme, getAllThemes } from "./theme-registry";
 
 export type ColorMode = "light" | "dark" | "system";
@@ -37,34 +37,34 @@ interface ChatThemeProviderProps {
   defaultColorMode?: ColorMode;
 }
 
+function resolvedColorFromMode(mode: ColorMode): "light" | "dark" {
+  if (mode === "dark") return "dark";
+  if (mode === "light") return "light";
+  return "light";
+}
+
 export function ChatThemeProvider({ 
   children, 
   defaultTheme = "default",
   defaultColorMode = "system"
 }: ChatThemeProviderProps) {
-  // 初始化时从 localStorage 读取
-  const getInitialTheme = (): ChatThemeId => {
-    if (typeof window === "undefined") return defaultTheme;
-    const stored = localStorage.getItem(THEME_STORAGE_KEY) as ChatThemeId | null;
-    return stored && VALID_THEMES.includes(stored) ? stored : defaultTheme;
-  };
-
-  const getInitialColorMode = (): ColorMode => {
-    if (typeof window === "undefined") return defaultColorMode;
-    const stored = localStorage.getItem(COLOR_MODE_STORAGE_KEY) as ColorMode | null;
-    return stored && ["light", "dark", "system"].includes(stored) ? stored : defaultColorMode;
-  };
-
-  const [themeId, setThemeId] = useState<ChatThemeId>(getInitialTheme);
-  const [colorMode, setColorModeState] = useState<ColorMode>(getInitialColorMode);
-  const [resolvedColorMode, setResolvedColorMode] = useState<"light" | "dark">("light");
-  
-  // 使用 useSyncExternalStore 检测客户端渲染，避免 hydration 问题
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
+  // 首屏必须与 SSR 一致：仅用 props 默认值，localStorage 放到 useEffect 再同步
+  const [themeId, setThemeId] = useState<ChatThemeId>(defaultTheme);
+  const [colorMode, setColorModeState] = useState<ColorMode>(defaultColorMode);
+  const [resolvedColorMode, setResolvedColorMode] = useState<"light" | "dark">(() =>
+    resolvedColorFromMode(defaultColorMode)
   );
+
+  useEffect(() => {
+    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) as ChatThemeId | null;
+    if (storedTheme && VALID_THEMES.includes(storedTheme)) {
+      setThemeId(storedTheme);
+    }
+    const storedMode = localStorage.getItem(COLOR_MODE_STORAGE_KEY) as ColorMode | null;
+    if (storedMode && ["light", "dark", "system"].includes(storedMode)) {
+      setColorModeState(storedMode);
+    }
+  }, []);
 
   // 解析系统颜色模式
   useEffect(() => {
@@ -104,19 +104,16 @@ export function ChatThemeProvider({
     localStorage.setItem(COLOR_MODE_STORAGE_KEY, mode);
   }, []);
 
-  // 更新 DOM 属性
+  // 更新 DOM 属性（仅客户端 effect，不参与 SSR）
   useEffect(() => {
-    if (mounted) {
-      document.documentElement.setAttribute("data-chat-theme", themeId);
-      
-      // 更新 dark 类
-      if (resolvedColorMode === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
+    document.documentElement.setAttribute("data-chat-theme", themeId);
+
+    if (resolvedColorMode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
     }
-  }, [mounted, themeId, resolvedColorMode]);
+  }, [themeId, resolvedColorMode]);
 
   const theme = getTheme(themeId);
   const availableThemes = getAllThemes();
@@ -146,15 +143,6 @@ export function ChatThemeProvider({
     setColorMode,
     resolvedColorMode,
   };
-
-  // 避免 SSR 闪烁
-  if (!mounted) {
-    return (
-      <ChatThemeContext.Provider value={value}>
-        {children}
-      </ChatThemeContext.Provider>
-    );
-  }
 
   return (
     <ChatThemeContext.Provider value={value}>

@@ -37,10 +37,10 @@ class TestProductSearchResult:
             name="测试商品",
             price=99.99,
             summary="商品摘要",
-            url="https://example.com/product/P001",
+            url="http://localhost:3000/products/P001",
             category="电子产品",
         )
-        assert result.url == "https://example.com/product/P001"
+        assert result.url == "http://localhost:3000/products/P001"
         assert result.category == "电子产品"
 
     def test_valid_with_extended_fields(self):

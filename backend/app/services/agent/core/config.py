@@ -39,20 +39,23 @@ DEFAULT_PROMPTS: dict[str, str] = {
 
 # ========== 默认工具类别 ==========
 
+# 商品库相关工具类别（商品推荐与自定义助手共用，便于自定义 Agent 也能搜/管商品）
+PRODUCT_TOOL_CATEGORIES: list[str] = [
+    "search",
+    "query",
+    "compare",
+    "filter",
+    "category",
+    "featured",
+    "purchase",
+    "guide",
+]
+
 DEFAULT_TOOL_CATEGORIES: dict[str, list[str]] = {
-    "product": [
-        "search",
-        "query",
-        "compare",
-        "filter",
-        "category",
-        "featured",
-        "purchase",
-        "guide",
-    ],
+    "product": list(PRODUCT_TOOL_CATEGORIES),
     "faq": ["faq"],
     "kb": ["kb", "search"],
-    "custom": [],
+    "custom": list(PRODUCT_TOOL_CATEGORIES),
 }
 
 
@@ -139,7 +142,8 @@ class AgentConfigLoader:
         agent: Agent,
     ) -> AgentConfig:
         """构建运行时配置"""
-        agent_type = agent.type
+        # 历史数据可能仍为已下线的 order，与当前枚举对齐为 custom
+        agent_type = agent.type if agent.type != "order" else "custom"
 
         # 1. System Prompt：agent > 默认
         if agent.system_prompt:

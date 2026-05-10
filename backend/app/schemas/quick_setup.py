@@ -174,7 +174,9 @@ class AgentTypeStepConfig(BaseModel):
 class AgentTypeConfig(BaseModel):
     """Agent 类型完整配置"""
 
-    type: Literal["product", "faq", "kb", "custom", "supervisor"] = Field(..., description="Agent 类型")
+    type: Literal["product", "faq", "kb", "custom", "supervisor"] = Field(
+        ..., description="Agent 类型"
+    )
     name: str = Field(..., description="类型名称")
     description: str = Field(..., description="类型描述")
     icon: str = Field(default="Bot", description="图标名称")

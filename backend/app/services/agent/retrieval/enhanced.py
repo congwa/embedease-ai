@@ -14,6 +14,10 @@ logger = get_logger("enhanced_retriever")
 settings = get_settings()
 
 
+def _is_cjk_token(s: str) -> bool:
+    return bool(s) and all("\u4e00" <= c <= "\u9fff" for c in s)
+
+
 def extract_keywords(query: str) -> list[str]:
     """从查询中提取关键词
 
@@ -68,8 +72,26 @@ def extract_keywords(query: str) -> list[str]:
     words = re.findall(r"[\u4e00-\u9fa5a-zA-Z0-9]+", query)
     keywords = [w for w in words if w not in stopwords and len(w) > 1]
 
-    logger.debug("提取关键词", query=query, keywords=keywords)
-    return keywords
+    # 中文整句常被识别为一个 token（无空格），无法在「深度保洁」等名称中整词匹配。
+    # 对纯中文且较长的 token 追加连续二字片段，例如「平台上的保洁服务」→ 含「保洁」「服务」等。
+    extras: list[str] = []
+    for w in keywords:
+        if _is_cjk_token(w) and len(w) >= 4:
+            for i in range(len(w) - 1):
+                bg = w[i : i + 2]
+                if bg not in stopwords:
+                    extras.append(bg)
+
+    merged: list[str] = []
+    seen: set[str] = set()
+    for w in keywords + extras:
+        if w in seen or len(w) < 2:
+            continue
+        seen.add(w)
+        merged.append(w)
+
+    logger.debug("提取关键词", query=query, keywords=merged)
+    return merged
 
 
 def filter_by_keywords(
@@ -280,10 +302,18 @@ async def enhanced_search(
 
     # 3. 关键词过滤
     if enable_keyword_filter and keywords:
-        docs = filter_by_keywords(docs, keywords, min_match=1)
+        filtered = filter_by_keywords(docs, keywords, min_match=1)
+        if not filtered and docs:
+            logger.warning(
+                "关键词过滤后无结果，回退为向量检索结果（避免中文长句整词无法匹配商品名）",
+                query=query,
+                keywords=keywords,
+            )
+            filtered = docs
+        docs = filtered
 
     if not docs:
-        logger.warning("关键词过滤后无结果")
+        logger.warning("增强检索无可用文档")
         return []
 
     # 4. 重排序

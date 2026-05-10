@@ -20,11 +20,22 @@ export interface ToolCategoriesConfigCardProps {
 
 export const ALL_TOOL_CATEGORY_KEYS = Object.keys(TOOL_CATEGORY_LABELS);
 
+const PRODUCT_TOOL_CATEGORIES = [
+  "search",
+  "query",
+  "compare",
+  "filter",
+  "category",
+  "featured",
+  "purchase",
+  "guide",
+] as const;
+
 export const DEFAULT_CATEGORIES_BY_TYPE: Record<string, string[]> = {
-  product: ["search", "query", "compare", "filter", "category", "featured", "purchase", "guide"],
+  product: [...PRODUCT_TOOL_CATEGORIES],
   faq: ["faq"],
   kb: ["kb", "search"],
-  custom: [],
+  custom: [...PRODUCT_TOOL_CATEGORIES],
 };
 
 export function ToolCategoriesConfigCard({

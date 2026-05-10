@@ -199,8 +199,8 @@ async def complete_essential_setup(data: EssentialSetupRequest):
         agent_name = data.agent_name or f"默认{_get_agent_type_name(data.agent_type)}助手"
         system_prompt = DEFAULT_PROMPTS.get(data.agent_type, DEFAULT_PROMPTS.get("custom", ""))
         tool_categories = DEFAULT_TOOL_CATEGORIES.get(data.agent_type)
-        tool_policy = DEFAULT_TOOL_POLICIES.get(data.agent_type)
-        
+        raw_policy = DEFAULT_TOOL_POLICIES.get(data.agent_type)
+        tool_policy = dict(raw_policy) if isinstance(raw_policy, dict) else raw_policy
         agent_id = str(uuid.uuid4())
         
         # 3. 数据库操作：验证通过后才获取 db session，快速写入后释放

@@ -1,0 +1,91 @@
+{
+  "completed": true,
+  "current_step": 2,
+  "steps": [
+    {
+      "index": 0,
+      "key": "welcome",
+      "title": "欢迎 & 检查清单",
+      "description": "查看系统配置状态，了解需要完成的配置项",
+      "status": "completed",
+      "data": null
+    },
+    {
+      "index": 1,
+      "key": "mode",
+      "title": "模式选择",
+      "description": "选择单 Agent 模式或 Supervisor 多 Agent 编排模式",
+      "status": "completed",
+      "data": {
+        "mode": "single"
+      }
+    },
+    {
+      "index": 2,
+      "key": "system",
+      "title": "系统基础设置",
+      "description": "配置公司信息、品牌主题等基础设置",
+      "status": "in_progress",
+      "data": null
+    },
+    {
+      "index": 3,
+      "key": "models",
+      "title": "模型 & 向量服务",
+      "description": "配置 LLM、Embedding 和 Qdrant 服务",
+      "status": "pending",
+      "data": null
+    },
+    {
+      "index": 4,
+      "key": "agent-type",
+      "title": "Agent 类型选择",
+      "description": "选择要配置的 Agent 类型",
+      "status": "pending",
+      "data": null
+    },
+    {
+      "index": 5,
+      "key": "knowledge",
+      "title": "知识 & Agent 配置",
+      "description": "根据 Agent 类型配置知识源和工具",
+      "status": "pending",
+      "data": null
+    },
+    {
+      "index": 6,
+      "key": "greeting",
+      "title": "开场白配置",
+      "description": "设置 Agent 的欢迎消息和触发策略",
+      "status": "pending",
+      "data": null
+    },
+    {
+      "index": 7,
+      "key": "channel",
+      "title": "渠道 & 集成",
+      "description": "配置客服入口和第三方集成",
+      "status": "pending",
+      "data": null
+    },
+    {
+      "index": 8,
+      "key": "summary",
+      "title": "总结 & 快捷入口",
+      "description": "查看配置完成状态，获取常用入口",
+      "status": "pending",
+      "data": null
+    }
+  ],
+  "agent_id": "fe0452ac-c6b5-46cb-9905-f2cd8100c11f",
+  "updated_at": "2026-05-10T18:31:49.537547",
+  "setup_level": "essential",
+  "essential_completed": true,
+  "essential_data": {
+    "mode": "single",
+    "llm_provider": "siliconflow",
+    "llm_model": "deepseek-ai/DeepSeek-V4-Flash",
+    "agent_type": "product",
+    "agent_id": "fe0452ac-c6b5-46cb-9905-f2cd8100c11f"
+  }
+}

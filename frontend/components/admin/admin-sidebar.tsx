@@ -43,6 +43,7 @@ import {
 import { AgentSwitcher } from "./agent-switcher";
 import { useAgentStore, useModeStore } from "@/stores";
 import { useSupportStats } from "@/hooks/use-support-stats";
+import { agentHasProductCatalogNav } from "@/lib/config/navigation";
 
 // 单 Agent 模式菜单
 const singleModeNavItems: NavItemConfig[] = [
@@ -107,7 +108,7 @@ const getAgentConsoleItems = (agentId: string, agentType: string): NavItemConfig
   ];
 
   // 根据 Agent 类型添加特定菜单
-  if (agentType === "product") {
+  if (agentHasProductCatalogNav(agentType)) {
     baseItems.push({
       title: "商品数据",
       href: "/admin/products",
