@@ -13,7 +13,7 @@ from app.core.database import init_db
 from app.core.errors import AppError, create_error_response
 from app.core.logging import logger
 from app.core.models_dev import get_model_profile
-from app.routers import admin, chat, conversations, crawler, support, users, ws
+from app.routers import admin, chat, conversations, crawler, orders, support, users, ws
 from app.routers import health as health_router
 from app.routers import ocr as ocr_router
 from app.routers import prompts as prompts_router
@@ -308,6 +308,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 # 注册路由
 app.include_router(admin.router)
+app.include_router(orders.router)
 app.include_router(agents_router)
 app.include_router(knowledge_router)
 app.include_router(faq_router)

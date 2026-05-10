@@ -14,6 +14,7 @@ from app.models.base import Base
 from app.models.conversation import Conversation, HandoffState
 from app.models.crawler import CrawlPage, CrawlSite, CrawlTask
 from app.models.message import Message
+from app.models.order import Order
 from app.models.product import Product
 from app.models.prompt import Prompt, PromptCategory
 from app.models.tool_call import ToolCall
@@ -35,6 +36,7 @@ __all__ = [
     "KnowledgeConfig",
     "KnowledgeType",
     "Message",
+    "Order",
     "Product",
     "Prompt",
     "PromptCategory",
