@@ -8,10 +8,10 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from langgraph_agent_kit import (
-    StreamEventType,
-    StreamEvent,
     ChatContext,
     QueueDomainEmitter,
+    StreamEvent,
+    StreamEventType,
     make_event,
 )
 
@@ -42,6 +42,7 @@ class ChatStreamOrchestrator:
         assistant_message_id: str,
         agent_id: str | None = None,
         images: list[Any] | None = None,
+        initial_events: list[dict[str, Any]] | None = None,
         db: Any = None,  # 数据库会话（传递给 ChatContext，供工具使用）
     ) -> None:
         self._conversation_service = conversation_service
@@ -53,6 +54,7 @@ class ChatStreamOrchestrator:
         self._assistant_message_id = assistant_message_id
         self._agent_id = agent_id
         self._images = images
+        self._initial_events = initial_events or []
         self._db = db
 
         self._seq = 0
@@ -80,6 +82,14 @@ class ChatStreamOrchestrator:
                 "assistant_message_id": self._assistant_message_id,
             },
         )
+        for event in self._initial_events:
+            yield make_event(
+                seq=self._next_seq(),
+                conversation_id=self._conversation_id,
+                message_id=self._assistant_message_id,
+                type=event["type"],
+                payload=event.get("payload", {}),
+            )
 
         try:
             loop = asyncio.get_running_loop()

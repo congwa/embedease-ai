@@ -42,22 +42,27 @@ class ToolSpec:
 
 # ========== 工具列表（一目了然） ==========
 #
-# 名称                        │ 类别           │ 说明
-# ────────────────────────────┼────────────────┼────────────────────
-# search_products             │ search, core   │ 搜索商品
-# get_product_details         │ query, core    │ 获取商品详情
-# compare_products            │ compare        │ 对比商品
-# filter_by_price             │ filter         │ 价格筛选
-# guide_user                  │ guide          │ 引导用户
-# list_all_categories         │ category       │ 列出所有类目
-# get_category_overview       │ category       │ 类目概览
-# list_products_by_category   │ category       │ 按类目列商品
-# find_similar_products       │ search         │ 查找相似商品
-# list_featured_products      │ featured       │ 精选商品
-# list_products_by_attribute  │ filter         │ 按属性筛选
-# suggest_related_categories  │ category       │ 推荐相关类目
-# get_product_purchase_links  │ purchase       │ 获取购买链接
-# ────────────────────────────┴────────────────┴────────────────────
+# 名称                        │ 类别                  │ 说明
+# ────────────────────────────┼───────────────────────┼────────────────────
+# search_products             │ search, core          │ 搜索商品
+# get_product_details         │ query, core           │ 获取商品详情
+# compare_products            │ compare               │ 对比商品
+# filter_by_price             │ filter                │ 价格筛选
+# guide_user                  │ guide                 │ 引导用户
+# list_all_categories         │ category              │ 列出所有类目
+# get_category_overview       │ category              │ 类目概览
+# list_products_by_category   │ category              │ 按类目列商品
+# find_similar_products       │ search                │ 查找相似商品
+# list_featured_products      │ featured              │ 精选商品
+# list_products_by_attribute  │ filter                │ 按属性筛选
+# suggest_related_categories  │ category              │ 推荐相关类目
+# get_product_purchase_links  │ purchase              │ 获取购买链接
+# ─────────────────── 客诉工具（role_tag 专用） ───────────────────────
+# complaint_faq_search        │ complaint_faq         │ 客诉 FAQ 搜索
+# complaint_policy_search     │ complaint_policy      │ 规则/政策查询
+# complaint_case_sop_search   │ complaint_sop         │ 案例 SOP 查询
+# handoff_create              │ complaint_handoff     │ 转人工摘要生成
+# ────────────────────────────┴───────────────────────┴────────────────────
 
 
 def _get_tool_specs() -> list[ToolSpec]:
@@ -278,6 +283,8 @@ def _get_type_specific_tools(
 ) -> list[Callable[..., Any]]:
     """获取 Agent 类型专用工具
 
+    优先检查 role_tag（客诉角色），再按 agent_type 注入知识工具。
+
     Args:
         agent_type: Agent 类型
         config: Agent 配置
@@ -286,6 +293,12 @@ def _get_type_specific_tools(
         类型专用工具列表
     """
     tools: list[Callable[..., Any]] = []
+
+    # 客诉角色工具注入（role_tag 优先于 type）
+    role_tag = getattr(config, "role_tag", None)
+    if role_tag in ("executor", "front_desk"):
+        tools.extend(_get_complaint_tools(role_tag, config))
+        return tools
 
     if agent_type == "faq":
         # FAQ 工具
@@ -302,6 +315,50 @@ def _get_type_specific_tools(
         kb_tool = create_kb_search_tool(config)
         if kb_tool:
             tools.append(kb_tool)
+
+    return tools
+
+
+def _get_complaint_tools(
+    role_tag: str,
+    config: "AgentConfig",
+) -> list[Callable[..., Any]]:
+    """获取客诉角色专用工具
+
+    Args:
+        role_tag: 客诉角色标识（executor / front_desk）
+        config: Agent 配置
+
+    Returns:
+        客诉专用工具列表
+    """
+    from app.services.agent.tools.complaint.case_sop_search import (
+        create_complaint_case_sop_search_tool,
+    )
+    from app.services.agent.tools.complaint.faq_search import create_complaint_faq_search_tool
+    from app.services.agent.tools.complaint.handoff_create import create_handoff_create_tool
+    from app.services.agent.tools.complaint.policy_search import create_complaint_policy_search_tool
+
+    tools: list[Callable[..., Any]] = []
+
+    # front_desk 只使用 FAQ 工具
+    faq_tool = create_complaint_faq_search_tool(config)
+    if faq_tool:
+        tools.append(faq_tool)
+
+    # executor 额外使用政策和 SOP 工具
+    if role_tag == "executor":
+        policy_tool = create_complaint_policy_search_tool(config)
+        if policy_tool:
+            tools.append(policy_tool)
+
+        sop_tool = create_complaint_case_sop_search_tool(config)
+        if sop_tool:
+            tools.append(sop_tool)
+
+        handoff_tool = create_handoff_create_tool(config)
+        if handoff_tool:
+            tools.append(handoff_tool)
 
     return tools
 

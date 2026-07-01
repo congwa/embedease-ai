@@ -18,6 +18,7 @@ export type {
   ErrorItem,
   FinalItem,
   MemoryEventItem,
+  ComplaintEventItem,
   SupportEventItem,
   GreetingItem,
   WaitingItem,

@@ -25,7 +25,6 @@ logger = get_logger("agent.config")
 
 # ========== 默认 System Prompts ==========
 # 从 prompts 模块导入默认值，保持向后兼容
-from app.prompts.defaults import AGENT_PROMPTS
 from app.prompts.registry import get_default_prompt_content
 
 # 构建兼容的 DEFAULT_PROMPTS 字典
@@ -53,6 +52,15 @@ DEFAULT_TOOL_CATEGORIES: dict[str, list[str]] = {
     "faq": ["faq"],
     "kb": ["kb", "search"],
     "custom": [],
+}
+
+# ========== 客诉角色默认工具类别 ==========
+# 按 role_tag 映射默认工具类别，优先级高于 type 级别默认值
+COMPLAINT_ROLE_TOOL_CATEGORIES: dict[str, list[str]] = {
+    "front_desk": ["complaint_faq"],
+    "planner": [],
+    "executor": ["complaint_faq", "complaint_policy", "complaint_sop"],
+    "reviewer": [],
 }
 
 
@@ -147,10 +155,13 @@ class AgentConfigLoader:
         else:
             system_prompt = DEFAULT_PROMPTS.get(agent_type, DEFAULT_PROMPTS["custom"])
 
-        # 2. 工具类别：agent 配置 > 默认
+        # 2. 工具类别：agent 配置 > role_tag 默认 > type 默认
         tool_categories = agent.tool_categories
         if not tool_categories:
-            tool_categories = DEFAULT_TOOL_CATEGORIES.get(agent_type, [])
+            if agent.role_tag and agent.role_tag in COMPLAINT_ROLE_TOOL_CATEGORIES:
+                tool_categories = COMPLAINT_ROLE_TOOL_CATEGORIES[agent.role_tag]
+            else:
+                tool_categories = DEFAULT_TOOL_CATEGORIES.get(agent_type, [])
 
         # 3. 工具白名单（从 agent_tools 表加载）
         tool_whitelist: list[str] | None = None
@@ -207,6 +218,12 @@ class AgentConfigLoader:
             knowledge_config=knowledge_config,
             response_format=agent.response_format,
             config_version=config_version,
+            role_tag=agent.role_tag,
+            business_domain=agent.business_domain,
+            skill_bundle_ids=agent.skill_bundle_ids,
+            knowledge_scope=agent.knowledge_scope,
+            review_schema_name=agent.review_schema_name,
+            handoff_rules=agent.handoff_rules,
         )
 
     def _compute_version(

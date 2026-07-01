@@ -7,6 +7,7 @@ export { TimelineTodosItem } from "./TimelineTodosItem";
 export { TimelineContextSummarizedItem } from "./TimelineContextSummarizedItem";
 export { TimelineUserMessageItem } from "./TimelineUserMessageItem";
 export { TimelineErrorItem } from "./TimelineErrorItem";
+export { TimelineComplaintEventItem } from "./TimelineComplaintEventItem";
 export { TimelineSupportEventItem } from "./TimelineSupportEventItem";
 export { TimelineGreetingItem } from "./greeting-item";
 export { TimelineWaitingItem } from "./TimelineWaitingItem";

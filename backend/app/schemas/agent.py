@@ -338,6 +338,13 @@ class AgentBase(BaseModel):
     status: AgentStatusEnum = Field(default="enabled")
     is_default: bool = Field(default=False)
     greeting_config: GreetingConfigSchema | None = Field(default=None, description="开场白配置")
+    # 客诉角色扩展字段
+    role_tag: str | None = Field(default=None, max_length=50, description="客诉角色标识，如 front_desk/planner/executor/reviewer")
+    business_domain: str | None = Field(default=None, max_length=100, description="业务领域，如 complaint/ecommerce")
+    skill_bundle_ids: list[str] | None = Field(default=None, description="绑定的技能包 ID 列表")
+    knowledge_scope: str | None = Field(default=None, max_length=200, description="知识检索范围标识")
+    review_schema_name: str | None = Field(default=None, max_length=100, description="审查模板名称")
+    handoff_rules: dict[str, Any] | None = Field(default=None, description="转人工规则配置")
 
 
 class AgentCreate(BaseModel):
@@ -355,6 +362,13 @@ class AgentCreate(BaseModel):
     status: AgentStatusEnum = Field(default="enabled")
     is_default: bool = Field(default=False)
     greeting_config: GreetingConfigSchema | None = Field(default=None, description="开场白配置")
+    # 客诉角色扩展字段
+    role_tag: str | None = Field(default=None, max_length=50)
+    business_domain: str | None = Field(default=None, max_length=100)
+    skill_bundle_ids: list[str] | None = Field(default=None)
+    knowledge_scope: str | None = Field(default=None, max_length=200)
+    review_schema_name: str | None = Field(default=None, max_length=100)
+    handoff_rules: dict[str, Any] | None = Field(default=None)
 
 
 class AgentUpdate(BaseModel):
@@ -372,6 +386,13 @@ class AgentUpdate(BaseModel):
     status: AgentStatusEnum | None = Field(default=None)
     is_default: bool | None = Field(default=None)
     greeting_config: GreetingConfigSchema | None = Field(default=None)
+    # 客诉角色扩展字段
+    role_tag: str | None = Field(default=None, max_length=50)
+    business_domain: str | None = Field(default=None, max_length=100)
+    skill_bundle_ids: list[str] | None = Field(default=None)
+    knowledge_scope: str | None = Field(default=None, max_length=200)
+    review_schema_name: str | None = Field(default=None, max_length=100)
+    handoff_rules: dict[str, Any] | None = Field(default=None)
 
 
 class AgentResponse(AgentBase):
@@ -558,5 +579,13 @@ class AgentConfig(BaseModel):
 
     # 版本（用于缓存失效）
     config_version: str | None = None
+
+    # 客诉角色扩展字段
+    role_tag: str | None = None
+    business_domain: str | None = None
+    skill_bundle_ids: list[str] | None = None
+    knowledge_scope: str | None = None
+    review_schema_name: str | None = None
+    handoff_rules: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}

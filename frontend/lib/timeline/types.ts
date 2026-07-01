@@ -142,6 +142,30 @@ export interface SupportEventItem {
   ts: number;
 }
 
+export interface ComplaintEventItem {
+  type: "complaint.event";
+  id: string;
+  turnId: string;
+  eventType:
+    | "ticket_created"
+    | "ticket_merged"
+    | "secondary_issue_detected"
+    | "task_created"
+    | "task_started"
+    | "task_completed"
+    | "review_pending"
+    | "review_passed"
+    | "review_rejected"
+    | "handoff_requested"
+    | "blocked";
+  label: string;
+  description?: string;
+  taskType?: string;
+  agentTag?: string;
+  reviewScore?: number;
+  ts: number;
+}
+
 export interface GreetingItem {
   type: "greeting";
   id: string;
@@ -184,6 +208,7 @@ export type TimelineItem =
   | FinalItem
   | MemoryEventItem
   | SupportEventItem
+  | ComplaintEventItem
   | GreetingItem
   | WaitingItem
   | SkillActivatedItem;

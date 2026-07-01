@@ -249,6 +249,20 @@ class Settings(BaseSettings):
     # False: 使用旧实现（legacy）
     USE_AGENT_SDK: bool = True
 
+    # ========== 客诉巡查调度配置 ==========
+    # 巡查任务负责发现 blocked / pending_review / handoff_pending 超时与返工死循环。
+    COMPLAINT_PATROL_ENABLED: bool = True
+    COMPLAINT_PATROL_CRON: str = "*/10 * * * *"
+    COMPLAINT_PATROL_RUN_ON_START: bool = False
+    COMPLAINT_PATROL_BLOCKED_TIMEOUT_MINUTES: int = 20
+    COMPLAINT_PATROL_PENDING_REVIEW_TIMEOUT_MINUTES: int = 15
+    COMPLAINT_PATROL_HANDOFF_PENDING_TIMEOUT_MINUTES: int = 10
+    COMPLAINT_PATROL_HANDOFF_REMINDER_COOLDOWN_MINUTES: int = 30
+    COMPLAINT_PATROL_REWORK_LIMIT: int = 3
+    COMPLAINT_SCORE_SNAPSHOT_ENABLED: bool = True
+    COMPLAINT_SCORE_SNAPSHOT_CRON: str = "30 2 * * *"
+    COMPLAINT_SCORE_SNAPSHOT_RUN_ON_START: bool = False
+
     # ========== Supervisor 多 Agent 编排配置 ==========
     # 全局开关（关闭后所有 Supervisor Agent 回退到单 Agent 模式）
     SUPERVISOR_ENABLED: bool = False

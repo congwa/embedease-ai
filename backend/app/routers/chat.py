@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from langgraph_agent_kit import encode_sse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,11 +22,15 @@ from app.schemas.suggested_question import (
     SuggestedQuestionsPublicResponse,
 )
 from app.services.chat_stream_adapter import (
-    get_chat_stream_orchestrator,
     get_agent_service,
+    get_chat_stream_orchestrator,
+)
+from app.services.complaint import (
+    ComplaintChatStreamOrchestrator,
+    ComplaintConversationOrchestrator,
+    ComplaintRunContext,
 )
 from app.services.conversation import ConversationService
-from langgraph_agent_kit import encode_sse
 from app.services.support.handoff import HandoffService
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
@@ -59,10 +64,14 @@ async def chat(
     - support.human_message: 人工消息 {"type": "support.human_message", "payload": {...}}
     - error: 错误 {"type": "error", "payload": {"message": "..."}}
     """
+    complaint_initial_events: list[dict] = []
+    complaint_run_context: ComplaintRunContext | None = None
+
     # 使用独立短事务保存用户消息和检查状态
     # 避免整个 SSE 流持有数据库连接
     async with get_db_context() as db:
         conversation_service = ConversationService(db)
+        complaint_orchestrator = ComplaintConversationOrchestrator(db)
         handoff_service = HandoffService(db)
 
         # 检查会话的 handoff 状态
@@ -86,6 +95,34 @@ async def chat(
             message_type=message_type,
             extra_metadata=extra_metadata,
         )
+
+        try:
+            if not is_human_mode:
+                complaint_run_context = await complaint_orchestrator.handle_user_message(
+                    conversation_id=request_data.conversation_id,
+                    user_id=request_data.user_id,
+                    user_message_id=user_message.id,
+                    user_message=request_data.message,
+                )
+                complaint_initial_events = complaint_run_context.pre_stream_events
+                logger.info(
+                    "客诉主链路编排完成",
+                    conversation_id=request_data.conversation_id,
+                    ticket_id=complaint_run_context.ticket_id,
+                    review_status=complaint_run_context.review_decision.status.value,
+                    handoff_requested=bool(complaint_run_context.handoff_result),
+                )
+            else:
+                logger.info(
+                    "人工模式下跳过 complaint orchestrator",
+                    conversation_id=request_data.conversation_id,
+                )
+        except Exception:
+            logger.exception(
+                "客诉主链路编排失败，降级继续聊天",
+                conversation_id=request_data.conversation_id,
+            )
+
         # 提取需要的数据，在 session 关闭前获取
         user_message_id = user_message.id
         
@@ -137,6 +174,8 @@ async def chat(
                     "mode": "human",
                 },
             })
+            for event in complaint_initial_events:
+                yield encode_sse(event)
             yield encode_sse({
                 "type": "support.human_mode",
                 "payload": {
@@ -177,22 +216,30 @@ async def chat(
         # 注意：db=None 让工具自行创建短事务，避免嵌套
         async with get_db_context() as stream_db:
             stream_conversation_service = ConversationService(stream_db)
-            # 获取适配后的服务
-            agent_service = get_agent_service()
-            OrchestratorClass = get_chat_stream_orchestrator()
-            
-            orchestrator = OrchestratorClass(
-                conversation_service=stream_conversation_service,
-                agent_service=agent_service,
-                conversation_id=request_data.conversation_id,
-                user_id=request_data.user_id,
-                user_message=request_data.message,
-                user_message_id=user_message_id,
-                assistant_message_id=assistant_message_id,
-                agent_id=request_data.agent_id,
-                images=request_data.images,
-                db=None,  # 不传递 session，让工具自行创建短事务
-            )
+            if complaint_run_context is not None:
+                orchestrator = ComplaintChatStreamOrchestrator(
+                    conversation_service=stream_conversation_service,
+                    run_context=complaint_run_context,
+                    assistant_message_id=assistant_message_id,
+                )
+            else:
+                # 获取适配后的服务
+                agent_service = get_agent_service()
+                OrchestratorClass = get_chat_stream_orchestrator()
+                
+                orchestrator = OrchestratorClass(
+                    conversation_service=stream_conversation_service,
+                    agent_service=agent_service,
+                    conversation_id=request_data.conversation_id,
+                    user_id=request_data.user_id,
+                    user_message=request_data.message,
+                    user_message_id=user_message_id,
+                    assistant_message_id=assistant_message_id,
+                    agent_id=request_data.agent_id,
+                    images=request_data.images,
+                    initial_events=complaint_initial_events,
+                    db=None,  # 不传递 session，让工具自行创建短事务
+                )
 
             try:
                 async for event in orchestrator.run():

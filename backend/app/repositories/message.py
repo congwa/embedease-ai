@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -208,17 +208,20 @@ class MessageRepository(BaseRepository[Message]):
         else:
             role_filter = Message.role == "user"
 
+        # 这里必须用 SQL 的 IS NULL，而不是 Python 的 `is None`，
+        # 否则客服工作台会把未读数统计成错误结果。
         result = await self.session.execute(
-            select(Message)
+            select(func.count())
+            .select_from(Message)
             .where(
                 and_(
                     Message.conversation_id == conversation_id,
-                    Message.read_at is None,
+                    Message.read_at.is_(None),
                     role_filter,
                 )
             )
         )
-        return len(list(result.scalars().all()))
+        return result.scalar() or 0
 
     # ========== 撤回/编辑相关方法 ==========
 

@@ -56,6 +56,9 @@ export type WSAction =
   | "server.agent_online"
   | "server.agent_offline"
   | "server.conversation_state"
+  | "server.support_queue_changed"
+  | "server.ticket_updated"
+  | "server.review_updated"
   | "server.message_withdrawn"
   | "server.message_edited"
   | "server.messages_deleted";
@@ -76,15 +79,71 @@ export interface WSMessage {
   };
 }
 
+export interface TicketStateSummary {
+  id: string;
+  status: string;
+  primary_issue_tag?: string | null;
+  secondary_issue_tags?: string[];
+  current_agent_tag?: string | null;
+  priority_level?: string | null;
+  risk_level?: string | null;
+  unresolved_turns?: number;
+  handoff_required?: boolean;
+  handoff_reason?: string | null;
+  merged_from_latest_message?: boolean;
+  secondary_issue_detected?: boolean;
+  updated_at?: string | null;
+}
+
+export interface ReviewStateSummary {
+  status: string;
+  score?: number | null;
+  risk_level?: string | null;
+  reasons?: string[];
+  suggested_next_agent?: string | null;
+  created_at?: string | null;
+}
+
+export interface RecentTaskStateSummary {
+  id: string;
+  ticket_id: string;
+  task_type: string;
+  agent_tag: string;
+  status: string;
+  goal?: string | null;
+  success_criteria?: string[];
+  review_required?: boolean;
+  review_status?: string | null;
+  business_summary?: string | null;
+  failure_reason?: string | null;
+  output_payload?: Record<string, unknown> | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  created_at?: string | null;
+}
+
+export interface SecondaryIssueStateSummary {
+  issue_tag: string;
+  reason?: string | null;
+  raw_message?: string | null;
+  extra_data?: Record<string, unknown>;
+}
+
 // Payload 类型
 export interface ConnectedPayload {
   connection_id: string;
   role: WSRole;
   conversation_id: string;
+  conversation_mode?: string;
   handoff_state: string;
   peer_online: boolean;
   peer_last_online_at: string | null;
   unread_count: number;
+  current_ticket?: TicketStateSummary | null;
+  review_summary?: ReviewStateSummary | null;
+  recent_tasks?: RecentTaskStateSummary[];
+  secondary_issues?: SecondaryIssueStateSummary[];
+  handoff_summary?: Record<string, unknown> | null;
 }
 
 export interface ServerMessagePayload {
@@ -103,6 +162,12 @@ export interface ServerMessagePayload {
   delivered_at?: string;
   read_at?: string;
   read_by?: string;
+  is_withdrawn?: boolean;
+  withdrawn_at?: string;
+  withdrawn_by?: string;
+  is_edited?: boolean;
+  edited_at?: string;
+  edited_by?: string;
 }
 
 export interface TypingPayload {
@@ -141,8 +206,34 @@ export interface ReadReceiptPayload {
 }
 
 export interface ConversationStatePayload {
+  conversation_mode?: string;
   handoff_state: string;
   operator?: string;
+  handoff_reason?: string | null;
+  user_online?: boolean;
+  peer_last_online_at?: string | null;
+  unread_count?: number;
+  current_ticket?: TicketStateSummary | null;
+  review_summary?: ReviewStateSummary | null;
+  recent_tasks?: RecentTaskStateSummary[];
+  secondary_issues?: SecondaryIssueStateSummary[];
+  handoff_summary?: Record<string, unknown> | null;
+}
+
+export interface SupportQueueChangedPayload {
+  conversation_id: string;
+  handoff_state: string;
+  reason?: string | null;
+  source?: string | null;
+  changed_at?: string | null;
+}
+
+export interface TicketUpdatedPayload {
+  ticket: TicketStateSummary;
+}
+
+export interface ReviewUpdatedPayload {
+  review_summary: ReviewStateSummary;
 }
 
 export interface AckPayload {
@@ -209,10 +300,17 @@ export interface SupportMessage {
 
 // 会话状态
 export interface ConversationState {
+  conversation_mode?: "ai" | "pending" | "human" | "closed";
   handoff_state: "ai" | "pending" | "human";
   operator?: string;
+  handoff_reason?: string | null;
   user_online: boolean;
   agent_online: boolean;
   peer_last_online_at?: string;
   unread_count?: number;
+  current_ticket?: TicketStateSummary | null;
+  review_summary?: ReviewStateSummary | null;
+  recent_tasks?: RecentTaskStateSummary[];
+  secondary_issues?: SecondaryIssueStateSummary[];
+  handoff_summary?: Record<string, unknown> | null;
 }

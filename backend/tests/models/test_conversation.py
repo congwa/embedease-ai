@@ -1,10 +1,10 @@
 """Conversation 模型测试
 
-测试会话模型的字段、枚举和状态追踪。
+测试会话模型在引入客诉主问题单快照后的字段、枚举和状态追踪能力。
 """
 
 
-from app.models.conversation import Conversation, HandoffState
+from app.models.conversation import Conversation, ConversationMode, HandoffState
 
 
 class TestHandoffStateEnum:
@@ -42,6 +42,26 @@ class TestHandoffStateEnum:
         assert HandoffState("pending") == HandoffState.PENDING
 
 
+class TestConversationModeEnum:
+    """测试 ConversationMode 枚举"""
+
+    def test_ai_mode_value(self):
+        """测试 AI 模式值"""
+        assert ConversationMode.AI.value == "ai"
+
+    def test_pending_mode_value(self):
+        """测试等待人工模式值"""
+        assert ConversationMode.PENDING.value == "pending"
+
+    def test_human_mode_value(self):
+        """测试人工模式值"""
+        assert ConversationMode.HUMAN.value == "human"
+
+    def test_closed_mode_value(self):
+        """测试关闭模式值"""
+        assert ConversationMode.CLOSED.value == "closed"
+
+
 class TestConversationModelStructure:
     """测试 Conversation 模型结构"""
 
@@ -72,6 +92,54 @@ class TestConversationModelStructure:
     def test_has_handoff_at_field(self):
         """测试有 handoff_at 字段"""
         assert hasattr(Conversation, 'handoff_at')
+
+    def test_has_conversation_mode_field(self):
+        """测试有会话模式快照字段"""
+        assert hasattr(Conversation, "conversation_mode")
+
+    def test_has_current_ticket_id_field(self):
+        """测试有当前主问题单字段"""
+        assert hasattr(Conversation, "current_ticket_id")
+
+    def test_has_complaint_status_field(self):
+        """测试有客诉状态快照字段"""
+        assert hasattr(Conversation, "complaint_status")
+
+    def test_has_primary_issue_tag_field(self):
+        """测试有主问题标签快照字段"""
+        assert hasattr(Conversation, "primary_issue_tag")
+
+    def test_has_current_agent_tag_field(self):
+        """测试有当前责任岗位快照字段"""
+        assert hasattr(Conversation, "current_agent_tag")
+
+    def test_has_priority_level_field(self):
+        """测试有优先级快照字段"""
+        assert hasattr(Conversation, "priority_level")
+
+    def test_has_risk_level_field(self):
+        """测试有风险快照字段"""
+        assert hasattr(Conversation, "risk_level")
+
+    def test_has_unresolved_turns_field(self):
+        """测试有未解决轮次字段"""
+        assert hasattr(Conversation, "unresolved_turns")
+
+    def test_has_review_status_field(self):
+        """测试有审查状态快照字段"""
+        assert hasattr(Conversation, "review_status")
+
+    def test_has_review_score_field(self):
+        """测试有审查分数字段"""
+        assert hasattr(Conversation, "review_score")
+
+    def test_has_block_reason_field(self):
+        """测试有阻塞原因字段"""
+        assert hasattr(Conversation, "block_reason")
+
+    def test_has_secondary_issues_field(self):
+        """测试有次级问题列表字段"""
+        assert hasattr(Conversation, "secondary_issues")
 
 
 class TestConversationOnlineTracking:

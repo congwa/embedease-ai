@@ -13,6 +13,7 @@ import {
 import type { ChatEvent } from "@/types/chat";
 import type {
   TimelineState,
+  ComplaintEventItem,
   LLMCallClusterItem,
   FinalItem,
   SupportEventItem,
@@ -21,6 +22,7 @@ import type {
 } from "./types";
 import {
   insertItem,
+  removeWaitingItem,
   updateItemById,
 } from "./helpers";
 
@@ -142,6 +144,93 @@ function handleSupportEvent(
 }
 
 
+// ==================== 业务扩展：complaint.* 事件 ====================
+
+
+/**
+ * 生成客诉事件的展示文案。
+ *
+ * 这个函数用于把后端 complaint 事件翻译成用户可理解的阶段说明。
+ */
+function buildComplaintLabel(event: ChatEvent): { label: string; description?: string } {
+  const payload = event.payload as {
+    ticket?: { primary_issue_tag?: string | null; status?: string };
+    task?: { task_type?: string; agent_tag?: string; goal?: string; failure_reason?: string | null };
+    score?: number;
+    reasons?: string[];
+    handoff_reason?: string;
+    message?: string;
+  };
+
+  switch (event.type) {
+    case "complaint.ticket.created":
+      return { label: "已创建问题单", description: payload.ticket?.primary_issue_tag || "系统已开始围绕当前问题单推进处理" };
+    case "complaint.ticket.merged":
+      return { label: "已归并到当前问题单", description: "您刚才的补充会继续挂到同一问题单处理" };
+    case "complaint.secondary_issue.detected":
+      return { label: "识别到次级问题", description: "系统已记录新的附带诉求，避免后续遗漏" };
+    case "complaint.task.created":
+      return { label: "已创建处理任务", description: payload.task?.goal };
+    case "complaint.task.started":
+      return { label: `开始执行 ${payload.task?.task_type || "任务"}`, description: payload.task?.agent_tag || undefined };
+    case "complaint.task.completed":
+      return { label: `完成 ${payload.task?.task_type || "任务"}`, description: payload.task?.failure_reason || payload.task?.goal };
+    case "complaint.review.pending":
+      return { label: "进入质量审查", description: "候选回复正在做合规与质量检查" };
+    case "complaint.review.passed":
+      return { label: "审查通过", description: typeof payload.score === "number" ? `质量分 ${payload.score}` : "当前回复已允许对外发送" };
+    case "complaint.review.rejected":
+      return { label: "审查未通过", description: payload.reasons?.[0] || "系统已要求返工或升级处理" };
+    case "complaint.handoff_requested":
+      return { label: "已请求人工接手", description: payload.handoff_reason || payload.message || "客服接手时会直接看到当前问题摘要" };
+    case "complaint.blocked":
+      return { label: "当前处理被阻塞", description: payload.reasons?.[0] || "系统已记录阻塞原因" };
+    default:
+      return { label: "问题单状态已更新" };
+  }
+}
+
+
+/**
+ * 处理 complaint.* 事件。
+ *
+ * 这个函数用于在客诉编排开始后移除 waiting 状态，并把处理阶段插入到时间线中。
+ */
+function handleComplaintEvent(
+  state: TimelineState,
+  event: ChatEvent,
+  turnId: string,
+  now: number
+): TimelineState {
+  const stateWithoutWaiting = turnId ? removeWaitingItem(state, turnId) : state;
+
+  if (event.type === "complaint.ticket.updated") {
+    return stateWithoutWaiting;
+  }
+
+  const payload = event.payload as {
+    task?: { task_type?: string; agent_tag?: string };
+    score?: number;
+  };
+  const eventType = event.type.replace("complaint.", "").replace(/\./g, "_") as ComplaintEventItem["eventType"];
+  const { label, description } = buildComplaintLabel(event);
+
+  const item: ComplaintEventItem = {
+    type: "complaint.event",
+    id: `complaint:${event.seq || crypto.randomUUID()}`,
+    turnId,
+    eventType,
+    label,
+    description,
+    taskType: payload.task?.task_type,
+    agentTag: payload.task?.agent_tag,
+    reviewScore: payload.score,
+    ts: now,
+  };
+  return insertItem(stateWithoutWaiting, item);
+}
+
+
 // ==================== 业务扩展：assistant.final 推理转内容修复 ====================
 
 
@@ -258,6 +347,10 @@ const businessReducer: SDKCustomReducer = (state, event) => {
   // support.* 事件不依赖 turnId，始终由业务 reducer 处理
   if (chatEvent.type.startsWith("support.")) {
     return handleSupportEvent(localState, chatEvent, turnId || `ws-${now}`, now) as unknown as ReturnType<SDKCustomReducer>;
+  }
+
+  if (chatEvent.type.startsWith("complaint.") && turnId) {
+    return handleComplaintEvent(localState, chatEvent, turnId, now) as unknown as ReturnType<SDKCustomReducer>;
   }
 
   // assistant.final 覆盖 SDK 行为（需要 turnId）

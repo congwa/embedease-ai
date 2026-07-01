@@ -21,10 +21,15 @@ from app.schemas.websocket import (
     PongPayload,
     ReadReceiptPayload,
     RequestHandoffPayload,
+    ReviewStatePayload,
+    ReviewUpdatedPayload,
     ServerMessagePayload,
     ServerReadReceiptPayload,
     ServerTypingPayload,
     StartHandoffPayload,
+    SupportQueueChangedPayload,
+    TicketStatePayload,
+    TicketUpdatedPayload,
     TransferPayload,
     TypingPayload,
     UserPresencePayload,
@@ -102,6 +107,9 @@ class TestWSAction:
         assert WSAction.SERVER_MESSAGE == "server.message"
         assert WSAction.SERVER_TYPING == "server.typing"
         assert WSAction.SERVER_HANDOFF_STARTED == "server.handoff_started"
+        assert WSAction.SERVER_SUPPORT_QUEUE_CHANGED == "server.support_queue_changed"
+        assert WSAction.SERVER_TICKET_UPDATED == "server.ticket_updated"
+        assert WSAction.SERVER_REVIEW_UPDATED == "server.review_updated"
 
 
 class TestWSError:
@@ -188,13 +196,22 @@ class TestSystemPayloads:
             connection_id="conn_123",
             role="user",
             conversation_id="conv_456",
+            conversation_mode="pending",
             handoff_state="none",
             peer_online=True,
             unread_count=5,
+            current_ticket={"id": "ticket_123", "status": "pending_review"},
+            review_summary={"status": "passed"},
+            recent_tasks=[{"id": "task_123", "ticket_id": "ticket_123", "task_type": "triage", "agent_tag": "front_desk_agent", "status": "done"}],
+            secondary_issues=[{"issue_tag": "secondary_issue", "reason": "用户插入退款诉求"}],
+            handoff_summary={"known_slots": ["order_id"]},
         )
         assert payload.connection_id == "conn_123"
         assert payload.peer_online is True
         assert payload.unread_count == 5
+        assert payload.current_ticket is not None
+        assert payload.recent_tasks[0]["task_type"] == "triage"
+        assert payload.secondary_issues[0]["issue_tag"] == "secondary_issue"
 
     def test_error_payload(self):
         """测试错误通知"""
@@ -304,6 +321,17 @@ class TestServerPushPayloads:
         payload = HandoffEndedPayload(operator="agent_123", summary="问题解决")
         assert payload.summary == "问题解决"
 
+    def test_support_queue_changed_payload(self):
+        """测试客服全局队列变更通知。"""
+        payload = SupportQueueChangedPayload(
+            conversation_id="conv_123",
+            handoff_state="pending",
+            reason="用户主动请求人工",
+            source="conversation_request_handoff",
+        )
+        assert payload.conversation_id == "conv_123"
+        assert payload.handoff_state == "pending"
+
     def test_user_presence_payload(self):
         """测试用户在线状态"""
         payload = UserPresencePayload(
@@ -321,10 +349,56 @@ class TestServerPushPayloads:
     def test_conversation_state_payload(self):
         """测试会话状态"""
         payload = ConversationStatePayload(
+            conversation_mode="pending",
             handoff_state="active",
             operator="agent_123",
+            current_ticket=TicketStatePayload(
+                id="ticket_123",
+                status="handoff_pending",
+            ),
+            review_summary=ReviewStatePayload(
+                status="escalated",
+                score=55,
+            ),
+            recent_tasks=[
+                {
+                    "id": "task_123",
+                    "ticket_id": "ticket_123",
+                    "task_type": "review",
+                    "agent_tag": "quality_reviewer_agent",
+                    "status": "done",
+                }
+            ],
+            secondary_issues=[{"issue_tag": "secondary_issue", "reason": "用户追加赔付诉求"}],
+            handoff_summary={"reasons": ["连续驳回"]},
         )
         assert payload.handoff_state == "active"
+        assert payload.current_ticket is not None
+        assert payload.review_summary is not None
+        assert payload.recent_tasks[0].task_type == "review"
+        assert payload.secondary_issues[0].issue_tag == "secondary_issue"
+
+    def test_ticket_updated_payload(self):
+        """测试问题单更新推送。"""
+        payload = TicketUpdatedPayload(
+            ticket=TicketStatePayload(
+                id="ticket_123",
+                status="pending_review",
+                primary_issue_tag="refund_delay",
+            )
+        )
+        assert payload.ticket.id == "ticket_123"
+
+    def test_review_updated_payload(self):
+        """测试审查更新推送。"""
+        payload = ReviewUpdatedPayload(
+            review_summary=ReviewStatePayload(
+                status="rejected",
+                score=68,
+                reasons=["缺少订单号"],
+            )
+        )
+        assert payload.review_summary.status == "rejected"
 
 
 class TestMessageEditPayloads:
@@ -399,3 +473,5 @@ class TestActionPayloadMap:
         """测试服务器 Action 映射"""
         assert ACTION_PAYLOAD_MAP[WSAction.SERVER_MESSAGE] == ServerMessagePayload
         assert ACTION_PAYLOAD_MAP[WSAction.SERVER_TYPING] == ServerTypingPayload
+        assert ACTION_PAYLOAD_MAP[WSAction.SERVER_TICKET_UPDATED] == TicketUpdatedPayload
+        assert ACTION_PAYLOAD_MAP[WSAction.SERVER_REVIEW_UPDATED] == ReviewUpdatedPayload

@@ -1,6 +1,8 @@
 /**
  * 客服工作台状态管理 Store
- * 管理会话列表、用户分组、选中状态等
+ *
+ * 这个文件的业务职责，是把客服列表页所需的会话、用户分组、统计和队列优先级
+ * 统一收敛到一个 store 中，避免列表页和分组面板各自重复计算。
  */
 
 import { create } from "zustand";
@@ -23,6 +25,10 @@ export interface UserConversationGroup {
   latestUpdate: string;
   priorityState: "pending" | "human" | "ai";
   hasOnlineUser: boolean;
+  pendingConversationCount: number;
+  highRiskConversationCount: number;
+  reworkConversationCount: number;
+  activeComplaintCount: number;
   // 最新消息预览
   lastMessage?: string;
   lastMessageAt?: string;
@@ -65,12 +71,20 @@ export interface SupportWorkbenchState {
     lastMessageAt: string,
     lastMessageRole: "user" | "assistant" | "human"
   ) => void;
+  patchConversation: (
+    conversationId: string,
+    updates: Partial<ConversationWithPreview>
+  ) => void;
   
   // 重置
   reset: () => void;
 }
 
-// 聚合会话按用户分组
+/**
+ * 按用户聚合会话并生成队列优先级信号。
+ *
+ * 这个方法服务于客服列表页，让人工在用户维度先看出谁有待接入、高风险或返工中的问题单。
+ */
 function groupConversationsByUser(
   conversations: ConversationWithPreview[],
   sortBy: "heat" | "time"
@@ -96,6 +110,14 @@ function groupConversationsByUser(
     const maxHeatScore = Math.max(...convs.map((c) => c.heat_score));
     const latestUpdate = convs[0].updated_at;
     const hasOnlineUser = convs.some((c) => c.user_online);
+    const pendingConversationCount = convs.filter((c) => c.handoff_state === "pending").length;
+    const highRiskConversationCount = convs.filter((c) => c.risk_level === "high").length;
+    const reworkConversationCount = convs.filter(
+      (c) => c.review_status === "rejected" || c.ticket_status === "rework_required" || c.ticket_status === "blocked"
+    ).length;
+    const activeComplaintCount = convs.filter(
+      (c) => c.ticket_status && c.ticket_status !== "resolved" && c.ticket_status !== "closed"
+    ).length;
 
     // 找最新的消息
     const convWithLastMsg = convs.find((c) => c.lastMessage);
@@ -117,6 +139,10 @@ function groupConversationsByUser(
       latestUpdate,
       priorityState,
       hasOnlineUser,
+      pendingConversationCount,
+      highRiskConversationCount,
+      reworkConversationCount,
+      activeComplaintCount,
       lastMessage,
       lastMessageAt,
     });
@@ -201,6 +227,23 @@ export const useSupportWorkbenchStore = create<SupportWorkbenchState>()(
         c.id === conversationId
           ? { ...c, lastMessage, lastMessageAt, lastMessageRole }
           : c
+      );
+      const userGroups = groupConversationsByUser(updated, sortBy);
+      set({ conversations: updated, userGroups });
+    },
+
+    /**
+     * 按会话增量更新工作台卡片数据。
+     *
+     * 这个方法服务于列表页实时订阅，在不重新请求整页数据的情况下把单个会话的状态、
+     * 风险、最新消息和工单快照更新到当前分组视图中。
+     */
+    patchConversation: (conversationId, updates) => {
+      const { conversations, sortBy } = get();
+      const updated = conversations.map((conversation) =>
+        conversation.id === conversationId
+          ? { ...conversation, ...updates }
+          : conversation
       );
       const userGroups = groupConversationsByUser(updated, sortBy);
       set({ conversations: updated, userGroups });

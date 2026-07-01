@@ -385,10 +385,9 @@ class Logger:
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = None
+            # 在测试初始化和导入阶段经常还没有 running loop；
+            # 这时直接跳过即可，避免 Python 3.13 对 get_event_loop 发出弃用告警。
+            loop = None
         if loop:
             def _asyncio_exception_handler(loop, context):
                 msg = context.get("message", "Unhandled asyncio exception")

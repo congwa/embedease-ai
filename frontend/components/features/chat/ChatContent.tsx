@@ -18,6 +18,7 @@ import {
   LLMCallCluster,
   TimelineUserMessageItem,
   TimelineErrorItem,
+  TimelineComplaintEventItem,
   TimelineToolCallItem,
   TimelineSupportEventItem,
   TimelineGreetingItem,
@@ -36,6 +37,8 @@ import {
 import { QuickQuestionBar } from "@/components/features/chat/QuickQuestionBar";
 import { useSuggestedQuestions } from "@/lib/hooks/use-suggested-questions";
 import { useAgentStore } from "@/stores/agent-store";
+import { ComplaintStatusBar } from "@/components/features/chat/ComplaintStatusBar";
+import type { ComplaintEventItem } from "@/lib/timeline/types";
 
 interface ChatContentProps {
   isHumanMode?: boolean;
@@ -66,6 +69,11 @@ export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMe
   
   // Supervisor 状态
   const currentAgentName = useChatStore((s) => s.currentAgentName);
+
+  // 从 timeline 中提取客诉事件，用于状态栏
+  const complaintEvents = timeline.filter(
+    (item): item is ComplaintEventItem => item.type === "complaint.event"
+  );
   
   const title = currentConversation?.title || "";
   const [prompt, setPrompt] = useState("");
@@ -107,7 +115,7 @@ export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMe
     }
   };
 
-  const renderTimelineItem = (item: TimelineItem, _index: number) => {
+  const renderTimelineItem = (item: TimelineItem) => {
     switch (item.type) {
       case "user.message":
         return (
@@ -168,6 +176,16 @@ export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMe
             className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
           >
             <TimelineSupportEventItem item={item} />
+          </Message>
+        );
+
+      case "complaint.event":
+        return (
+          <Message
+            key={item.id}
+            className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
+          >
+            <TimelineComplaintEventItem item={item} />
           </Message>
         );
 
@@ -262,6 +280,11 @@ export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMe
         {theme && <ThemeSwitcherIcon />}
       </header>
 
+      {/* 客诉处理阶段状态栏 */}
+      {complaintEvents.length > 0 && (
+        <ComplaintStatusBar complaintEvents={complaintEvents} />
+      )}
+
       {/* 消息区域 */}
       <div ref={chatContainerRef} className={cn(
         "relative flex-1 overflow-y-auto",
@@ -298,7 +321,7 @@ export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMe
               </ThemedEmptyState>
             )}
 
-            {timeline.map((item, index) => renderTimelineItem(item, index))}
+            {timeline.map((item) => renderTimelineItem(item))}
           </ChatContainerContent>
 
           <div className="absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-end px-5">

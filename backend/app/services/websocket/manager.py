@@ -217,6 +217,43 @@ class ConnectionManager:
 
         return sent_count
 
+    async def broadcast_to_role_global(
+        self,
+        role: WSRole,
+        message: dict[str, Any],
+    ) -> int:
+        """向全局所有指定角色连接广播消息。
+
+        这个方法服务于客服工作台这类“跨会话全局视角”能力。
+        比如待接入队列变化时，需要提醒所有在线客服页面刷新，而不依赖它是否订阅了目标会话。
+        """
+        conns = [
+            conn
+            for conn in self._connections_by_id.values()
+            if conn.role == role
+        ]
+        logger.info(
+            "WS 全局广播准备发送",
+            role=role.value if isinstance(role, WSRole) else role,
+            target_count=len(conns),
+            message_type=message.get("action"),
+        )
+
+        sent_count = 0
+        for conn in conns:
+            success = await conn.send(message)
+            logger.info(
+                "WS 全局广播发送结果",
+                role=role.value if isinstance(role, WSRole) else role,
+                conn_id=conn.id,
+                success=success,
+                message_type=message.get("action"),
+            )
+            if success:
+                sent_count += 1
+
+        return sent_count
+
     def get_stats(self) -> dict[str, Any]:
         """获取连接统计"""
         total = len(self._connections_by_id)

@@ -160,6 +160,47 @@ class TestStartHandoff:
         assert result["current_operator"] == "existing_admin"
 
 
+class TestRequestHandoff:
+    """测试请求人工接入（pending 态）"""
+
+    @pytest.mark.anyio
+    async def test_request_handoff_success(self):
+        """测试请求人工时会先进入 pending。"""
+        mock_session = MagicMock()
+        mock_session.execute = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        service = HandoffService(mock_session)
+
+        mock_conversation = MagicMock()
+        mock_conversation.handoff_state = HandoffState.AI.value
+        service.get_conversation = AsyncMock(return_value=mock_conversation)
+
+        result = await service.request_handoff(
+            "conv_123",
+            reason="用户要求人工处理",
+            requested_by="user_123",
+        )
+
+        assert result["success"] is True
+        assert result["handoff_state"] == HandoffState.PENDING.value
+
+    @pytest.mark.anyio
+    async def test_request_handoff_already_pending_is_idempotent(self):
+        """测试已经 pending 的会话再次请求人工会按成功幂等返回。"""
+        mock_session = MagicMock()
+        service = HandoffService(mock_session)
+
+        mock_conversation = MagicMock()
+        mock_conversation.handoff_state = HandoffState.PENDING.value
+        service.get_conversation = AsyncMock(return_value=mock_conversation)
+
+        result = await service.request_handoff("conv_123", reason="继续催促人工")
+
+        assert result["success"] is True
+        assert result["handoff_state"] == HandoffState.PENDING.value
+
+
 class TestEndHandoff:
     """测试结束人工介入"""
 
@@ -221,6 +262,78 @@ class TestEndHandoff:
         assert "未在人工模式" in result["error"]
 
 
+class TestTransferHandoff:
+    """测试人工转接状态机。"""
+
+    @pytest.mark.anyio
+    async def test_transfer_handoff_success(self):
+        """测试人工处理中可以把会话转接给新的客服。"""
+        mock_session = MagicMock()
+        mock_session.execute = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        service = HandoffService(mock_session)
+
+        mock_conversation = MagicMock()
+        mock_conversation.handoff_state = HandoffState.HUMAN.value
+        mock_conversation.handoff_operator = "agent_old"
+        mock_conversation.handoff_reason = "原客服接入"
+        service.get_conversation = AsyncMock(return_value=mock_conversation)
+
+        result = await service.transfer_handoff(
+            "conv_123",
+            operator="agent_new",
+            reason="需转给赔付专员",
+        )
+
+        assert result["success"] is True
+        assert result["operator"] == "agent_new"
+        assert result["previous_operator"] == "agent_old"
+        assert result["handoff_state"] == HandoffState.HUMAN.value
+        assert result["transferred"] is True
+
+    @pytest.mark.anyio
+    async def test_transfer_handoff_requires_human_mode(self):
+        """测试只有人工处理中才允许转接。"""
+        mock_session = MagicMock()
+        service = HandoffService(mock_session)
+
+        mock_conversation = MagicMock()
+        mock_conversation.handoff_state = HandoffState.AI.value
+        mock_conversation.handoff_operator = None
+        service.get_conversation = AsyncMock(return_value=mock_conversation)
+
+        result = await service.transfer_handoff(
+            "conv_123",
+            operator="agent_new",
+            reason="错误转接",
+        )
+
+        assert result["success"] is False
+        assert "未在人工模式" in result["error"]
+
+    @pytest.mark.anyio
+    async def test_transfer_handoff_same_operator_is_idempotent(self):
+        """测试转给当前客服本人时按成功幂等返回。"""
+        mock_session = MagicMock()
+        service = HandoffService(mock_session)
+
+        mock_conversation = MagicMock()
+        mock_conversation.handoff_state = HandoffState.HUMAN.value
+        mock_conversation.handoff_operator = "agent_same"
+        service.get_conversation = AsyncMock(return_value=mock_conversation)
+
+        result = await service.transfer_handoff(
+            "conv_123",
+            operator="agent_same",
+            reason="重复点击转接",
+        )
+
+        assert result["success"] is True
+        assert result["transferred"] is False
+        assert result["operator"] == "agent_same"
+
+
 class TestAddHumanMessage:
     """测试添加人工客服消息"""
 
@@ -246,6 +359,30 @@ class TestAddHumanMessage:
 
         assert message is not None
         mock_session.add.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_add_human_message_preserves_client_message_id(self):
+        """测试人工消息会复用客服端生成的 message_id，避免前端乐观消息重复。"""
+        mock_session = MagicMock()
+        mock_session.add = MagicMock()
+        mock_session.execute = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        service = HandoffService(mock_session)
+
+        mock_conversation = MagicMock()
+        mock_conversation.handoff_state = HandoffState.HUMAN.value
+        service.get_conversation = AsyncMock(return_value=mock_conversation)
+
+        message = await service.add_human_message(
+            "conv_123",
+            content="请您稍等，我正在核查",
+            operator="admin",
+            message_id="client_msg_123",
+        )
+
+        assert message is not None
+        assert message.id == "client_msg_123"
 
     @pytest.mark.anyio
     async def test_add_human_message_not_human_mode(self):

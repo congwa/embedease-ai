@@ -1,5 +1,10 @@
-"""用户端消息处理器"""
+"""用户端消息处理器
 
+本文件的业务职责，是承接用户侧实时动作，并把“发消息、输入中、已读、请求人工”
+翻译成客服工作台和用户聊天页都能消费的 WebSocket 事件。
+"""
+
+from datetime import datetime
 from typing import Any
 
 from app.core.dependencies import get_services
@@ -13,14 +18,44 @@ from app.services.websocket.router import ws_router
 logger = get_logger("websocket.handlers.user")
 
 
+async def _broadcast_support_queue_change(
+    *,
+    conversation_id: str,
+    handoff_state: str,
+    reason: str,
+    source: str,
+    changed_at: str | None = None,
+) -> None:
+    """广播客服全局队列变更信号。
+
+    这个内部方法服务于客服列表页的跨会话刷新。当用户有新消息时，即使该会话当前没有被
+    列表页实时订阅，也要让在线客服页面及时刷新队列排序、最后消息和未读数。
+    """
+    queue_msg = build_server_message(
+        action=WSAction.SERVER_SUPPORT_QUEUE_CHANGED,
+        payload={
+            "conversation_id": conversation_id,
+            "handoff_state": handoff_state,
+            "reason": reason,
+            "source": source,
+            "changed_at": changed_at or datetime.now().isoformat(),
+        },
+        conversation_id=conversation_id,
+    )
+    await ws_manager.broadcast_to_role_global(WSRole.AGENT, queue_msg)
+
+
 @ws_router.handler(WSAction.CLIENT_USER_SEND_MESSAGE)
 async def handle_user_send_message(
     conn: WSConnection,
     action: str,
     payload: dict[str, Any],
 ) -> None:
-    """处理用户发送消息"""
-    from datetime import datetime
+    """处理用户发送消息。
+
+    这个 handler 既负责把消息写入会话，也负责在用户新消息到来时提醒客服工作台刷新全局队列，
+    让未监控会话也能因为新未读或最新动态被及时抬高优先级。
+    """
 
     content = payload["content"]
     client_message_id = payload.get("message_id")
@@ -75,6 +110,14 @@ async def handle_user_send_message(
                     message_id=message.id,
                 )
 
+            await _broadcast_support_queue_change(
+                conversation_id=conn.conversation_id,
+                handoff_state=handoff_state,
+                reason="user_message",
+                source="user_message_human",
+                changed_at=message.created_at.isoformat(),
+            )
+
         else:
             # AI 模式：保存消息，触发通知
             message = await services.conversation.add_message(
@@ -99,6 +142,14 @@ async def handle_user_send_message(
                 conn_id=conn.id,
                 conversation_id=conn.conversation_id,
                 message_id=message.id,
+            )
+
+            await _broadcast_support_queue_change(
+                conversation_id=conn.conversation_id,
+                handoff_state=handoff_state or HandoffState.AI.value,
+                reason="user_message",
+                source="user_message_ai",
+                changed_at=message.created_at.isoformat(),
             )
 
 
@@ -159,6 +210,14 @@ async def handle_user_request_handoff(
 ) -> None:
     """处理用户请求人工客服"""
     reason = payload.get("reason", "用户主动请求")
+
+    async with get_services() as services:
+        await services.complaint_handoff.request_handoff_for_conversation(
+            conversation_id=conn.conversation_id,
+            handoff_reason=reason,
+            requested_by=conn.identity,
+            handoff_summary={"source": "user_websocket_request"},
+        )
 
     # 发送通知给客服
     try:

@@ -44,7 +44,11 @@ class ToolCallResponse(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    """消息响应"""
+    """消息响应。
+
+    这个模型服务于会话详情接口，前端客服工作台需要依赖它同时恢复消息正文、
+    已读状态、撤回状态和编辑状态，避免历史消息加载后丢失处理痕迹。
+    """
 
     id: str
     role: str
@@ -55,6 +59,16 @@ class MessageResponse(BaseModel):
     token_count: int | None = None
     tool_calls: list[ToolCallResponse] = []
     created_at: datetime
+    is_delivered: bool | None = None
+    delivered_at: datetime | None = None
+    read_at: datetime | None = None
+    read_by: str | None = None
+    is_withdrawn: bool = False
+    withdrawn_at: datetime | None = None
+    withdrawn_by: str | None = None
+    is_edited: bool = False
+    edited_at: datetime | None = None
+    edited_by: str | None = None
 
     model_config = {"from_attributes": True}
 

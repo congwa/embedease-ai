@@ -1,3 +1,10 @@
+/**
+ * 客服用户分组列表
+ *
+ * 这个文件的业务职责，是在用户维度展示客服当前待处理队列，并提前暴露待接入、
+ * 高风险和返工信号，让人工先决定该点开哪位用户。
+ */
+
 "use client";
 
 import { User, Flame } from "lucide-react";
@@ -10,7 +17,11 @@ interface UserListProps {
   onSelectUser: (userId: string) => void;
 }
 
-// 热度指示器
+/**
+ * 渲染热度指示器。
+ *
+ * 这个方法服务于客服快速识别当前用户组的情绪热度和处理紧急度。
+ */
 function HeatIndicator({ score }: { score: number }) {
   if (score < 40) return null;
   
@@ -19,7 +30,11 @@ function HeatIndicator({ score }: { score: number }) {
   return <Flame className={cn("h-3.5 w-3.5", color)} />;
 }
 
-// 未读徽章
+/**
+ * 渲染未读徽章。
+ *
+ * 这个方法服务于客服快速判断该用户组是否还有未处理消息。
+ */
 function UnreadBadge({ count }: { count: number }) {
   if (count === 0) return null;
   
@@ -30,7 +45,11 @@ function UnreadBadge({ count }: { count: number }) {
   );
 }
 
-// 状态指示点
+/**
+ * 渲染用户组当前优先状态。
+ *
+ * 这个方法服务于在列表页第一时间区分待接入、人工中和 AI 跟进中的用户组。
+ */
 function StateIndicator({ state }: { state: "pending" | "human" | "ai" }) {
   const config = {
     pending: { color: "bg-yellow-500", pulse: true },
@@ -43,6 +62,29 @@ function StateIndicator({ state }: { state: "pending" | "human" | "ai" }) {
   return (
     <span className={cn("h-2.5 w-2.5 rounded-full", color, pulse && "animate-pulse")} />
   );
+}
+
+/**
+ * 格式化时间。
+ *
+ * 这个方法服务于客服列表页，让人工快速判断该用户组最近何时发生过更新。
+ */
+function formatTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return "刚刚";
+  if (diffMins < 60) return `${diffMins}分钟前`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}小时前`;
+  
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}天前`;
+  
+  return date.toLocaleDateString();
 }
 
 export function UserList({ groups, selectedUserId, onSelectUser }: UserListProps) {
@@ -103,6 +145,24 @@ export function UserList({ groups, selectedUserId, onSelectUser }: UserListProps
                   </span>
                 </div>
               )}
+
+              <div className="mt-1 flex flex-wrap gap-1">
+                {group.pendingConversationCount > 0 && (
+                  <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    待接入 {group.pendingConversationCount}
+                  </span>
+                )}
+                {group.highRiskConversationCount > 0 && (
+                  <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                    高风险 {group.highRiskConversationCount}
+                  </span>
+                )}
+                {group.reworkConversationCount > 0 && (
+                  <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[10px] font-medium text-orange-700 dark:bg-orange-950/40 dark:text-orange-300">
+                    返工/阻塞 {group.reworkConversationCount}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* 右侧信息 */}
@@ -117,23 +177,4 @@ export function UserList({ groups, selectedUserId, onSelectUser }: UserListProps
       })}
     </div>
   );
-}
-
-// 格式化时间
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  
-  if (diffMins < 1) return "刚刚";
-  if (diffMins < 60) return `${diffMins}分钟前`;
-  
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}小时前`;
-  
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}天前`;
-  
-  return date.toLocaleDateString();
 }

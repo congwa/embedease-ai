@@ -78,6 +78,23 @@ class SupportEventType(StrEnum):
     SUPPORT_PING = "support.ping"  # 心跳
 
 
+class ComplaintEventType(StrEnum):
+    """客诉领域事件。"""
+
+    COMPLAINT_TICKET_CREATED = "complaint.ticket.created"
+    COMPLAINT_TICKET_MERGED = "complaint.ticket.merged"
+    COMPLAINT_TICKET_UPDATED = "complaint.ticket.updated"
+    COMPLAINT_SECONDARY_ISSUE_DETECTED = "complaint.secondary_issue.detected"
+    COMPLAINT_TASK_CREATED = "complaint.task.created"
+    COMPLAINT_TASK_STARTED = "complaint.task.started"
+    COMPLAINT_TASK_COMPLETED = "complaint.task.completed"
+    COMPLAINT_REVIEW_PENDING = "complaint.review.pending"
+    COMPLAINT_REVIEW_PASSED = "complaint.review.passed"
+    COMPLAINT_REVIEW_REJECTED = "complaint.review.rejected"
+    COMPLAINT_BLOCKED = "complaint.blocked"
+    COMPLAINT_HANDOFF_REQUESTED = "complaint.handoff_requested"
+
+
 class SupervisorEventType(StrEnum):
     """Supervisor 多 Agent 编排事件。"""
 
@@ -184,6 +201,20 @@ class StreamEventType(StrEnum):
     SUPPORT_HUMAN_MESSAGE = SupportEventType.SUPPORT_HUMAN_MESSAGE.value
     SUPPORT_CONNECTED = SupportEventType.SUPPORT_CONNECTED.value
     SUPPORT_PING = SupportEventType.SUPPORT_PING.value
+
+    # ========== 客诉领域事件 ==========
+    COMPLAINT_TICKET_CREATED = ComplaintEventType.COMPLAINT_TICKET_CREATED.value
+    COMPLAINT_TICKET_MERGED = ComplaintEventType.COMPLAINT_TICKET_MERGED.value
+    COMPLAINT_TICKET_UPDATED = ComplaintEventType.COMPLAINT_TICKET_UPDATED.value
+    COMPLAINT_SECONDARY_ISSUE_DETECTED = ComplaintEventType.COMPLAINT_SECONDARY_ISSUE_DETECTED.value
+    COMPLAINT_TASK_CREATED = ComplaintEventType.COMPLAINT_TASK_CREATED.value
+    COMPLAINT_TASK_STARTED = ComplaintEventType.COMPLAINT_TASK_STARTED.value
+    COMPLAINT_TASK_COMPLETED = ComplaintEventType.COMPLAINT_TASK_COMPLETED.value
+    COMPLAINT_REVIEW_PENDING = ComplaintEventType.COMPLAINT_REVIEW_PENDING.value
+    COMPLAINT_REVIEW_PASSED = ComplaintEventType.COMPLAINT_REVIEW_PASSED.value
+    COMPLAINT_REVIEW_REJECTED = ComplaintEventType.COMPLAINT_REVIEW_REJECTED.value
+    COMPLAINT_BLOCKED = ComplaintEventType.COMPLAINT_BLOCKED.value
+    COMPLAINT_HANDOFF_REQUESTED = ComplaintEventType.COMPLAINT_HANDOFF_REQUESTED.value
 
     # ========== Supervisor 多 Agent 编排事件 ==========
     AGENT_ROUTED = SupervisorEventType.AGENT_ROUTED.value

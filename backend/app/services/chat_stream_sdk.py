@@ -12,10 +12,10 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from langgraph_agent_kit import (
-    StreamEvent,
     Orchestrator,
     OrchestratorHooks,
     StreamEndInfo,
+    StreamEvent,
 )
 from langgraph_agent_kit.core.context import ChatContext
 
@@ -117,6 +117,7 @@ class ChatStreamOrchestratorSDK:
         assistant_message_id: str,
         agent_id: str | None = None,
         images: list[Any] | None = None,
+        initial_events: list[dict[str, Any]] | None = None,
         db: Any = None,
     ) -> None:
         self._conversation_id = conversation_id
@@ -124,6 +125,7 @@ class ChatStreamOrchestratorSDK:
         self._user_message = user_message
         self._user_message_id = user_message_id
         self._assistant_message_id = assistant_message_id
+        self._initial_events = initial_events or []
         self._db = db
 
         # 构建 Orchestrator
@@ -147,8 +149,22 @@ class ChatStreamOrchestratorSDK:
             ),
         )
 
-    async def run(self) -> AsyncGenerator[StreamEvent, None]:
+    def _shift_event_seq(self, event: StreamEvent, seq_offset: int) -> dict[str, Any]:
+        """调整 SDK 事件序号，为投诉域前奏事件让出序号空间。
+
+        这个方法确保 complaint 事件插入到 meta.start 之后时，后续事件的 seq
+        仍然保持严格递增。
+        """
+        event_payload = event.model_dump() if hasattr(event, "model_dump") else dict(event)
+        if event_payload.get("seq") is not None:
+            event_payload["seq"] = event_payload["seq"] + seq_offset
+        return event_payload
+
+    async def run(self) -> AsyncGenerator[StreamEvent | dict[str, Any], None]:
         """运行编排流程（与旧版本 API 兼容）"""
+        seq_offset = 0
+        prelude_emitted = False
+
         async for event in self._orchestrator.run(
             message=self._user_message,
             conversation_id=self._conversation_id,
@@ -157,4 +173,30 @@ class ChatStreamOrchestratorSDK:
             user_message_id=self._user_message_id,
             db=self._db,
         ):
-            yield event
+            event_payload = event.model_dump() if hasattr(event, "model_dump") else dict(event)
+
+            if (
+                not prelude_emitted
+                and event_payload.get("type") == "meta.start"
+                and self._initial_events
+            ):
+                prelude_emitted = True
+                yield event
+
+                base_seq = event_payload.get("seq", 0)
+                for index, initial_event in enumerate(self._initial_events, start=1):
+                    yield {
+                        "seq": base_seq + index,
+                        "conversation_id": self._conversation_id,
+                        "message_id": self._assistant_message_id,
+                        "type": initial_event["type"],
+                        "payload": initial_event.get("payload", {}),
+                    }
+
+                seq_offset = len(self._initial_events)
+                continue
+
+            if seq_offset:
+                yield self._shift_event_seq(event, seq_offset)
+            else:
+                yield event

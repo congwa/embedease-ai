@@ -104,6 +104,16 @@ async def get_conversation(
                 token_count=getattr(msg, "token_count", None),
                 tool_calls=tool_calls_resp,
                 created_at=msg.created_at,
+                is_delivered=getattr(msg, "is_delivered", None),
+                delivered_at=getattr(msg, "delivered_at", None),
+                read_at=getattr(msg, "read_at", None),
+                read_by=getattr(msg, "read_by", None),
+                is_withdrawn=getattr(msg, "is_withdrawn", False),
+                withdrawn_at=getattr(msg, "withdrawn_at", None),
+                withdrawn_by=getattr(msg, "withdrawn_by", None),
+                is_edited=getattr(msg, "is_edited", False),
+                edited_at=getattr(msg, "edited_at", None),
+                edited_by=getattr(msg, "edited_by", None),
             )
         )
 
@@ -113,6 +123,7 @@ async def get_conversation(
         title=conversation.title,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
+        handoff_state=conversation.handoff_state,
         messages=messages,
     )
 

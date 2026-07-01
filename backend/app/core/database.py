@@ -115,14 +115,59 @@ async def get_db_write_context() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """初始化数据库（创建表）"""
+    """初始化数据库（创建表 + 增量迁移）"""
     from app.core.config import settings
     from app.models.base import Base
 
     settings.ensure_data_dir()
     provider = get_database_provider()
     await provider.init_db(Base)
+    await _migrate_schema(provider)
     logger.info(
         "数据库表初始化完成",
         backend=provider.backend_name,
     )
+
+
+async def _migrate_schema(provider) -> None:
+    """增量 schema 迁移：为已存在的表新增列。
+
+    create_all 只创建不存在的表，不会修改已有表结构。
+    此函数负责为已有表补充新增列，支持 SQLite 和 PostgreSQL。
+    """
+    from sqlalchemy import text
+
+    # agents 表需要新增的客诉角色字段
+    agents_new_columns: list[tuple[str, str]] = [
+        ("role_tag", "VARCHAR(50)"),
+        ("business_domain", "VARCHAR(100)"),
+        ("skill_bundle_ids", "TEXT"),
+        ("knowledge_scope", "VARCHAR(200)"),
+        ("review_schema_name", "VARCHAR(100)"),
+        ("handoff_rules", "TEXT"),
+    ]
+
+    engine = provider.engine
+    backend = provider.backend_name
+
+    try:
+        async with engine.begin() as conn:
+            if backend == "sqlite":
+                result = await conn.execute(text("PRAGMA table_info(agents)"))
+                existing_cols = {row[1] for row in result.fetchall()}
+                for col_name, col_type in agents_new_columns:
+                    if col_name not in existing_cols:
+                        await conn.execute(
+                            text(f"ALTER TABLE agents ADD COLUMN {col_name} {col_type}")
+                        )
+                        logger.info("agents 表新增列", column=col_name)
+            else:
+                # PostgreSQL 支持 IF NOT EXISTS
+                for col_name, col_type in agents_new_columns:
+                    await conn.execute(
+                        text(
+                            f"ALTER TABLE agents ADD COLUMN IF NOT EXISTS {col_name} {col_type}"
+                        )
+                    )
+    except Exception as e:
+        logger.warning("schema 迁移出现异常，可能列已存在", error=str(e))

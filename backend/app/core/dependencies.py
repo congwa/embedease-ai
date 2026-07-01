@@ -20,8 +20,10 @@ from app.core.database import get_db, get_db_context
 if TYPE_CHECKING:
     from app.repositories.conversation import ConversationRepository
     from app.repositories.message import MessageRepository
+    from app.services.complaint.handoff_service import ComplaintHandoffService
     from app.services.conversation import ConversationService
     from app.services.support.handoff import HandoffService
+    from app.services.support.state_service import SupportStateService
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -56,7 +58,9 @@ class ServiceContainer:
     
     # Lazy-loaded services
     _conversation: "ConversationService | None" = None
+    _complaint_handoff: "ComplaintHandoffService | None" = None
     _handoff: "HandoffService | None" = None
+    _support_state: "SupportStateService | None" = None
     _message_repo: "MessageRepository | None" = None
     _conversation_repo: "ConversationRepository | None" = None
     
@@ -75,6 +79,22 @@ class ServiceContainer:
             from app.services.support.handoff import HandoffService
             self._handoff = HandoffService(self.db)
         return self._handoff
+
+    @property
+    def complaint_handoff(self) -> "ComplaintHandoffService":
+        """客诉语义的人工接入编排服务"""
+        if self._complaint_handoff is None:
+            from app.services.complaint.handoff_service import ComplaintHandoffService
+            self._complaint_handoff = ComplaintHandoffService(self.db)
+        return self._complaint_handoff
+
+    @property
+    def support_state(self) -> "SupportStateService":
+        """客服工作台状态组装服务"""
+        if self._support_state is None:
+            from app.services.support.state_service import SupportStateService
+            self._support_state = SupportStateService(self.db)
+        return self._support_state
     
     @property
     def message_repo(self) -> "MessageRepository":

@@ -534,3 +534,20 @@ export function createAgentWebSocketManager(
     ...options,
   });
 }
+
+/**
+ * 创建客服工作台全局队列 WebSocket 管理器
+ */
+export function createSupportQueueWebSocketManager(
+  baseUrl: string,
+  agentId: string,
+  options?: Partial<Omit<WebSocketConfig, "baseUrl" | "endpoint" | "token">>
+): WebSocketManager {
+  const effectiveBaseUrl = baseUrl || getDefaultWebSocketBaseUrl();
+  return new WebSocketManager({
+    baseUrl: effectiveBaseUrl,
+    endpoint: "/ws/agent-queue",
+    token: `agent_${agentId}`,
+    ...options,
+  });
+}

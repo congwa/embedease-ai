@@ -1,12 +1,19 @@
 "use client";
 
+/**
+ * 客服会话工作台页面
+ *
+ * 这个页面承载人工客服处理单个用户会话的完整操作流，包括接入会话、查看客诉上下文、
+ * 切换历史问题单，以及直接在人工介入过程中完成解决或重开。
+ */
+
 import { useCallback, useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Phone,
   PhoneOff,
-  User,
   Circle,
   Plus,
   ImagePlus,
@@ -21,13 +28,27 @@ import { useSupportWebSocket } from "@/hooks/use-websocket";
 import { useSupportStore } from "@/stores";
 import {
   getConversationDetail,
+  getConversationState,
+  getConversationTickets,
+  getSupportTicketDetail,
+  reopenSupportTicket,
+  resolveSupportTicket,
   startHandoff,
   endHandoff,
   type ConversationDetailResponse,
+  type TicketDetail,
+  type TicketSummary,
 } from "@/lib/api/support";
 import { FAQFormSheet } from "@/components/admin/faq/faq-form-sheet";
 import { createFAQEntry, getAgent, type Agent, type FAQEntry } from "@/lib/api/agents";
-import type { SupportMessage, ConversationState, MessageWithdrawnPayload, MessageEditedPayload, MessagesDeletedPayload } from "@/types/websocket";
+import type {
+  SupportMessage,
+  ConversationState,
+  MessageWithdrawnPayload,
+  MessageEditedPayload,
+  MessagesDeletedPayload,
+  ReadReceiptPayload,
+} from "@/types/websocket";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,9 +67,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { ImageAttachment } from "@/types/chat";
-import { uploadImage, type ImageUploadResponse } from "@/lib/api/upload";
+import { uploadImage } from "@/lib/api/upload";
 import { Markdown } from "@/components/prompt-kit/markdown";
 import { ChatRichInput } from "@/components/features/chat/ChatRichInput";
+import { ComplaintWorkbenchPanel } from "@/app/support/components/complaint-workbench-panel";
+import { ComplaintTicketHistoryPanel } from "@/app/support/components/complaint-ticket-history-panel";
+import { ComplaintLiveEventStream } from "@/app/support/components/complaint-live-event-stream";
 
 export default function SupportChatPage() {
   const params = useParams();
@@ -83,23 +107,36 @@ export default function SupportChatPage() {
   const storeWithdrawMessage = useSupportStore((s) => s.withdrawMessage);
   const storeEditMessage = useSupportStore((s) => s.editMessage);
   const storeDeleteMessages = useSupportStore((s) => s.deleteMessages);
+  const updateMessage = useSupportStore((s) => s.updateMessage);
   const updateConversationState = useSupportStore((s) => s.updateConversationState);
   const setHandoffState = useSupportStore((s) => s.setHandoffState);
-  const setConnected = useSupportStore((s) => s.setConnected);
-  const setUserTyping = useSupportStore((s) => s.setUserTyping);
-  const storeUserTyping = useSupportStore((s) => s.userTyping);
   const storeHandoffState = useSupportStore((s) => s.handoffState);
-  const storeUserOnline = useSupportStore((s) => s.userOnline);
+  const currentTicket = useSupportStore((s) => s.currentTicket);
+  const reviewSummary = useSupportStore((s) => s.reviewSummary);
+  const recentTasks = useSupportStore((s) => s.recentTasks);
+  const secondaryIssues = useSupportStore((s) => s.secondaryIssues);
+  const handoffSummary = useSupportStore((s) => s.handoffSummary);
+  const handoffReason = useSupportStore((s) => s.handoffReason);
   const setStoreConversationId = useSupportStore((s) => s.setConversationId);
+  const unreadCount = useSupportStore((s) => s.unreadCount);
+  const setUnreadCount = useSupportStore((s) => s.setUnreadCount);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ticketSnapshotRef = useRef<string | null>(null);
+  const supportDetailSnapshotRef = useRef<string | null>(null);
+  const autoReadMessageIdsRef = useRef<Set<string>>(new Set());
 
   // 图片上传相关状态
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [ticketActionLoading, setTicketActionLoading] = useState<"resolve" | "reopen" | null>(null);
+  const [conversationTickets, setConversationTickets] = useState<TicketSummary[]>([]);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [selectedTicketDetail, setSelectedTicketDetail] = useState<TicketDetail | null>(null);
+  const [isTicketHistoryLoading, setIsTicketHistoryLoading] = useState(false);
 
   // FAQ 相关状态
   const [faqAgent, setFaqAgent] = useState<Agent | null>(null);
@@ -119,6 +156,7 @@ export default function SupportChatPage() {
   // 初始化 Store 的 conversationId
   useEffect(() => {
     setStoreConversationId(conversationId);
+    autoReadMessageIdsRef.current.clear();
   }, [conversationId, setStoreConversationId]);
 
   // WebSocket 消息回调 - 使用 SupportStore
@@ -146,14 +184,28 @@ export default function SupportChatPage() {
     storeDeleteMessages(payload.message_ids);
   }, [storeDeleteMessages]);
 
+  /**
+   * 处理用户侧已读回执。
+   *
+   * 这个方法服务于人工客服查看自己发送消息是否已被用户阅读，避免客服只能看到“已发送”
+   * 而不知道用户是否真正看到。
+   */
+  const handleReadReceipt = useCallback((payload: ReadReceiptPayload) => {
+    payload.message_ids.forEach((messageId) => {
+      updateMessage(messageId, {
+        read_at: payload.read_at,
+        read_by: payload.read_by,
+      });
+    });
+  }, [updateMessage]);
+
   // WebSocket 连接
   const {
     isConnected,
     conversationState,
     userTyping,
     sendMessage,
-    startHandoff: wsStartHandoff,
-    endHandoff: wsEndHandoff,
+    markAsRead,
     withdrawMessage,
     editMessage,
   } = useSupportWebSocket({
@@ -161,6 +213,7 @@ export default function SupportChatPage() {
     agentId,
     onMessage: handleNewMessage,
     onStateChange: handleStateChange,
+    onReadReceipt: handleReadReceipt,
     onMessageWithdrawn: handleMessageWithdrawn,
     onMessageEdited: handleMessageEdited,
     onMessagesDeleted: handleMessagesDeleted,
@@ -168,24 +221,215 @@ export default function SupportChatPage() {
 
   // 有效的 handoff 状态（使用 Store 状态）
   const effectiveHandoffState = storeHandoffState;
+  const handoffModeLabel =
+    effectiveHandoffState === "human"
+      ? "人工模式"
+      : effectiveHandoffState === "pending"
+        ? "待接入"
+      : "AI 模式";
+
+  /**
+   * 把后端客服状态写入前端工作台。
+   *
+   * 这个方法服务于页面初次加载、人工操作回写以及 WebSocket 状态广播，确保人工工作台与后端主状态保持一致。
+   */
+  const applySupportState = useCallback((supportState: Awaited<ReturnType<typeof getConversationState>>) => {
+    if (supportState.handoff_state) {
+      setHandoffState(
+        supportState.handoff_state as "ai" | "pending" | "human",
+        supportState.handoff_operator ?? null
+      );
+    }
+    updateConversationState({
+      conversation_mode: supportState.conversation_mode as ConversationState["conversation_mode"],
+      handoff_state: supportState.handoff_state as "ai" | "pending" | "human",
+      operator: supportState.handoff_operator ?? undefined,
+      handoff_reason: supportState.handoff_reason ?? null,
+      user_online: supportState.user_online,
+      agent_online: true,
+      peer_last_online_at: supportState.peer_last_online_at ?? undefined,
+      unread_count: supportState.unread_count,
+      current_ticket: supportState.current_ticket ?? null,
+      review_summary: supportState.review_summary ?? null,
+      recent_tasks: supportState.recent_tasks ?? [],
+      secondary_issues: supportState.secondary_issues ?? [],
+      handoff_summary: supportState.handoff_summary ?? null,
+    });
+  }, [setHandoffState, updateConversationState]);
+
+  /**
+   * 加载当前选中的问题单详情。
+   *
+   * 这个方法服务于客服查看某张历史 ticket 的完整处理轨迹，不局限于当前主问题单。
+   */
+  const loadSelectedTicketDetail = useCallback(async (ticketId: string | null) => {
+    if (!ticketId) {
+      setSelectedTicketDetail(null);
+      return;
+    }
+
+    const detail = await getSupportTicketDetail(ticketId);
+    setSelectedTicketDetail(detail);
+  }, []);
+
+  /**
+   * 刷新会话的问题单历史面板。
+   *
+   * 这个方法服务于初次加载、客服手动解决、重新打开问题单等场景，确保历史列表和详情面板始终与后端状态一致。
+   */
+  const refreshConversationTickets = useCallback(async (options?: {
+    preferredTicketId?: string | null;
+    supportState?: Awaited<ReturnType<typeof getConversationState>> | null;
+  }) => {
+    setIsTicketHistoryLoading(true);
+
+    try {
+      const response = await getConversationTickets(conversationId);
+      const tickets = response.items ?? [];
+      setConversationTickets(tickets);
+
+      const preferredTicketId = options?.preferredTicketId ?? null;
+      const activeTicketId = options?.supportState?.current_ticket?.id ?? currentTicket?.id ?? null;
+      const currentSelectedTicketId =
+        selectedTicketId && tickets.some((ticket) => ticket.id === selectedTicketId)
+          ? selectedTicketId
+          : null;
+      const nextSelectedTicketId =
+        (preferredTicketId && tickets.some((ticket) => ticket.id === preferredTicketId)
+          ? preferredTicketId
+          : null) ??
+        (activeTicketId && tickets.some((ticket) => ticket.id === activeTicketId)
+          ? activeTicketId
+          : null) ??
+        currentSelectedTicketId ??
+        tickets[0]?.id ??
+        null;
+
+      setSelectedTicketId(nextSelectedTicketId);
+      setSelectedTicketDetail(null);
+
+      if (!nextSelectedTicketId) {
+        return;
+      }
+
+      await loadSelectedTicketDetail(nextSelectedTicketId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "问题单历史加载失败");
+    } finally {
+      setIsTicketHistoryLoading(false);
+    }
+  }, [conversationId, currentTicket?.id, loadSelectedTicketDetail, selectedTicketId]);
+
+  /**
+   * 切换客服当前查看的问题单。
+   *
+   * 这个方法服务于人工沿着同一会话追查历史 ticket，判断是持续追单、返工还是已解决旧单。
+   */
+  const handleSelectTicket = useCallback(async (ticketId: string) => {
+    if (!ticketId || ticketId === selectedTicketId) {
+      return;
+    }
+
+    try {
+      setIsTicketHistoryLoading(true);
+      setSelectedTicketId(ticketId);
+      setSelectedTicketDetail(null);
+      await loadSelectedTicketDetail(ticketId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "问题单详情加载失败");
+    } finally {
+      setIsTicketHistoryLoading(false);
+    }
+  }, [loadSelectedTicketDetail, selectedTicketId]);
+
+  /**
+   * 根据当前主问题单快照同步历史面板。
+   *
+   * 这个副作用服务于 AI 在页面打开期间继续推进 ticket 的场景，确保人工看到的问题单列表、当前状态和详情不会停留在旧快照。
+   */
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    const snapshotKey = `${currentTicket?.id ?? "none"}:${currentTicket?.status ?? "none"}`;
+    if (ticketSnapshotRef.current === snapshotKey) {
+      return;
+    }
+
+    ticketSnapshotRef.current = snapshotKey;
+    void refreshConversationTickets({
+      preferredTicketId: selectedTicketId ?? currentTicket?.id ?? null,
+    });
+  }, [
+    currentTicket?.id,
+    currentTicket?.status,
+    isLoading,
+    refreshConversationTickets,
+    selectedTicketId,
+  ]);
+
+  /**
+   * 根据最新的 ticket、review 和任务快照刷新选中问题单详情。
+   *
+   * 这个副作用服务于 WebSocket 实时推进场景，确保客服正在查看的工单详情
+   * 不会因为只收到了 ticket/review 快照而停留在旧数据。
+   */
+  useEffect(() => {
+    if (isLoading || !selectedTicketId) {
+      return;
+    }
+
+    const detailSnapshotKey = JSON.stringify({
+      selectedTicketId,
+      currentTicketId: currentTicket?.id ?? null,
+      currentTicketStatus: currentTicket?.status ?? null,
+      currentTicketUpdatedAt: currentTicket?.updated_at ?? null,
+      reviewStatus: reviewSummary?.status ?? null,
+      reviewCreatedAt: reviewSummary?.created_at ?? null,
+      taskHead: recentTasks
+        .slice(0, 3)
+        .map((task) => `${task.id}:${task.status}:${task.review_status ?? "none"}`),
+      handoffReason: handoffReason ?? null,
+    });
+
+    if (supportDetailSnapshotRef.current === detailSnapshotKey) {
+      return;
+    }
+
+    supportDetailSnapshotRef.current = detailSnapshotKey;
+    void refreshConversationTickets({
+      preferredTicketId: selectedTicketId,
+    });
+  }, [
+    currentTicket?.id,
+    currentTicket?.status,
+    currentTicket?.updated_at,
+    handoffReason,
+    isLoading,
+    recentTasks,
+    refreshConversationTickets,
+    reviewSummary?.created_at,
+    reviewSummary?.status,
+    selectedTicketId,
+  ]);
 
   // 加载会话详情和历史消息
   useEffect(() => {
     async function loadConversation() {
       try {
         setIsLoading(true);
-        const data = await getConversationDetail(conversationId);
+        const [data, supportState] = await Promise.all([
+          getConversationDetail(conversationId),
+          getConversationState(conversationId),
+        ]);
         setConversation(data);
-        
-        // 初始化 Store 状态（从后端获取最新状态）
-        if (data.handoff_state) {
-          setHandoffState(
-            data.handoff_state as "ai" | "pending" | "human",
-            data.handoff_operator ?? null
-          );
-        }
+        applySupportState(supportState);
+        ticketSnapshotRef.current = `${supportState.current_ticket?.id ?? "none"}:${supportState.current_ticket?.status ?? "none"}`;
+        await refreshConversationTickets({ supportState });
         
         // 转换历史消息格式（包含图片信息）
+        autoReadMessageIdsRef.current.clear();
         const historyMessages: SupportMessage[] = data.messages.map((m) => ({
           id: m.id,
           role: m.role as SupportMessage["role"],
@@ -193,6 +437,16 @@ export default function SupportChatPage() {
           created_at: m.created_at,
           operator: m.extra_metadata?.operator,
           images: m.extra_metadata?.images,
+          is_delivered: m.is_delivered,
+          delivered_at: m.delivered_at ?? undefined,
+          read_at: m.read_at ?? undefined,
+          read_by: m.read_by ?? undefined,
+          is_withdrawn: m.is_withdrawn,
+          withdrawn_at: m.withdrawn_at ?? undefined,
+          withdrawn_by: m.withdrawn_by ?? undefined,
+          is_edited: m.is_edited,
+          edited_at: m.edited_at ?? undefined,
+          edited_by: m.edited_by ?? undefined,
         }));
         setMessages(historyMessages);
 
@@ -217,8 +471,7 @@ export default function SupportChatPage() {
     if (conversationId) {
       loadConversation();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, setHandoffState, setMessages]);
+  }, [applySupportState, conversationId, refreshConversationTickets, setMessages]);
 
   // FAQ 相关操作
   const handleAddToFAQ = useCallback((userContent: string, assistantContent: string) => {
@@ -241,6 +494,61 @@ export default function SupportChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  /**
+   * 人工接管后自动把当前会话里的未读用户消息标记为已读。
+   *
+   * 这个副作用服务于客服真实处理场景。只有在会话已经进入人工模式时才自动清未读，
+   * 避免客服只是点开排队会话预览就提前把待接入消息清掉。
+   */
+  useEffect(() => {
+    if (!isConnected || effectiveHandoffState !== "human" || !agentId) {
+      return;
+    }
+
+    const unreadUserMessages = messages.filter(
+      (message) =>
+        message.role === "user" &&
+        !message.read_at &&
+        !autoReadMessageIdsRef.current.has(message.id)
+    );
+
+    if (unreadUserMessages.length === 0) {
+      return;
+    }
+
+    const unreadMessageIds = unreadUserMessages.map((message) => message.id);
+    unreadMessageIds.forEach((messageId) => {
+      autoReadMessageIdsRef.current.add(messageId);
+    });
+
+    const readAt = new Date().toISOString();
+    unreadMessageIds.forEach((messageId) => {
+      updateMessage(messageId, {
+        read_at: readAt,
+        read_by: agentId,
+      });
+    });
+
+    setUnreadCount(
+      messages.filter(
+        (message) =>
+          message.role === "user" &&
+          !message.read_at &&
+          !unreadMessageIds.includes(message.id)
+      ).length
+    );
+
+    markAsRead(unreadMessageIds);
+  }, [
+    agentId,
+    effectiveHandoffState,
+    isConnected,
+    markAsRead,
+    messages,
+    setUnreadCount,
+    updateMessage,
+  ]);
 
   // 处理图片选择
   const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,15 +612,19 @@ export default function SupportChatPage() {
       return;
     }
     
-    sendMessage(inputValue.trim(), hasImages ? pendingImages : undefined);
+    const optimisticMessageId = sendMessage(
+      inputValue.trim(),
+      hasImages ? pendingImages : undefined
+    );
     
     // 本地立即显示（乐观更新）
     const localMessage: SupportMessage = {
-      id: `local_${Date.now()}`,
+      id: optimisticMessageId,
       role: "human_agent",
       content: inputValue.trim(),
       created_at: new Date().toISOString(),
       operator: agentId,
+      is_delivered: false,
       images: hasImages ? pendingImages.map((img) => ({
         id: img.id,
         url: img.url,
@@ -323,12 +635,13 @@ export default function SupportChatPage() {
     addMessage(localMessage);
     setInputValue("");
     setPendingImages([]);
-  }, [inputValue, pendingImages, effectiveHandoffState, sendMessage, agentId]);
+  }, [addMessage, inputValue, pendingImages, effectiveHandoffState, sendMessage, agentId]);
 
   // 开始介入
   const handleStartHandoff = useCallback(async () => {
     try {
-      const result = await startHandoff(conversationId, agentId, "客服主动接入");
+      const startReason = effectiveHandoffState === "pending" ? "" : "客服主动接入";
+      const result = await startHandoff(conversationId, agentId, startReason);
       if (result.success) {
         // 使用 API 返回的最新状态（保底机制），等待服务器广播
         setHandoffState(result.handoff_state || "human", agentId);
@@ -338,7 +651,7 @@ export default function SupportChatPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "接入失败");
     }
-  }, [conversationId, agentId, wsStartHandoff]);
+  }, [conversationId, agentId, effectiveHandoffState, setHandoffState]);
 
   // 结束介入
   const handleEndHandoff = useCallback(async () => {
@@ -353,15 +666,101 @@ export default function SupportChatPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "结束失败");
     }
-  }, [conversationId, agentId, wsEndHandoff]);
+  }, [conversationId, agentId, setHandoffState]);
 
-  // 键盘提交
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  /**
+   * 按工单 ID 执行手动解决。
+   *
+   * 这个方法服务于当前主问题单和历史问题单的统一处理入口，避免客服只能操作当前活动单。
+   */
+  const handleResolveTicketById = useCallback(async (ticketId: string) => {
+    if (!ticketId) return;
+
+    try {
+      setTicketActionLoading("resolve");
+      const operatedTicketId = ticketId;
+      const result = await resolveSupportTicket(
+        operatedTicketId,
+        agentId,
+        "客服人工确认当前问题已解决"
+      );
+      if (!result.success) {
+        setError(result.error || "问题单解决失败");
+        return;
+      }
+
+      const supportState = await getConversationState(conversationId);
+      applySupportState(supportState);
+      ticketSnapshotRef.current = `${supportState.current_ticket?.id ?? "none"}:${supportState.current_ticket?.status ?? "none"}`;
+      await refreshConversationTickets({
+        preferredTicketId: operatedTicketId,
+        supportState,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "问题单解决失败");
+    } finally {
+      setTicketActionLoading(null);
     }
-  };
+  }, [agentId, applySupportState, conversationId, refreshConversationTickets]);
+
+  /**
+   * 按工单 ID 执行手动重开。
+   *
+   * 这个方法服务于人工复核历史已解决工单后重新交回 AI 主链路继续处理。
+   */
+  const handleReopenTicketById = useCallback(async (ticketId: string) => {
+    if (!ticketId) return;
+
+    try {
+      setTicketActionLoading("reopen");
+      const operatedTicketId = ticketId;
+      const result = await reopenSupportTicket(
+        operatedTicketId,
+        agentId,
+        "客服确认问题仍未解决，重新交回 AI 主链路"
+      );
+      if (!result.success) {
+        setError(result.error || "问题单重开失败");
+        return;
+      }
+
+      const supportState = await getConversationState(conversationId);
+      applySupportState(supportState);
+      ticketSnapshotRef.current = `${supportState.current_ticket?.id ?? "none"}:${supportState.current_ticket?.status ?? "none"}`;
+      await refreshConversationTickets({
+        preferredTicketId: operatedTicketId,
+        supportState,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "问题单重开失败");
+    } finally {
+      setTicketActionLoading(null);
+    }
+  }, [agentId, applySupportState, conversationId, refreshConversationTickets]);
+
+  /**
+   * 解决当前主问题单。
+   *
+   * 这个方法服务于顶部工作台的快捷操作按钮，默认针对当前主 ticket 执行。
+   */
+  const handleResolveTicket = useCallback(() => {
+    if (!currentTicket) {
+      return;
+    }
+    void handleResolveTicketById(currentTicket.id);
+  }, [currentTicket, handleResolveTicketById]);
+
+  /**
+   * 重开当前主问题单。
+   *
+   * 这个方法服务于顶部工作台的快捷操作按钮，默认针对当前主 ticket 执行。
+   */
+  const handleReopenTicket = useCallback(() => {
+    if (!currentTicket) {
+      return;
+    }
+    void handleReopenTicketById(currentTicket.id);
+  }, [currentTicket, handleReopenTicketById]);
 
   // 检查消息是否在可操作时间范围内（5分钟）
   const isWithinTimeLimit = (createdAt: string) => {
@@ -499,9 +898,12 @@ export default function SupportChatPage() {
                     rel="noopener noreferrer"
                     className="block"
                   >
-                    <img
+                    <Image
                       src={img.thumbnail_url || img.url}
                       alt={img.filename || "图片"}
+                      width={200}
+                      height={150}
+                      unoptimized
                       className="max-w-[200px] max-h-[150px] rounded-lg object-cover"
                     />
                   </a>
@@ -530,6 +932,9 @@ export default function SupportChatPage() {
               {isEdited && <span>· 已编辑</span>}
               {isAI && <span>· AI</span>}
               {isAgent && message.operator && <span>· 客服</span>}
+              {!isUser && message.read_at && <span>· 已读</span>}
+              {!isUser && !message.read_at && message.is_delivered && <span>· 已送达</span>}
+              {!isUser && message.is_delivered === false && <span>· 待送达</span>}
               {canAddToFAQ && (
                 <button
                   onClick={() => handleAddToFAQ(message.content, nextMsg.content)}
@@ -601,6 +1006,7 @@ export default function SupportChatPage() {
             </div>
             <div className="flex items-center gap-2 text-xs text-zinc-500">
               <span>用户: {conversation?.user_id?.slice(0, 8)}...</span>
+              {unreadCount > 0 && <span>• {unreadCount} 条待读</span>}
               <span className="flex items-center gap-1">
                 <Circle
                   className={cn(
@@ -643,10 +1049,12 @@ export default function SupportChatPage() {
               "text-xs px-2 py-1 rounded-full",
               effectiveHandoffState === "human"
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                : effectiveHandoffState === "pending"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
             )}
           >
-            {effectiveHandoffState === "human" ? "人工模式" : "AI 模式"}
+            {handoffModeLabel}
           </div>
 
           {/* 介入按钮 */}
@@ -657,7 +1065,7 @@ export default function SupportChatPage() {
               className="bg-green-500 hover:bg-green-600"
             >
               <Phone className="h-4 w-4 mr-1" />
-              接入
+              {effectiveHandoffState === "pending" ? "接管待处理" : "接入"}
             </Button>
           ) : (
             <Button
@@ -685,6 +1093,39 @@ export default function SupportChatPage() {
           </button>
         </div>
       )}
+
+      <ComplaintWorkbenchPanel
+        currentTicket={currentTicket}
+        reviewSummary={reviewSummary}
+        handoffReason={handoffReason}
+        recentTasks={recentTasks}
+        secondaryIssues={secondaryIssues}
+        handoffSummary={handoffSummary}
+        ticketActionLoading={ticketActionLoading}
+        onResolveTicket={handleResolveTicket}
+        onReopenTicket={handleReopenTicket}
+      />
+
+      <ComplaintTicketHistoryPanel
+        tickets={conversationTickets}
+        activeTicketId={currentTicket?.id ?? null}
+        selectedTicketId={selectedTicketId}
+        selectedTicketDetail={selectedTicketDetail}
+        isLoading={isTicketHistoryLoading}
+        ticketActionLoading={ticketActionLoading}
+        onSelectTicket={handleSelectTicket}
+        onResolveTicket={handleResolveTicketById}
+        onReopenTicket={handleReopenTicketById}
+      />
+
+      <ComplaintLiveEventStream
+        conversationId={conversationId}
+        currentTicket={currentTicket}
+        reviewSummary={reviewSummary}
+        recentTasks={recentTasks}
+        handoffReason={handoffReason}
+        handoffState={effectiveHandoffState}
+      />
 
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto p-4 bg-zinc-900">
@@ -731,9 +1172,12 @@ export default function SupportChatPage() {
                 <div className="flex flex-wrap gap-2 mb-3 px-2">
                   {pendingImages.map((img) => (
                     <div key={img.id} className="relative group">
-                      <img
+                      <Image
                         src={img.thumbnail_url || img.url}
                         alt={img.filename || "待发送图片"}
+                        width={64}
+                        height={64}
+                        unoptimized
                         className="h-16 w-16 rounded-lg object-cover border border-zinc-700"
                       />
                       <button

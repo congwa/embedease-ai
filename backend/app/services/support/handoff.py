@@ -13,7 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.models.conversation import Conversation, HandoffState
+from app.models.conversation import Conversation, ConversationMode, HandoffState
 from app.models.message import Message
 from app.services.support.notification.dispatcher import notification_dispatcher
 
@@ -29,6 +29,11 @@ class HandoffService:
     """
 
     def __init__(self, session: AsyncSession):
+        """初始化客服介入状态管理服务。
+
+        Args:
+            session: 当前业务请求使用的数据库会话。
+        """
         self.session = session
 
     async def get_conversation(self, conversation_id: str) -> Conversation | None:
@@ -48,6 +53,69 @@ class HandoffService:
         """检查会话是否处于人工客服模式"""
         state = await self.get_handoff_state(conversation_id)
         return state == HandoffState.HUMAN.value
+
+    async def request_handoff(
+        self,
+        conversation_id: str,
+        *,
+        reason: str = "",
+        requested_by: str = "system",
+    ) -> dict[str, Any]:
+        """请求人工接入，把会话切到 pending。
+
+        这个方法服务于客诉系统自动升级或用户主动要求人工的场景，
+        它只表达“等待人工接手”，不会直接把会话切到 human。
+        """
+        conversation = await self.get_conversation(conversation_id)
+        if not conversation:
+            return {"success": False, "error": "会话不存在"}
+
+        if conversation.handoff_state == HandoffState.HUMAN.value:
+            return {
+                "success": False,
+                "error": "会话已在人工模式",
+                "current_operator": conversation.handoff_operator,
+                "handoff_state": HandoffState.HUMAN.value,
+            }
+
+        if conversation.handoff_state == HandoffState.PENDING.value:
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "requested_by": requested_by,
+                "handoff_state": HandoffState.PENDING.value,
+            }
+
+        now = datetime.now()
+        stmt = (
+            update(Conversation)
+            .where(Conversation.id == conversation_id)
+            .values(
+                handoff_state=HandoffState.PENDING.value,
+                handoff_operator=None,
+                handoff_reason=reason,
+                handoff_at=now,
+                conversation_mode=ConversationMode.PENDING.value,
+                updated_at=now,
+            )
+        )
+        await self.session.execute(stmt)
+        await self.session.commit()
+
+        logger.info(
+            "会话已请求人工接入",
+            conversation_id=conversation_id,
+            requested_by=requested_by,
+            reason=reason,
+        )
+
+        return {
+            "success": True,
+            "conversation_id": conversation_id,
+            "requested_by": requested_by,
+            "handoff_at": now.isoformat(),
+            "handoff_state": HandoffState.PENDING.value,
+        }
 
     async def start_handoff(
         self,
@@ -84,8 +152,9 @@ class HandoffService:
             .values(
                 handoff_state=HandoffState.HUMAN.value,
                 handoff_operator=operator,
-                handoff_reason=reason,
+                handoff_reason=reason or conversation.handoff_reason,
                 handoff_at=now,
+                conversation_mode=ConversationMode.HUMAN.value,
                 updated_at=now,
             )
         )
@@ -152,6 +221,7 @@ class HandoffService:
                 handoff_operator=None,
                 handoff_reason=None,
                 handoff_at=None,
+                conversation_mode=ConversationMode.AI.value,
                 updated_at=now,
             )
         )
@@ -170,6 +240,69 @@ class HandoffService:
             "conversation_id": conversation_id,
             "ended_by": operator,
             "handoff_state": HandoffState.AI.value,  # 保底：返回最新状态
+        }
+
+    async def transfer_handoff(
+        self,
+        conversation_id: str,
+        *,
+        operator: str,
+        reason: str = "",
+    ) -> dict[str, Any]:
+        """转接当前人工会话给新的客服。
+
+        这个方法服务于人工客服内部转单场景。它要求会话已经在 human 态，
+        只更新 handoff_operator 和交接原因，不会把会话重新走一遍 pending/start 流程。
+        """
+        conversation = await self.get_conversation(conversation_id)
+        if not conversation:
+            return {"success": False, "error": "会话不存在"}
+
+        if conversation.handoff_state != HandoffState.HUMAN.value:
+            return {"success": False, "error": "会话未在人工模式"}
+
+        previous_operator = conversation.handoff_operator
+        if previous_operator == operator:
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "operator": operator,
+                "previous_operator": previous_operator,
+                "handoff_state": HandoffState.HUMAN.value,
+                "transferred": False,
+            }
+
+        now = datetime.now()
+        stmt = (
+            update(Conversation)
+            .where(Conversation.id == conversation_id)
+            .values(
+                handoff_operator=operator,
+                handoff_reason=reason or conversation.handoff_reason,
+                handoff_at=now,
+                conversation_mode=ConversationMode.HUMAN.value,
+                updated_at=now,
+            )
+        )
+        await self.session.execute(stmt)
+        await self.session.commit()
+
+        logger.info(
+            "客服转接成功",
+            conversation_id=conversation_id,
+            previous_operator=previous_operator,
+            operator=operator,
+            reason=reason,
+        )
+
+        return {
+            "success": True,
+            "conversation_id": conversation_id,
+            "operator": operator,
+            "previous_operator": previous_operator,
+            "handoff_at": now.isoformat(),
+            "handoff_state": HandoffState.HUMAN.value,
+            "transferred": True,
         }
 
     async def update_notification_time(self, conversation_id: str) -> None:
@@ -242,6 +375,7 @@ class HandoffService:
         *,
         operator: str,
         images: list[dict[str, Any]] | None = None,
+        message_id: str | None = None,
     ) -> Message | None:
         """添加人工客服消息
         
@@ -250,6 +384,7 @@ class HandoffService:
             content: 消息内容
             operator: 客服标识
             images: 图片附件列表
+            message_id: 客服端生成的消息 ID，用于前后端对齐同一条人工消息
             
         Returns:
             创建的消息，如果会话不在人工模式则返回 None
@@ -273,7 +408,7 @@ class HandoffService:
 
         import uuid
         message = Message(
-            id=str(uuid.uuid4()),
+            id=message_id or str(uuid.uuid4()),
             conversation_id=conversation_id,
             role="human_agent",
             content=content,

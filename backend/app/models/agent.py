@@ -148,6 +148,20 @@ class Agent(Base, TimestampMixin):
     # 格式: {"enabled": true, "trigger": "first_visit", "delay_ms": 1500, "channels": {...}, "cta": {...}}
     greeting_config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
+    # ========== 客诉角色扩展字段 ==========
+    # role_tag: 客诉角色标识，如 front_desk / planner / executor / reviewer
+    role_tag: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    # business_domain: 业务领域，如 complaint / ecommerce / general
+    business_domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # skill_bundle_ids: 绑定的技能包 ID 列表（JSON 数组）
+    skill_bundle_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    # knowledge_scope: 知识检索范围标识，如 complaint_faq / complaint_policy / complaint_sop
+    knowledge_scope: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # review_schema_name: 审查模板名称，指向审查服务使用的评估 schema
+    review_schema_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # handoff_rules: 转人工规则配置（JSON），如 {"max_rework": 2, "high_risk_auto_escalate": true}
+    handoff_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
     # 关联
     knowledge_config: Mapped["KnowledgeConfig | None"] = relationship(
         "KnowledgeConfig",

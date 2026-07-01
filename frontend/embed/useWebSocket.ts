@@ -27,6 +27,12 @@ export interface SupportMessage {
   delivered_at?: string;
   read_at?: string;
   read_by?: string;
+  is_withdrawn?: boolean;
+  withdrawn_at?: string;
+  withdrawn_by?: string;
+  is_edited?: boolean;
+  edited_at?: string;
+  edited_by?: string;
 }
 
 export interface ConversationState {
@@ -120,6 +126,7 @@ export function useEmbedWebSocket({
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const connectRef = useRef<(() => void) | null>(null);
 
   const [connectionState, setConnectionState] = useState<ConnectionState>("disconnected");
   const [conversationState, setConversationState] = useState<ConversationState>(DEFAULT_STATE);
@@ -185,6 +192,12 @@ export function useEmbedWebSocket({
             delivered_at?: string;
             read_at?: string;
             read_by?: string;
+            is_withdrawn?: boolean;
+            withdrawn_at?: string;
+            withdrawn_by?: string;
+            is_edited?: boolean;
+            edited_at?: string;
+            edited_by?: string;
           };
           callbacks.onMessage?.({
             id: payload.message_id,
@@ -196,6 +209,12 @@ export function useEmbedWebSocket({
             delivered_at: payload.delivered_at,
             read_at: payload.read_at,
             read_by: payload.read_by,
+            is_withdrawn: payload.is_withdrawn,
+            withdrawn_at: payload.withdrawn_at,
+            withdrawn_by: payload.withdrawn_by,
+            is_edited: payload.is_edited,
+            edited_at: payload.edited_at,
+            edited_by: payload.edited_by,
           });
           break;
         }
@@ -325,7 +344,9 @@ export function useEmbedWebSocket({
             reconnectAttemptsRef.current++;
             setConnectionState("reconnecting");
             console.log(`[EmbedWS] Reconnecting in ${delay}ms (attempt ${attempts + 1})`);
-            reconnectTimeoutRef.current = setTimeout(connect, delay);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              connectRef.current?.();
+            }, delay);
           }
         }
       };
@@ -338,6 +359,16 @@ export function useEmbedWebSocket({
       setConnectionState("disconnected");
     }
   }, [conversationId, userId, wsBaseUrl, enabled, send, handleMessage]);
+
+  /**
+   * 持有最新 connect 引用，供断线重连定时器调用。
+   *
+   * 这个副作用服务于 Embed 场景下的指数退避重连，避免定时器闭包持有过期 connect，
+   * 同时规避 React Hook 规则对“定义前引用”的限制。
+   */
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // 断开函数
   const disconnect = useCallback(() => {
@@ -360,14 +391,21 @@ export function useEmbedWebSocket({
   // 生命周期
   useEffect(() => {
     if (enabled && conversationId && userId) {
-      connect();
+      const connectTimer = setTimeout(() => {
+        connectRef.current?.();
+      }, 0);
+      return () => {
+        clearTimeout(connectTimer);
+        disconnect();
+      };
     } else {
-      disconnect();
+      const disconnectTimer = setTimeout(() => {
+        disconnect();
+      }, 0);
+      return () => {
+        clearTimeout(disconnectTimer);
+      };
     }
-
-    return () => {
-      disconnect();
-    };
   }, [conversationId, userId, enabled, connect, disconnect]);
 
   // 操作方法

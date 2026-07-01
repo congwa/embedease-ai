@@ -9,9 +9,14 @@ from app.models.agent import (
     KnowledgeConfig,
     KnowledgeType,
 )
+from app.models.agent_score_snapshot import AgentScoreSnapshot
 from app.models.app_metadata import AppMetadata
 from app.models.base import Base
-from app.models.conversation import Conversation, HandoffState
+from app.models.complaint_patrol_event import ComplaintPatrolEvent
+from app.models.complaint_review import ComplaintReview
+from app.models.complaint_task import ComplaintTask
+from app.models.complaint_ticket import ComplaintTicket
+from app.models.conversation import Conversation, ConversationMode, HandoffState
 from app.models.crawler import CrawlPage, CrawlSite, CrawlTask
 from app.models.message import Message
 from app.models.product import Product
@@ -21,12 +26,18 @@ from app.models.user import User
 
 __all__ = [
     "Agent",
+    "AgentScoreSnapshot",
     "AgentStatus",
     "AgentTool",
     "AgentType",
     "AppMetadata",
     "Base",
+    "ComplaintPatrolEvent",
+    "ComplaintReview",
+    "ComplaintTask",
+    "ComplaintTicket",
     "Conversation",
+    "ConversationMode",
     "CrawlPage",
     "CrawlSite",
     "CrawlTask",

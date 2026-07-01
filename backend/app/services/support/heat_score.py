@@ -170,6 +170,52 @@ class HeatScoreService:
         
         return scores
 
+    async def get_latest_message_previews_batch(
+        self,
+        conversation_ids: list[str],
+    ) -> dict[str, dict[str, str | datetime | None]]:
+        """批量获取会话的最后一条消息预览。
+
+        这个方法服务于客服工作台列表页，避免前端为了显示预览再逐条请求会话详情，
+        让队列接口一次返回可直接渲染的最新消息摘要。
+        """
+        if not conversation_ids:
+            return {}
+
+        ranked_messages = (
+            select(
+                Message.conversation_id.label("conversation_id"),
+                Message.content.label("content"),
+                Message.created_at.label("created_at"),
+                Message.role.label("role"),
+                func.row_number()
+                .over(
+                    partition_by=Message.conversation_id,
+                    order_by=(Message.created_at.desc(), Message.id.desc()),
+                )
+                .label("row_number"),
+            )
+            .where(Message.conversation_id.in_(conversation_ids))
+            .subquery()
+        )
+
+        stmt = select(
+            ranked_messages.c.conversation_id,
+            ranked_messages.c.content,
+            ranked_messages.c.created_at,
+            ranked_messages.c.role,
+        ).where(ranked_messages.c.row_number == 1)
+
+        result = await self.session.execute(stmt)
+        previews: dict[str, dict[str, str | datetime | None]] = {}
+        for row in result.all():
+            previews[row.conversation_id] = {
+                "last_message": row.content,
+                "last_message_at": row.created_at,
+                "last_message_role": row.role,
+            }
+        return previews
+
 
 async def get_conversations_with_heat(
     session: AsyncSession,
@@ -178,6 +224,7 @@ async def get_conversations_with_heat(
     sort_by: str = "heat",  # heat | time
     limit: int = 50,
     offset: int = 0,
+    include_message_preview: bool = True,
 ) -> tuple[list[dict], int]:
     """获取带热度得分的会话列表
     
@@ -187,7 +234,8 @@ async def get_conversations_with_heat(
         sort_by: 排序方式 - heat(热度优先) 或 time(时间优先)
         limit: 分页大小
         offset: 分页偏移
-        
+        include_message_preview: 是否附带最后一条消息预览
+
     Returns:
         (会话列表, 总数)
     """
@@ -233,21 +281,46 @@ async def get_conversations_with_heat(
     step_start = time.perf_counter()
     unread_counts = await heat_service.get_unread_counts_batch([c.id for c in conversations])
     logger.debug(f"get_conversations_with_heat: [4/4] 未读数查询完成，耗时 {(time.perf_counter() - step_start) * 1000:.2f}ms")
-    
+
+    latest_message_previews: dict[str, dict[str, str | datetime | None]] = {}
+    if include_message_preview:
+        step_start = time.perf_counter()
+        latest_message_previews = await heat_service.get_latest_message_previews_batch(
+            [c.id for c in conversations]
+        )
+        logger.debug(
+            "get_conversations_with_heat: [5/5] 最新消息预览查询完成，耗时 "
+            f"{(time.perf_counter() - step_start) * 1000:.2f}ms"
+        )
+
     # 构建响应数据
     items = []
     for conv in conversations:
+        latest_preview = latest_message_previews.get(conv.id, {})
         items.append({
             "id": conv.id,
             "user_id": conv.user_id,
             "title": conv.title,
+            "conversation_mode": conv.conversation_mode,
             "handoff_state": conv.handoff_state,
             "handoff_operator": conv.handoff_operator,
+            "handoff_reason": conv.handoff_reason,
             "user_online": conv.user_online,
             "created_at": conv.created_at,
             "updated_at": conv.updated_at,
             "heat_score": heat_scores.get(conv.id, 0),
             "unread_count": unread_counts.get(conv.id, 0),
+            "current_ticket_id": conv.current_ticket_id,
+            "ticket_status": conv.complaint_status,
+            "primary_issue_tag": conv.primary_issue_tag,
+            "current_agent_tag": conv.current_agent_tag,
+            "risk_level": conv.risk_level,
+            "review_status": conv.review_status,
+            "review_score": conv.review_score,
+            "secondary_issue_detected": bool(conv.secondary_issues),
+            "last_message": latest_preview.get("last_message"),
+            "last_message_at": latest_preview.get("last_message_at"),
+            "last_message_role": latest_preview.get("last_message_role"),
         })
     
     # 按热度排序
@@ -305,6 +378,7 @@ async def get_support_stats(session: AsyncSession) -> dict:
         session,
         sort_by="heat",
         limit=100,
+        include_message_preview=False,
     )
     high_heat_count = sum(1 for c in hot_conversations if c["heat_score"] > 60)
     logger.debug(f"get_support_stats: [3/3] 高热会话统计完成，high_heat_count={high_heat_count}，耗时 {(time.perf_counter() - step_start) * 1000:.2f}ms")

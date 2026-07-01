@@ -1,6 +1,14 @@
 "use client";
 
+/**
+ * 客服工作台列表页
+ *
+ * 这个页面的业务职责，是给人工客服提供按用户聚合的会话队列视图，并支持实时看到
+ * 待接入、高风险、返工和最新消息变化，帮助人工决定先处理谁。
+ */
+
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Headphones,
   RefreshCw,
@@ -13,13 +21,18 @@ import { cn } from "@/lib/utils";
 import {
   getSupportConversations,
   getSupportStats,
-  getConversationDetail,
 } from "@/lib/api/support";
+import { buildSupportWorkbenchMonitoredConversations } from "@/lib/config/support-workbench-monitoring";
 import { useSupportWorkbenchStore } from "@/stores";
+import { useSupportWorkbenchRealtime } from "@/hooks/use-support-workbench-realtime";
 import { UserList } from "./components/user-list";
 import { ConversationPanel } from "./components/conversation-panel";
+import { SupportQueueOverview } from "./components/support-queue-overview";
 
 export default function SupportListPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   // 使用 Store 管理状态
   const {
     conversations,
@@ -37,62 +50,98 @@ export default function SupportListPage() {
     setSortBy,
     setLoading,
     setError,
-    updateConversationPreview,
+    patchConversation,
   } = useSupportWorkbenchStore();
 
   // 初始化状态：防止首次渲染闪烁
   const [isInitialized, setIsInitialized] = useState(false);
   const isFirstLoad = useRef(true);
+  const [agentId] = useState(() => {
+    if (typeof window !== "undefined") {
+      let id = localStorage.getItem("support_agent_id");
+      if (!id) {
+        id = Math.random().toString(36).slice(2, 10);
+        localStorage.setItem("support_agent_id", id);
+      }
+      if (id.startsWith("agent_")) {
+        id = id.slice(6);
+        localStorage.setItem("support_agent_id", id);
+      }
+      return id;
+    }
+    return null;
+  });
+  const deepLinkConversationId =
+    searchParams.get("conv_id") ?? searchParams.get("conversation_id");
 
-  // 加载会话列表
+  /**
+   * 拉取全局客服统计。
+   *
+   * 这个方法服务于顶部全局红点和队列压力概览。统计必须独立于当前过滤条件，
+   * 否则客服切换筛选后会误以为全局待接入数量发生变化。
+   */
+  const loadStats = useCallback(async () => {
+    try {
+      const statsData = await getSupportStats();
+      setStats(statsData);
+    } catch {
+      // 统计刷新失败不打断当前列表使用，交给定时轮询和下一次事件刷新兜底
+    }
+  }, [setStats]);
+
+  /**
+   * 拉取当前过滤条件下的会话列表。
+   *
+   * 这个方法服务于客服工作台主队列，列表内容会随筛选条件变化，而顶部全局统计不在这里更新。
+   */
   const loadConversations = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       setError(null);
-      const [convData, statsData] = await Promise.all([
-        getSupportConversations(filter || undefined, sortBy),
-        getSupportStats(),
-      ]);
-      setConversations(convData.items);
-      setStats(statsData);
-
-      // 异步加载每个会话的最新消息（批量限制避免过多请求）
-      const loadPreviews = async () => {
-        const items = convData.items.slice(0, 20); // 限制前20个
-        for (const conv of items) {
-          try {
-            const detail = await getConversationDetail(conv.id);
-            if (detail.messages && detail.messages.length > 0) {
-              const lastMsg = detail.messages[detail.messages.length - 1];
-              updateConversationPreview(
-                conv.id,
-                lastMsg.content.slice(0, 100),
-                lastMsg.created_at,
-                lastMsg.role as "user" | "assistant" | "human"
-              );
-            }
-          } catch {
-            // 忽略单个会话加载失败
-          }
-        }
-      };
-      loadPreviews();
+      const convData = await getSupportConversations(filter || undefined, sortBy);
+      setConversations(
+        convData.items.map((conversation) => ({
+          ...conversation,
+          lastMessage: conversation.last_message?.slice(0, 100) ?? undefined,
+          lastMessageAt: conversation.last_message_at ?? undefined,
+          lastMessageRole:
+            conversation.last_message_role === "human_agent"
+              ? "human"
+              : conversation.last_message_role === "user" ||
+                  conversation.last_message_role === "assistant"
+                ? conversation.last_message_role
+                : undefined,
+        }))
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [filter, sortBy, setConversations, setStats, setLoading, setError, updateConversationPreview]);
+  }, [filter, sortBy, setConversations, setLoading, setError]);
+
+  /**
+   * 同步刷新工作台主数据。
+   *
+   * 这个方法服务于首次进入和人工手动刷新场景，确保列表数据和顶部统计一起校准。
+   */
+  const loadWorkbench = useCallback(async (silent = false) => {
+    await Promise.all([loadConversations(silent), loadStats()]);
+  }, [loadConversations, loadStats]);
 
   // 使用 useLayoutEffect 在 DOM 绘制前同步初始化
   useLayoutEffect(() => {
     if (isFirstLoad.current) {
       isFirstLoad.current = false;
-      loadConversations().finally(() => {
+      if (deepLinkConversationId) {
+        router.replace(`/support/${deepLinkConversationId}`);
+        return;
+      }
+      loadWorkbench().finally(() => {
         setIsInitialized(true);
       });
     }
-  }, [loadConversations]);
+  }, [deepLinkConversationId, loadWorkbench, router]);
 
   // 筛选/排序变化时重新加载
   useEffect(() => {
@@ -104,14 +153,66 @@ export default function SupportListPage() {
   // 定时静默刷新（不显示 loading）
   useEffect(() => {
     if (!isInitialized) return;
-    const interval = setInterval(() => loadConversations(true), 30000);
+    const interval = setInterval(() => {
+      void loadWorkbench(true);
+    }, 30000);
     return () => clearInterval(interval);
-  }, [isInitialized, loadConversations]);
+  }, [isInitialized, loadWorkbench]);
 
   // 当前选中的用户组
   const selectedGroup = selectedUserId
     ? userGroups.find((g) => g.userId === selectedUserId) || null
     : null;
+
+  /**
+   * 按实时事件粒度刷新列表或统计。
+   *
+   * 这个方法服务于列表页实时闭环：能本地补丁更新的先补丁，只有影响过滤结果或全局统计时
+   * 才补拉接口，避免每条事件都整页重载。
+   */
+  const handleRealtimeSignal = useCallback((_: string, action: string) => {
+    const shouldReloadConversations =
+      action === "server.support_queue_changed" ||
+      (
+        filter !== null &&
+        (
+        action === "server.conversation_state" ||
+        action === "server.handoff_started" ||
+        action === "server.handoff_ended"
+        )
+      );
+    const shouldRefreshStats =
+      action === "server.message" ||
+      action === "server.conversation_state" ||
+      action === "server.support_queue_changed" ||
+      action === "server.handoff_started" ||
+      action === "server.handoff_ended";
+
+    if (shouldReloadConversations && shouldRefreshStats) {
+      void Promise.all([loadConversations(true), loadStats()]);
+      return;
+    }
+    if (shouldReloadConversations) {
+      void loadConversations(true);
+      return;
+    }
+    if (shouldRefreshStats) {
+      void loadStats();
+    }
+  }, [filter, loadConversations, loadStats]);
+
+  const monitoredConversations = buildSupportWorkbenchMonitoredConversations(
+    conversations,
+    selectedGroup?.conversations ?? []
+  );
+
+  useSupportWorkbenchRealtime({
+    conversations: monitoredConversations,
+    agentId,
+    enabled: isInitialized,
+    onPatchConversation: patchConversation,
+    onSignal: handleRealtimeSignal,
+  });
 
   // 初始化前显示全屏 loading，避免闪烁
   if (!isInitialized) {
@@ -239,7 +340,7 @@ export default function SupportListPage() {
             variant="outline"
             size="icon"
             className="h-8 w-8"
-            onClick={() => loadConversations()}
+            onClick={() => loadWorkbench()}
             disabled={isLoading}
           >
             <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
@@ -254,28 +355,37 @@ export default function SupportListPage() {
         </div>
       )}
 
-      {/* 主内容区：左右分栏 */}
-      <main className="flex flex-1 overflow-hidden">
-        {/* 左侧：用户列表 */}
-        <aside className="w-80 flex-shrink-0 border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 overflow-auto">
-          {isLoading && conversations.length === 0 ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
-            </div>
-          ) : (
-            <UserList
-              groups={userGroups}
-              selectedUserId={selectedUserId}
-              onSelectUser={setSelectedUserId}
-            />
-          )}
-        </aside>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SupportQueueOverview
+          stats={stats}
+          conversations={conversations}
+          userGroups={userGroups}
+          filter={filter}
+        />
 
-        {/* 右侧：会话详情面板 */}
-        <section className="flex-1 bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
-          <ConversationPanel group={selectedGroup} />
-        </section>
-      </main>
+        {/* 主内容区：左右分栏 */}
+        <main className="flex min-h-0 flex-1 overflow-hidden">
+          {/* 左侧：用户列表 */}
+          <aside className="w-80 flex-shrink-0 overflow-auto border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            {isLoading && conversations.length === 0 ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
+              </div>
+            ) : (
+              <UserList
+                groups={userGroups}
+                selectedUserId={selectedUserId}
+                onSelectUser={setSelectedUserId}
+              />
+            )}
+          </aside>
+
+          {/* 右侧：会话详情面板 */}
+          <section className="flex-1 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+            <ConversationPanel group={selectedGroup} />
+          </section>
+        </main>
+      </div>
     </div>
   );
 }

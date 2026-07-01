@@ -4,7 +4,7 @@
  * 基于 WebSocketManager 提供 React 组件使用的接口
  */
 
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   WebSocketManager,
   createUserWebSocketManager,
@@ -19,13 +19,14 @@ import type {
   ServerMessagePayload,
   TypingPayload,
   HandoffStartedPayload,
-  HandoffEndedPayload,
   UserPresencePayload,
   AgentPresencePayload,
   ReadReceiptPayload,
   MessageWithdrawnPayload,
   MessageEditedPayload,
   MessagesDeletedPayload,
+  ReviewUpdatedPayload,
+  TicketUpdatedPayload,
 } from "@/types/websocket";
 import type { ImageAttachment } from "@/types/chat";
 
@@ -47,6 +48,31 @@ function getWebSocketBaseUrl(): string {
   // 生产环境尝试使用同域 WebSocket（需要 nginx 等反向代理支持）
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}`;
+}
+
+/**
+ * 合并会话状态推送
+ *
+ * 把 system.connected / server.conversation_state / ticket / review 更新统一收敛成前端状态结构。
+ */
+function mergeConversationState(
+  prev: ConversationState,
+  next: Partial<ConversationState>
+): ConversationState {
+  return {
+    ...prev,
+    ...next,
+    current_ticket:
+      next.current_ticket !== undefined ? next.current_ticket : prev.current_ticket,
+    review_summary:
+      next.review_summary !== undefined ? next.review_summary : prev.review_summary,
+    recent_tasks:
+      next.recent_tasks !== undefined ? next.recent_tasks : prev.recent_tasks,
+    secondary_issues:
+      next.secondary_issues !== undefined ? next.secondary_issues : prev.secondary_issues,
+    handoff_summary:
+      next.handoff_summary !== undefined ? next.handoff_summary : prev.handoff_summary,
+  };
 }
 
 // ============ 用户端 Hook ============
@@ -88,6 +114,7 @@ export interface UseUserWebSocketReturn {
 }
 
 const DEFAULT_CONVERSATION_STATE: ConversationState = {
+  conversation_mode: "ai",
   handoff_state: "ai",
   user_online: true,
   agent_online: false,
@@ -142,11 +169,18 @@ export function useUserWebSocket({
         const payload = msg.payload as unknown as ConnectedPayload;
         setConnectionId(payload.connection_id);
         const newState: ConversationState = {
+          conversation_mode: (payload.conversation_mode as ConversationState["conversation_mode"]) ?? "ai",
           handoff_state: payload.handoff_state as "ai" | "pending" | "human",
+          handoff_reason: null,
           user_online: true,
           agent_online: payload.peer_online,
           peer_last_online_at: payload.peer_last_online_at ?? undefined,
           unread_count: payload.unread_count,
+          current_ticket: payload.current_ticket ?? null,
+          review_summary: payload.review_summary ?? null,
+          recent_tasks: payload.recent_tasks ?? [],
+          secondary_issues: payload.secondary_issues ?? [],
+          handoff_summary: payload.handoff_summary ?? null,
         };
         setConversationState(newState);
         // 同步状态到 Store
@@ -174,6 +208,12 @@ export function useUserWebSocket({
           delivered_at: payload.delivered_at,
           read_at: payload.read_at,
           read_by: payload.read_by,
+          is_withdrawn: payload.is_withdrawn,
+          withdrawn_at: payload.withdrawn_at,
+          withdrawn_by: payload.withdrawn_by,
+          is_edited: payload.is_edited,
+          edited_at: payload.edited_at,
+          edited_by: payload.edited_by,
         });
         break;
       }
@@ -195,12 +235,13 @@ export function useUserWebSocket({
       case "server.handoff_started": {
         const payload = msg.payload as unknown as HandoffStartedPayload;
         setConversationState((prev) => {
-          const newState: ConversationState = {
-            ...prev,
+          const newState = mergeConversationState(prev, {
+            conversation_mode: "human",
             handoff_state: "human",
+            handoff_reason: payload.reason ?? null,
             operator: payload.operator,
             agent_online: true,
-          };
+          });
           callbacks.onStateChange?.(newState);
           return newState;
         });
@@ -209,12 +250,13 @@ export function useUserWebSocket({
 
       case "server.handoff_ended": {
         setConversationState((prev) => {
-          const newState: ConversationState = {
-            ...prev,
+          const newState = mergeConversationState(prev, {
+            conversation_mode: "ai",
             handoff_state: "ai",
+            handoff_reason: null,
             operator: undefined,
             agent_online: false,
-          };
+          });
           callbacks.onStateChange?.(newState);
           return newState;
         });
@@ -222,24 +264,62 @@ export function useUserWebSocket({
         break;
       }
 
+      case "server.conversation_state": {
+        const payload = msg.payload as unknown as ConversationState;
+        setConversationState((prev) => {
+          const newState = mergeConversationState(prev, payload);
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
+        break;
+      }
+
+      case "server.ticket_updated": {
+        const payload = msg.payload as unknown as TicketUpdatedPayload;
+        setConversationState((prev) => {
+          const newState = mergeConversationState(prev, { current_ticket: payload.ticket });
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
+        break;
+      }
+
+      case "server.review_updated": {
+        const payload = msg.payload as unknown as ReviewUpdatedPayload;
+        setConversationState((prev) => {
+          const newState = mergeConversationState(prev, { review_summary: payload.review_summary });
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
+        break;
+      }
+
       case "server.agent_online": {
         const payload = msg.payload as unknown as AgentPresencePayload;
-        setConversationState((prev) => ({
-          ...prev,
-          agent_online: true,
-          operator: payload.operator,
-          peer_last_online_at: payload.last_online_at,
-        }));
+        setConversationState((prev) => {
+          const newState = {
+            ...prev,
+            agent_online: true,
+            operator: payload.operator,
+            peer_last_online_at: payload.last_online_at,
+          };
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
         break;
       }
 
       case "server.agent_offline": {
         const payload = msg.payload as unknown as AgentPresencePayload;
-        setConversationState((prev) => ({
-          ...prev,
-          agent_online: false,
-          peer_last_online_at: payload.last_online_at,
-        }));
+        setConversationState((prev) => {
+          const newState = {
+            ...prev,
+            agent_online: false,
+            peer_last_online_at: payload.last_online_at,
+          };
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
         setAgentTyping(false);
         break;
       }
@@ -384,7 +464,7 @@ export interface UseSupportWebSocketReturn {
   /** 用户是否正在输入 */
   userTyping: boolean;
   /** 发送消息 */
-  sendMessage: (content: string, images?: ImageAttachment[]) => void;
+  sendMessage: (content: string, images?: ImageAttachment[]) => string;
   /** 设置输入状态 */
   setTyping: (isTyping: boolean) => void;
   /** 开始介入 */
@@ -418,6 +498,7 @@ export function useSupportWebSocket({
   const [connectionState, setConnectionState] = useState<ConnectionState>("disconnected");
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [conversationState, setConversationState] = useState<ConversationState>({
+    conversation_mode: "ai",
     handoff_state: "ai",
     user_online: false,
     agent_online: true,
@@ -454,11 +535,18 @@ export function useSupportWebSocket({
         const payload = msg.payload as unknown as ConnectedPayload;
         setConnectionId(payload.connection_id);
         const newState: ConversationState = {
+          conversation_mode: (payload.conversation_mode as ConversationState["conversation_mode"]) ?? "ai",
           handoff_state: payload.handoff_state as "ai" | "pending" | "human",
+          handoff_reason: null,
           agent_online: true,
           user_online: payload.peer_online,
           peer_last_online_at: payload.peer_last_online_at ?? undefined,
           unread_count: payload.unread_count,
+          current_ticket: payload.current_ticket ?? null,
+          review_summary: payload.review_summary ?? null,
+          recent_tasks: payload.recent_tasks ?? [],
+          secondary_issues: payload.secondary_issues ?? [],
+          handoff_summary: payload.handoff_summary ?? null,
         };
         setConversationState(newState);
         // 同步状态到 Store
@@ -486,6 +574,12 @@ export function useSupportWebSocket({
           delivered_at: payload.delivered_at,
           read_at: payload.read_at,
           read_by: payload.read_by,
+          is_withdrawn: payload.is_withdrawn,
+          withdrawn_at: payload.withdrawn_at,
+          withdrawn_by: payload.withdrawn_by,
+          is_edited: payload.is_edited,
+          edited_at: payload.edited_at,
+          edited_by: payload.edited_by,
         });
         break;
       }
@@ -507,11 +601,12 @@ export function useSupportWebSocket({
       case "server.handoff_started": {
         const payload = msg.payload as unknown as HandoffStartedPayload;
         setConversationState((prev) => {
-          const newState: ConversationState = {
-            ...prev,
+          const newState = mergeConversationState(prev, {
+            conversation_mode: "human",
             handoff_state: "human",
+            handoff_reason: payload.reason ?? null,
             operator: payload.operator,
-          };
+          });
           callbacks.onStateChange?.(newState);
           return newState;
         });
@@ -520,11 +615,42 @@ export function useSupportWebSocket({
 
       case "server.handoff_ended": {
         setConversationState((prev) => {
-          const newState: ConversationState = {
-            ...prev,
+          const newState = mergeConversationState(prev, {
+            conversation_mode: "ai",
             handoff_state: "ai",
+            handoff_reason: null,
             operator: undefined,
-          };
+          });
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
+        break;
+      }
+
+      case "server.conversation_state": {
+        const payload = msg.payload as unknown as ConversationState;
+        setConversationState((prev) => {
+          const newState = mergeConversationState(prev, payload);
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
+        break;
+      }
+
+      case "server.ticket_updated": {
+        const payload = msg.payload as unknown as TicketUpdatedPayload;
+        setConversationState((prev) => {
+          const newState = mergeConversationState(prev, { current_ticket: payload.ticket });
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
+        break;
+      }
+
+      case "server.review_updated": {
+        const payload = msg.payload as unknown as ReviewUpdatedPayload;
+        setConversationState((prev) => {
+          const newState = mergeConversationState(prev, { review_summary: payload.review_summary });
           callbacks.onStateChange?.(newState);
           return newState;
         });
@@ -533,21 +659,29 @@ export function useSupportWebSocket({
 
       case "server.user_online": {
         const payload = msg.payload as unknown as UserPresencePayload;
-        setConversationState((prev) => ({
-          ...prev,
-          user_online: true,
-          peer_last_online_at: payload.last_online_at,
-        }));
+        setConversationState((prev) => {
+          const newState = {
+            ...prev,
+            user_online: true,
+            peer_last_online_at: payload.last_online_at,
+          };
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
         break;
       }
 
       case "server.user_offline": {
         const payload = msg.payload as unknown as UserPresencePayload;
-        setConversationState((prev) => ({
-          ...prev,
-          user_online: false,
-          peer_last_online_at: payload.last_online_at,
-        }));
+        setConversationState((prev) => {
+          const newState = {
+            ...prev,
+            user_online: false,
+            peer_last_online_at: payload.last_online_at,
+          };
+          callbacks.onStateChange?.(newState);
+          return newState;
+        });
         setUserTyping(false);
         break;
       }
@@ -619,15 +753,23 @@ export function useSupportWebSocket({
   }, [enabled, conversationId, agentId, wsBaseUrl]);
 
   // 操作方法
+  /**
+   * 发送人工客服消息并返回本地可复用的消息 ID。
+   *
+   * 这个方法服务于客服工作台乐观渲染，让本地消息和服务端落库消息共用同一个标识，
+   * 避免消息送达后在界面上出现重复气泡。
+   */
   const sendMessage = useCallback((content: string, images?: ImageAttachment[]) => {
+    const messageId = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
     const payload: Record<string, unknown> = {
       content,
-      message_id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+      message_id: messageId,
     };
     if (images && images.length > 0) {
       payload.images = images;
     }
     managerRef.current?.send("client.agent.send_message", payload);
+    return messageId;
   }, []);
 
   const setTyping = useCallback((isTyping: boolean) => {

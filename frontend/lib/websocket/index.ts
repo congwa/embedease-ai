@@ -6,6 +6,7 @@ export {
   WebSocketManager,
   createUserWebSocketManager,
   createAgentWebSocketManager,
+  createSupportQueueWebSocketManager,
   type ConnectionState,
   type WSMessage,
   type WebSocketConfig,

@@ -18,8 +18,8 @@ from app.routers import health as health_router
 from app.routers import ocr as ocr_router
 from app.routers import prompts as prompts_router
 from app.routers import quick_setup as quick_setup_router
-from app.routers import system as system_router
 from app.routers import skills as skills_router
+from app.routers import system as system_router
 from app.routers import system_config as system_config_router
 from app.routers import upload as upload_router
 from app.routers.agents import (
@@ -31,7 +31,12 @@ from app.routers.agents import (
 from app.routers.agents import router as agents_router
 from app.scheduler import task_registry, task_scheduler
 from app.scheduler.routers import router as scheduler_router
-from app.scheduler.tasks import CrawlSiteTask
+from app.scheduler.tasks import (
+    ComplaintKnowledgeGapTask,
+    ComplaintPatrolTask,
+    ComplaintScoreSnapshotTask,
+    CrawlSiteTask,
+)
 from app.services.agent.bootstrap import bootstrap_default_agents
 from app.services.agent.core.service import agent_service
 from app.services.crawler import crawler_config_service
@@ -120,6 +125,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.core.database import get_db_context
     async with get_db_context() as app_session:
         crawler_enabled = await crawler_config_service.is_enabled_with_init(app_session)
+
+    # 注册客诉巡查任务。
+    # 这个任务不依赖额外站点配置，启动时即可挂载，确保客诉主链路具备后台自愈能力。
+    if "complaint_patrol_task" not in task_registry:
+        task_registry.register(ComplaintPatrolTask())
+    if "complaint_score_snapshot_task" not in task_registry:
+        task_registry.register(ComplaintScoreSnapshotTask())
+    if "complaint_knowledge_gap_task" not in task_registry:
+        task_registry.register(ComplaintKnowledgeGapTask())
 
     # 如果爬虫启用，初始化站点配置和调度任务
     if crawler_enabled:

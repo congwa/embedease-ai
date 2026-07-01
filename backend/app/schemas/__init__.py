@@ -1,6 +1,23 @@
 """Pydantic 模型"""
 
 from app.schemas.chat import ChatRequest
+from app.schemas.complaint import (
+    ActiveTicketResolution,
+    ComplaintMessageIntakeResult,
+    ComplaintPatrolStatus,
+    ComplaintReviewStatus,
+    ComplaintStatus,
+    ComplaintTaskStatus,
+    ComplaintTriageResult,
+    ConversationMode,
+    ExecutorResult,
+    HandoffRequestResult,
+    IssueContinuity,
+    PlannerDecision,
+    ReviewDecision,
+    TicketResolutionDecision,
+    TicketStreamSummary,
+)
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationResponse,
@@ -29,14 +46,29 @@ from app.schemas.product import (
 )
 
 __all__ = [
+    "ActiveTicketResolution",
     "ChatRequest",
+    "ComplaintMessageIntakeResult",
+    "ComplaintPatrolStatus",
+    "ComplaintReviewStatus",
+    "ComplaintStatus",
+    "ComplaintTaskStatus",
+    "ComplaintTriageResult",
     "ConversationCreate",
+    "ConversationMode",
     "ConversationResponse",
     "ConversationWithMessages",
+    "ExecutorResult",
+    "HandoffRequestResult",
     "MessageResponse",
+    "IssueContinuity",
+    "PlannerDecision",
     "ProductCreate",
     "ProductResponse",
     "ProductSearchResult",
+    "ReviewDecision",
+    "TicketStreamSummary",
+    "TicketResolutionDecision",
     "CrawlSiteStatus",
     "CrawlTaskStatus",
     "ExtractionMode",

@@ -6,7 +6,14 @@
 
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import type { SupportMessage, ConversationState } from "@/types/websocket";
+import type {
+  ConversationState,
+  RecentTaskStateSummary,
+  ReviewStateSummary,
+  SecondaryIssueStateSummary,
+  SupportMessage,
+  TicketStateSummary,
+} from "@/types/websocket";
 
 export interface SupportState {
   // 当前会话
@@ -17,8 +24,15 @@ export interface SupportState {
   connectionId: string | null;
   
   // 会话状态
+  conversationMode: "ai" | "pending" | "human" | "closed";
   handoffState: "ai" | "pending" | "human";
   operator: string | null;
+  handoffReason: string | null;
+  currentTicket: TicketStateSummary | null;
+  reviewSummary: ReviewStateSummary | null;
+  recentTasks: RecentTaskStateSummary[];
+  secondaryIssues: SecondaryIssueStateSummary[];
+  handoffSummary: Record<string, unknown> | null;
   
   // 用户在线状态
   userOnline: boolean;
@@ -62,8 +76,15 @@ const initialState = {
   conversationId: null,
   isConnected: false,
   connectionId: null,
+  conversationMode: "ai" as const,
   handoffState: "ai" as const,
   operator: null,
+  handoffReason: null,
+  currentTicket: null,
+  reviewSummary: null,
+  recentTasks: [] as RecentTaskStateSummary[],
+  secondaryIssues: [] as SecondaryIssueStateSummary[],
+  handoffSummary: null,
   userOnline: false,
   userLastOnlineAt: null,
   userTyping: false,
@@ -85,6 +106,11 @@ export const useSupportStore = create<SupportState>()(
           isConnected: false,
           connectionId: null,
           // 注意：不重置 handoffState，等待 API 或 WebSocket 设置
+          currentTicket: null,
+          reviewSummary: null,
+          recentTasks: [],
+          secondaryIssues: [],
+          handoffSummary: null,
           userOnline: false,
           userLastOnlineAt: null,
           userTyping: false,
@@ -98,13 +124,20 @@ export const useSupportStore = create<SupportState>()(
     },
 
     setHandoffState: (state, operator = null) => {
-      set({ handoffState: state, operator });
+      set({ handoffState: state, conversationMode: state, operator });
     },
 
     updateConversationState: (state) => {
       set({
+        conversationMode: state.conversation_mode ?? "ai",
         handoffState: state.handoff_state,
         operator: state.operator ?? null,
+        handoffReason: state.handoff_reason ?? null,
+        currentTicket: state.current_ticket ?? null,
+        reviewSummary: state.review_summary ?? null,
+        recentTasks: state.recent_tasks ?? [],
+        secondaryIssues: state.secondary_issues ?? [],
+        handoffSummary: state.handoff_summary ?? null,
         userOnline: state.user_online ?? false,
         userLastOnlineAt: state.peer_last_online_at ?? null,
         unreadCount: state.unread_count ?? 0,
@@ -119,11 +152,22 @@ export const useSupportStore = create<SupportState>()(
       set({ userTyping: typing });
     },
 
+    /**
+     * 向客服消息流追加或合并一条消息。
+     *
+     * 这个方法服务于客服端乐观发送和服务端真实回包的对齐场景：如果同一 message_id
+     * 再次到达，则把送达/已读等真实状态合并进原消息，而不是重复插入。
+     */
     addMessage: (message) => {
       set((state) => {
-        // 去重
-        if (state.messages.some((m) => m.id === message.id)) {
-          return state;
+        const existingIndex = state.messages.findIndex((m) => m.id === message.id);
+        if (existingIndex >= 0) {
+          const updatedMessages = [...state.messages];
+          updatedMessages[existingIndex] = {
+            ...updatedMessages[existingIndex],
+            ...message,
+          };
+          return { messages: updatedMessages };
         }
         return { messages: [...state.messages, message] };
       });

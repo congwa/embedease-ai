@@ -1,15 +1,21 @@
-"""会话模型"""
+"""会话模型
+
+本文件的业务职责是承载用户会话的当前服务快照。
+在客诉系统中，Conversation 不再只表示消息容器，还负责表达当前主问题单、
+当前服务模式、当前责任岗位和当前风险快照，方便聊天页和客服工作台快速读取。
+"""
 
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
 if TYPE_CHECKING:
+    from app.models.complaint_ticket import ComplaintTicket
     from app.models.message import Message
     from app.models.user import User
 
@@ -22,8 +28,25 @@ class HandoffState(StrEnum):
     HUMAN = "human"  # 人工客服模式
 
 
+class ConversationMode(StrEnum):
+    """会话服务模式。
+
+    这个枚举表达当前会话是由 AI 处理、等待人工、人工处理中还是已经关闭。
+    它服务于客诉系统的对话通道层，而不是 ticket 处理明细。
+    """
+
+    AI = "ai"
+    PENDING = "pending"
+    HUMAN = "human"
+    CLOSED = "closed"
+
+
 class Conversation(Base):
-    """会话表"""
+    """会话表。
+
+    这个模型保存会话层的当前快照，重点回答“当前这个会话正在处理哪一张主问题单、
+    当前由谁处理、风险如何、是否正在等待人工”。
+    """
 
     __tablename__ = "conversations"
 
@@ -107,6 +130,68 @@ class Conversation(Base):
         index=True,
     )  # 关联的 Agent ID
 
+    # ========== 客诉快照字段 ==========
+    conversation_mode: Mapped[str] = mapped_column(
+        String(20),
+        default=ConversationMode.AI.value,
+        nullable=False,
+        index=True,
+    )  # 当前会话模式快照
+    current_ticket_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+    )  # 当前主活动问题单 ID（避免循环外键，第一阶段不强绑 FK）
+    complaint_status: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+        index=True,
+    )  # 当前主问题单处理状态快照
+    primary_issue_tag: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        index=True,
+    )  # 当前主问题标签快照
+    current_agent_tag: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )  # 当前负责处理该问题的 AI 岗位
+    current_node_key: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )  # 当前流程节点快照
+    priority_level: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        index=True,
+    )  # 当前主问题优先级
+    risk_level: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        index=True,
+    )  # 当前主问题风险等级
+    unresolved_turns: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )  # 当前主问题连续未解决轮次
+    review_status: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )  # 最近一次审查状态快照
+    review_score: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )  # 最近一次审查分数快照
+    block_reason: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )  # 当前阻塞原因
+    secondary_issues: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )  # 当前主问题下挂起的次级问题列表
+
     # 关联
     user: Mapped["User"] = relationship("User", back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(
@@ -114,4 +199,10 @@ class Conversation(Base):
         back_populates="conversation",
         cascade="all, delete-orphan",
         order_by="Message.created_at",
+    )
+    tickets: Mapped[list["ComplaintTicket"]] = relationship(
+        "ComplaintTicket",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="ComplaintTicket.updated_at",
     )

@@ -95,6 +95,9 @@ class WSAction(StrEnum):
     SERVER_AGENT_ONLINE = "server.agent_online"
     SERVER_AGENT_OFFLINE = "server.agent_offline"
     SERVER_CONVERSATION_STATE = "server.conversation_state"
+    SERVER_SUPPORT_QUEUE_CHANGED = "server.support_queue_changed"
+    SERVER_TICKET_UPDATED = "server.ticket_updated"
+    SERVER_REVIEW_UPDATED = "server.review_updated"
     SERVER_MESSAGE_WITHDRAWN = "server.message_withdrawn"
     SERVER_MESSAGE_EDITED = "server.message_edited"
     SERVER_MESSAGES_DELETED = "server.messages_deleted"
@@ -139,14 +142,23 @@ class AckPayload(BaseModel):
 
 
 class ConnectedPayload(BaseModel):
-    """连接成功"""
+    """连接成功。
+
+    这个 payload 用于在 WebSocket 建连瞬间把当前会话的完整工作台状态发给前端。
+    """
     connection_id: str = Field(..., description="连接 ID")
     role: str = Field(..., description="连接角色")
     conversation_id: str = Field(..., description="会话 ID")
+    conversation_mode: str = Field(default="ai", description="当前会话服务模式")
     handoff_state: str = Field(..., description="当前客服介入状态")
     peer_online: bool = Field(False, description="对方是否在线")
     peer_last_online_at: str | None = Field(None, description="对方最后在线时间")
     unread_count: int = Field(0, description="未读消息数")
+    current_ticket: dict[str, Any] | None = Field(default=None, description="当前主问题单摘要")
+    review_summary: dict[str, Any] | None = Field(default=None, description="最近一次审查摘要")
+    recent_tasks: list[dict[str, Any]] = Field(default_factory=list, description="当前主问题单最近任务链")
+    secondary_issues: list[dict[str, Any]] = Field(default_factory=list, description="当前主问题单次级诉求")
+    handoff_summary: dict[str, Any] | None = Field(default=None, description="当前转人工接手摘要")
 
 
 class ErrorPayload(BaseModel):
@@ -203,7 +215,11 @@ class TransferPayload(BaseModel):
 
 # ========== Server Push Payloads ==========
 class ServerMessagePayload(BaseModel):
-    """服务器推送新消息"""
+    """服务器推送新消息。
+
+    这个 payload 同时服务于实时发送和离线补发，因此需要完整表达送达、已读、撤回、编辑状态，
+    让前端在重连后仍能恢复同一条消息的最终业务状态。
+    """
     message_id: str
     role: str  # "user" | "assistant" | "human_agent" | "system"
     content: str
@@ -214,6 +230,12 @@ class ServerMessagePayload(BaseModel):
     delivered_at: str | None = None  # 送达时间
     read_at: str | None = None  # 已读时间
     read_by: str | None = None  # 阅读者
+    is_withdrawn: bool = False  # 是否已撤回
+    withdrawn_at: str | None = None  # 撤回时间
+    withdrawn_by: str | None = None  # 撤回操作人
+    is_edited: bool = False  # 是否已编辑
+    edited_at: str | None = None  # 编辑时间
+    edited_by: str | None = None  # 编辑操作人
 
 
 class ServerTypingPayload(BaseModel):
@@ -257,10 +279,125 @@ class AgentPresencePayload(BaseModel):
     last_online_at: str | None = None  # 最后在线时间
 
 
+class TicketStatePayload(BaseModel):
+    """WebSocket 问题单状态摘要。
+
+    这个 payload 用于把当前主问题单的关键状态推送给工作台和用户侧状态管理。
+    """
+
+    id: str
+    status: str
+    primary_issue_tag: str | None = None
+    secondary_issue_tags: list[str] = Field(default_factory=list)
+    current_agent_tag: str | None = None
+    priority_level: str | None = None
+    risk_level: str | None = None
+    unresolved_turns: int = 0
+    handoff_required: bool = False
+    handoff_reason: str | None = None
+    merged_from_latest_message: bool = False
+    secondary_issue_detected: bool = False
+    updated_at: str | None = None
+
+
+class ReviewStatePayload(BaseModel):
+    """WebSocket 审查状态摘要。
+
+    这个 payload 用于工作台实时显示最近一次 review 的结果和原因。
+    """
+
+    status: str
+    score: int | None = None
+    risk_level: str | None = None
+    reasons: list[str] = Field(default_factory=list)
+    suggested_next_agent: str | None = None
+    created_at: str | None = None
+
+
+class RecentTaskPayload(BaseModel):
+    """最近任务链条摘要。
+
+    这个 payload 用于工作台展示最近经过的 triage、plan、execute、review 节点。
+    """
+
+    id: str
+    ticket_id: str
+    task_type: str
+    agent_tag: str
+    status: str
+    goal: str | None = None
+    success_criteria: list[str] = Field(default_factory=list)
+    review_required: bool = False
+    review_status: str | None = None
+    business_summary: str | None = None
+    failure_reason: str | None = None
+    output_payload: dict[str, Any] | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    created_at: str | None = None
+
+
+class SecondaryIssuePayload(BaseModel):
+    """主问题单下的次级诉求。
+
+    这个 payload 用于客服工作台理解当前会话是否已经从主问题延伸出附带诉求。
+    """
+
+    issue_tag: str
+    reason: str | None = None
+    raw_message: str | None = None
+    extra_data: dict[str, Any] = Field(default_factory=dict)
+
+
 class ConversationStatePayload(BaseModel):
-    """会话状态"""
+    """会话状态。
+
+    这个 payload 用于在会话状态变更时向客服端和用户端广播完整 ticket 驱动状态。
+    """
+    conversation_mode: str = Field(default="ai", description="当前会话服务模式")
     handoff_state: str
     operator: str | None = None
+    handoff_reason: str | None = None
+    user_online: bool = False
+    peer_last_online_at: str | None = None
+    unread_count: int = 0
+    current_ticket: TicketStatePayload | None = None
+    review_summary: ReviewStatePayload | None = None
+    recent_tasks: list[RecentTaskPayload] = Field(default_factory=list)
+    secondary_issues: list[SecondaryIssuePayload] = Field(default_factory=list)
+    handoff_summary: dict[str, Any] | None = None
+
+
+class SupportQueueChangedPayload(BaseModel):
+    """客服工作台全局队列变更通知。
+
+    这个 payload 用于提醒客服列表页：某个未必正在订阅的会话发生了 handoff 队列变化，
+    应主动刷新待接入/处理中队列，而不是等下一轮轮询。
+    """
+
+    conversation_id: str
+    handoff_state: str
+    reason: str | None = None
+    source: str | None = None
+    changed_at: str | None = None
+
+
+class TicketUpdatedPayload(BaseModel):
+    """问题单更新推送。
+
+    这个 payload 用于局部更新当前主问题单，避免前端总是全量刷新整个会话状态。
+    """
+
+    ticket: TicketStatePayload
+
+
+class ReviewUpdatedPayload(BaseModel):
+    """审查结果更新推送。
+
+    这个 payload 用于在 review 状态变化时独立刷新工作台风险提示。
+    """
+
+    review_summary: ReviewStatePayload
 
 
 # ========== 消息撤回/编辑 Payloads ==========
@@ -338,6 +475,9 @@ ACTION_PAYLOAD_MAP: dict[str, type[BaseModel]] = {
     WSAction.SERVER_AGENT_ONLINE: AgentPresencePayload,
     WSAction.SERVER_AGENT_OFFLINE: AgentPresencePayload,
     WSAction.SERVER_CONVERSATION_STATE: ConversationStatePayload,
+    WSAction.SERVER_SUPPORT_QUEUE_CHANGED: SupportQueueChangedPayload,
+    WSAction.SERVER_TICKET_UPDATED: TicketUpdatedPayload,
+    WSAction.SERVER_REVIEW_UPDATED: ReviewUpdatedPayload,
     WSAction.SERVER_MESSAGE_WITHDRAWN: MessageWithdrawnPayload,
     WSAction.SERVER_MESSAGE_EDITED: MessageEditedPayload,
     WSAction.SERVER_MESSAGES_DELETED: MessagesDeletedPayload,

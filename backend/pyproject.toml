@@ -1,40 +1,40 @@
 [project]
 name = "embedeaseai-agent"
 version = "0.1.17"
-description = "商品推荐 Agent - 基于 LangChain v1.2"
+description = "商品推荐 Agent - 基于 LangChain v1.2 / LangGraph v1.1"
 requires-python = ">=3.13"
 
 dependencies = [
   "langgraph-agent-kit",
-  "aiofiles>=24.1.0",
+  "aiofiles>=25.1.0",
   "aiosqlite>=0.22.1",
-  "apscheduler>=3.10.0",
+  "apscheduler>=3.11.2",
   "beautifulsoup4>=4.12.0",
-  "croniter>=2.0.0",
-  "fastapi>=0.128.0",
-  "greenlet>=3.3.1",
-  "langchain>=1.2.7",
-  "langchain-openai>=1.1.7",
+  "croniter>=6.2.2",
+  "fastapi>=0.135.3",
+  "greenlet>=3.3.2",
+  "langchain>=1.2.15",
+  "langchain-openai>=1.1.12",
   "langchain-qdrant>=1.1.0",
-  "langchain-text-splitters>=1.1.0",
-  "langgraph>=1.0.7",
-  "langgraph-supervisor>=0.0.11",
+  "langchain-text-splitters>=1.1.1",
+  "langgraph>=1.1.6",
+  "langgraph-supervisor>=0.0.31",
   "langgraph-checkpoint-sqlite>=3.0.3",
-  "langgraph-checkpoint-postgres>=3.0.3",
-  "asyncpg>=0.30.0",
+  "langgraph-checkpoint-postgres>=3.0.5",
+  "asyncpg>=0.31.0",
   "psycopg[binary,pool]>=3.2.0",
   "loguru>=0.7.3",
   "minio>=7.2.0",
   "pillow>=10.0.0",
   "playwright>=1.40.0",
   "pydantic>=2.12.5",
-  "pydantic-settings>=2.12.0",
-  "python-dotenv>=1.2.1",
-  "qdrant-client>=1.16.2",
-  "rich>=14.3.1",
-  "sqlalchemy>=2.0.46",
+  "pydantic-settings>=2.13.1",
+  "python-dotenv>=1.2.2",
+  "qdrant-client>=1.17.1",
+  "rich>=14.3.3",
+  "sqlalchemy>=2.0.49",
   "structlog>=25.5.0",
-  "uvicorn[standard]>=0.40.0",
+  "uvicorn[standard]>=0.43.0",
   "websockets>=16.0",
   "python-multipart>=0.0.22",
 ]
@@ -42,7 +42,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
-    "ruff>=0.14.14",
+    "ruff>=0.15.9",
 ]
 
 [tool.ruff]

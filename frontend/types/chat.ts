@@ -163,6 +163,23 @@ export type SupportEventType =
   | "support.messages_deleted";
 
 /**
+ * 客诉编排事件
+ */
+export type ComplaintEventType =
+  | "complaint.ticket.created"
+  | "complaint.ticket.merged"
+  | "complaint.ticket.updated"
+  | "complaint.secondary_issue.detected"
+  | "complaint.task.created"
+  | "complaint.task.started"
+  | "complaint.task.completed"
+  | "complaint.review.pending"
+  | "complaint.review.passed"
+  | "complaint.review.rejected"
+  | "complaint.blocked"
+  | "complaint.handoff_requested";
+
+/**
  * Supervisor 多 Agent 编排事件
  */
 export type SupervisorEventType =
@@ -194,6 +211,7 @@ export type ChatEventType =
   | DataEventType
   | PostProcessEventType
   | SupportEventType
+  | ComplaintEventType
   | SupervisorEventType
   | MiddlewareEventType
   | SkillEventType;
@@ -312,6 +330,47 @@ export interface SupportEventPayload {
   created_at?: string;   // 创建时间
 }
 
+export interface ComplaintEventPayload {
+  ticket?: {
+    id?: string;
+    status?: string;
+    primary_issue_tag?: string | null;
+    current_agent_tag?: string | null;
+    priority_level?: string | null;
+    risk_level?: string | null;
+    unresolved_turns?: number;
+    handoff_required?: boolean;
+    handoff_reason?: string | null;
+  };
+  ticket_id?: string;
+  review_id?: string;
+  task_id?: string;
+  merged_message_id?: string;
+  reason?: string;
+  unresolved_turns?: number;
+  message?: string;
+  handoff_reason?: string;
+  handoff_summary?: Record<string, unknown>;
+  secondary_issue?: Record<string, unknown>;
+  task?: {
+    id?: string;
+    ticket_id?: string;
+    task_type?: string;
+    agent_tag?: string;
+    status?: string;
+    goal?: string;
+    success_criteria?: string[];
+    failure_reason?: string | null;
+    output_payload?: Record<string, unknown> | null;
+  };
+  status?: string;
+  score?: number;
+  risk_level?: string;
+  reasons?: string[];
+  suggested_next_agent?: string | null;
+  should_handoff?: boolean;
+}
+
 // ========== Supervisor 事件 Payload ==========
 
 export interface AgentRoutedPayload {
@@ -412,6 +471,7 @@ export type ChatEventPayload =
   | MemoryExtractionPayload
   | MemoryProfilePayload
   | SupportEventPayload
+  | ComplaintEventPayload
   | AgentRoutedPayload
   | AgentHandoffPayload
   | AgentCompletePayload
@@ -444,6 +504,18 @@ export type ChatEvent =
   | (ChatEventBase & { type: "support.connected"; payload: SupportEventPayload })
   | (ChatEventBase & { type: "support.ping"; payload: SupportEventPayload })
   | (ChatEventBase & { type: "error"; payload: ErrorPayload })
+  | (ChatEventBase & { type: "complaint.ticket.created"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.ticket.merged"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.ticket.updated"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.secondary_issue.detected"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.task.created"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.task.started"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.task.completed"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.review.pending"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.review.passed"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.review.rejected"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.blocked"; payload: ComplaintEventPayload })
+  | (ChatEventBase & { type: "complaint.handoff_requested"; payload: ComplaintEventPayload })
   // ========== LLM 调用内部事件 ==========
   | (ChatEventBase & { type: "assistant.reasoning.delta"; payload: TextDeltaPayload })
   | (ChatEventBase & { type: "assistant.delta"; payload: TextDeltaPayload })
