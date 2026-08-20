@@ -22,4 +22,4 @@ Backend tests live under `backend/tests/` and follow `test_*.py` naming, grouped
 Recent history favors concise Conventional Commit prefixes such as `feat:`, `chore:`, and `docs:` with short Chinese summaries. Prefer `type: summary`, for example `feat: 优化客服工作台会话切换`. PRs should describe scope, risk, commands run, related issues, and screenshots for `frontend/` changes.
 
 ## Agent-Specific Instructions
-For code search, use `fast-context` MCP first; fall back to `rg` only if results are incomplete or unavailable. If you fall back, note that in your handoff. Never commit secrets; use example config files such as `backend/.env.json.example/` as templates.
+For code search, use `rg` and `find`, choosing exact-string or structural queries based on the task. Never commit secrets; use example config files such as `backend/.env.json.example/` as templates.
