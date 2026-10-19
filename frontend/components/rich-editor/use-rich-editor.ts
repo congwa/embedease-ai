@@ -40,6 +40,8 @@ export interface UseRichEditorOptions {
   editable?: boolean;
   /** Whether to enable spell check */
   enableSpellCheck?: boolean;
+  /** Accessible name applied to the editable element on every editor update. */
+  ariaLabel?: string;
 }
 
 export interface UseRichEditorReturn {
@@ -87,6 +89,7 @@ export const useRichEditor = (options: UseRichEditorOptions = {}): UseRichEditor
     placeholder = "",
     editable = true,
     enableSpellCheck = false,
+    ariaLabel,
   } = options;
 
   const [markdown, setMarkdownState] = useState<string>(initialContent);
@@ -157,6 +160,7 @@ export const useRichEditor = (options: UseRichEditorOptions = {}): UseRichEditor
     editorProps: {
       attributes: {
         spellcheck: enableSpellCheck ? "true" : "false",
+        ...(ariaLabel ? { role: "textbox", "aria-label": ariaLabel, "aria-multiline": "true" } : {}),
         class:
           "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[120px] px-4 py-3",
       },

@@ -1,0 +1,90 @@
+{
+  "samples": 21,
+  "minimumRatio": 4.62,
+  "checks": [
+    {
+      "text": "全部",
+      "ratio": 12.66
+    },
+    {
+      "text": "全部",
+      "ratio": 12.66
+    },
+    {
+      "text": "全部",
+      "ratio": 12.66
+    },
+    {
+      "text": "结束服务",
+      "ratio": 13.77
+    },
+    {
+      "text": "结束服务",
+      "ratio": 13.76
+    },
+    {
+      "text": "结束服务",
+      "ratio": 13.64
+    },
+    {
+      "text": "send icon",
+      "ratio": 4.62
+    },
+    {
+      "text": "send icon",
+      "ratio": 4.62
+    },
+    {
+      "text": "send icon",
+      "ratio": 4.62
+    },
+    {
+      "text": "客户 local-ui1分钟前[本地验收] 商品破",
+      "ratio": 12.66
+    },
+    {
+      "text": "客户 local-ui1分钟前[本地验收] 商品破",
+      "ratio": 12.66
+    },
+    {
+      "text": "客户 local-ui1分钟前[本地验收] 商品破",
+      "ratio": 12.66
+    },
+    {
+      "text": "1分钟前",
+      "ratio": 6.36
+    },
+    {
+      "text": "1分钟前",
+      "ratio": 6.36
+    },
+    {
+      "text": "1分钟前",
+      "ratio": 6.36
+    },
+    {
+      "text": "服务进行中",
+      "ratio": 9.55
+    },
+    {
+      "text": "服务进行中",
+      "ratio": 9.55
+    },
+    {
+      "text": "服务进行中",
+      "ratio": 9.55
+    },
+    {
+      "text": "暂无审查结果",
+      "ratio": 7.98
+    },
+    {
+      "text": "暂无审查结果",
+      "ratio": 7.98
+    },
+    {
+      "text": "暂无审查结果",
+      "ratio": 7.98
+    }
+  ]
+}

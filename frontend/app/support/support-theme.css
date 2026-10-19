@@ -1,0 +1,273 @@
+/* Scoped production tokens reproduce the approved graphite prototype without changing other routes. */
+.support-theme {
+  color-scheme: dark;
+  --background: #0b0b0d;
+  --foreground: #eeeef0;
+  --card: #141416;
+  --card-foreground: #eeeef0;
+  --popover: #1e1e21;
+  --popover-foreground: #eeeef0;
+  --primary: #eeeef0;
+  --primary-foreground: #19191c;
+  --secondary: #28282d;
+  --secondary-foreground: #eeeef0;
+  --muted: #202024;
+  --muted-foreground: #aaaab3;
+  --accent: #2b2b30;
+  --accent-foreground: #eeeef0;
+  --destructive: #ffb3b8;
+  --border: #303035;
+  --input: #414148;
+  --ring: #d5d5dd;
+  --radius: 0.875rem;
+  font-family:
+    "SF Pro Text",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+.support-theme h1,
+.support-theme h2 {
+  font-family:
+    "SF Pro Display",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+.support-theme button:not(:disabled),
+.support-theme select {
+  cursor: pointer;
+}
+.support-theme
+  :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.support-skip {
+  position: fixed;
+  top: 8px;
+  left: 88px;
+  z-index: 80;
+  transform: translateY(-160%);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.support-skip:focus {
+  transform: translateY(0);
+}
+.support-rail-link {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: var(--muted-foreground);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.support-rail-link:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.support-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.support-warning {
+  background: #352f24;
+  color: #f1d097;
+}
+.support-success {
+  background: #23342b;
+  color: #bde5cd;
+}
+.support-danger {
+  background: #41292e;
+  color: #ffc2c7;
+}
+.support-filter {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.support-filter:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.support-filter.is-selected,
+.support-filter.is-selected:hover {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+.support-queue-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  margin: 3px 0;
+  padding: 14px 11px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.support-queue-row:hover {
+  background: var(--muted);
+}
+.support-queue-row.is-selected,
+.support-queue-row.is-selected:hover {
+  background: #28282d;
+  border-color: #565660;
+  box-shadow: inset 2px 0 #eeeef0;
+}
+/* Older ticket inspectors remain fully functional inside the new narrow detail column. */
+.support-inspector :is(.grid, .flex-wrap) {
+  min-width: 0;
+}
+.support-inspector .grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.support-inspector :is(.max-w-5xl, .max-w-6xl) {
+  max-width: none;
+}
+.support-inspector > div {
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+.support-inspector section {
+  background: var(--card);
+  border-color: var(--border);
+  padding: 14px;
+}
+.support-inspector :is(p, pre, span, div) {
+  overflow-wrap: anywhere;
+}
+.support-inspector .text-zinc-500 {
+  color: var(--muted-foreground);
+}
+.support-inspector .text-white\/60,
+.support-inspector .text-white\/70 {
+  color: var(--muted-foreground);
+}
+.support-theme .support-message-content {
+  font-size: 15px;
+  line-height: 1.85;
+}
+.support-theme .support-message-content :is(p, ul, ol) {
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
+.support-theme .support-message-content > :last-child {
+  margin-bottom: 0;
+}
+.support-theme .support-composer .chat-default-input-wrapper {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.support-theme .support-composer .ProseMirror {
+  min-height: 64px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.support-theme .support-composer .chat-default-send-btn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+@media (max-width: 767px) {
+  .support-theme .support-message-content {
+    font-size: 16px;
+  }
+  .support-theme .support-composer .ProseMirror {
+    font-size: 16px;
+  }
+  .support-theme .support-conversation-header {
+    padding: 12px;
+    min-height: 76px;
+  }
+  .support-theme .support-conversation-header h2 {
+    font-size: 15px;
+  }
+  .support-theme .support-conversation-title {
+    max-width: 150px;
+  }
+}
+@media (max-height: 600px) {
+  .support-global-metrics,
+  .support-queue-footer {
+    display: none;
+  }
+  .support-theme .support-conversation-header {
+    min-height: 62px;
+  }
+  .support-theme .support-composer .ProseMirror {
+    min-height: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .support-theme *,
+  .support-theme *::before,
+  .support-theme *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Keep the focused rich editor visible, including short landscape viewports. */
+.support-theme .support-composer .ProseMirror:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+@media (max-height: 600px) {
+  .support-main-header {
+    height: 56px;
+  }
+  .support-conversation-notice {
+    display: none;
+  }
+  .support-composer {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .support-theme .support-composer .ProseMirror {
+    min-height: 32px;
+  }
+}
+
+/* Adapt the shared chat editor's tokens to the support palette. */
+.support-reply-editor {
+  --chat-bg-input: var(--card);
+  --chat-border-color: var(--border);
+  --chat-border-focus: var(--ring);
+  --chat-text-primary: var(--foreground);
+  --chat-text-secondary: var(--muted-foreground);
+  --chat-text-tertiary: var(--muted-foreground);
+  --chat-bg-user-bubble: var(--accent);
+  --chat-accent: var(--primary);
+}

@@ -1,0 +1,111 @@
+{
+  "samples": 21,
+  "minimum_ratio": 6.49,
+  "checks": [
+    {
+      "selector": "[data-action=\"takeover\"]",
+      "state": "normal",
+      "ratio": 15.48
+    },
+    {
+      "selector": "[data-action=\"takeover\"]",
+      "state": "hover",
+      "ratio": 15.23
+    },
+    {
+      "selector": "[data-action=\"takeover\"]",
+      "state": "active",
+      "ratio": 14.79
+    },
+    {
+      "selector": ".queue-row[aria-current=true]",
+      "state": "normal",
+      "ratio": 13.05
+    },
+    {
+      "selector": ".queue-row[aria-current=true]",
+      "state": "hover",
+      "ratio": 13.05
+    },
+    {
+      "selector": ".queue-row[aria-current=true]",
+      "state": "active",
+      "ratio": 13.05
+    },
+    {
+      "selector": ".queue-filter[aria-pressed=true]",
+      "state": "normal",
+      "ratio": 11.66
+    },
+    {
+      "selector": ".queue-filter[aria-pressed=true]",
+      "state": "hover",
+      "ratio": 11.66
+    },
+    {
+      "selector": ".queue-filter[aria-pressed=true]",
+      "state": "active",
+      "ratio": 11.66
+    },
+    {
+      "selector": ".status-badge.warning",
+      "state": "normal",
+      "ratio": 7.83
+    },
+    {
+      "selector": ".status-badge.warning",
+      "state": "hover",
+      "ratio": 7.83
+    },
+    {
+      "selector": ".status-badge.warning",
+      "state": "active",
+      "ratio": 7.83
+    },
+    {
+      "selector": ".success",
+      "state": "normal",
+      "ratio": 8.41
+    },
+    {
+      "selector": ".success",
+      "state": "hover",
+      "ratio": 8.41
+    },
+    {
+      "selector": ".success",
+      "state": "active",
+      "ratio": 8.41
+    },
+    {
+      "selector": ".text-muted-foreground",
+      "state": "normal",
+      "ratio": 8.15
+    },
+    {
+      "selector": ".text-muted-foreground",
+      "state": "hover",
+      "ratio": 8.15
+    },
+    {
+      "selector": ".text-muted-foreground",
+      "state": "active",
+      "ratio": 8.15
+    },
+    {
+      "selector": "#send-reply",
+      "state": "normal",
+      "ratio": 6.49
+    },
+    {
+      "selector": "#send-reply",
+      "state": "hover",
+      "ratio": 6.49
+    },
+    {
+      "selector": "#send-reply",
+      "state": "active",
+      "ratio": 6.49
+    }
+  ]
+}

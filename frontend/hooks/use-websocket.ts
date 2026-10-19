@@ -526,6 +526,16 @@ export function useSupportWebSocket({
     };
   }, [onMessage, onStateChange, onReadReceipt, onMessageWithdrawn, onMessageEdited, onMessagesDeleted]);
 
+  // WebSocket callbacks must run outside React's state updater: the callback updates the shared support store.
+  // Keep the latest snapshot in a ref so consecutive events merge in order, even before the next render.
+  const supportStateRef = useRef(conversationState);
+  const updateSupportState = useCallback((update: (previous: ConversationState) => ConversationState) => {
+    const next = update(supportStateRef.current);
+    supportStateRef.current = next;
+    setConversationState(next);
+    callbacksRef.current.onStateChange?.(next);
+  }, []);
+
   // 消息处理器
   const handleMessage = useCallback((msg: WSMessage) => {
     const callbacks = callbacksRef.current;
@@ -548,6 +558,7 @@ export function useSupportWebSocket({
           secondary_issues: payload.secondary_issues ?? [],
           handoff_summary: payload.handoff_summary ?? null,
         };
+        supportStateRef.current = newState;
         setConversationState(newState);
         // 同步状态到 Store
         callbacks.onStateChange?.(newState);
@@ -600,28 +611,26 @@ export function useSupportWebSocket({
 
       case "server.handoff_started": {
         const payload = msg.payload as unknown as HandoffStartedPayload;
-        setConversationState((prev) => {
+        updateSupportState((prev) => {
           const newState = mergeConversationState(prev, {
             conversation_mode: "human",
             handoff_state: "human",
             handoff_reason: payload.reason ?? null,
             operator: payload.operator,
           });
-          callbacks.onStateChange?.(newState);
           return newState;
         });
         break;
       }
 
       case "server.handoff_ended": {
-        setConversationState((prev) => {
+        updateSupportState((prev) => {
           const newState = mergeConversationState(prev, {
             conversation_mode: "ai",
             handoff_state: "ai",
             handoff_reason: null,
             operator: undefined,
           });
-          callbacks.onStateChange?.(newState);
           return newState;
         });
         break;
@@ -629,9 +638,8 @@ export function useSupportWebSocket({
 
       case "server.conversation_state": {
         const payload = msg.payload as unknown as ConversationState;
-        setConversationState((prev) => {
+        updateSupportState((prev) => {
           const newState = mergeConversationState(prev, payload);
-          callbacks.onStateChange?.(newState);
           return newState;
         });
         break;
@@ -639,9 +647,8 @@ export function useSupportWebSocket({
 
       case "server.ticket_updated": {
         const payload = msg.payload as unknown as TicketUpdatedPayload;
-        setConversationState((prev) => {
+        updateSupportState((prev) => {
           const newState = mergeConversationState(prev, { current_ticket: payload.ticket });
-          callbacks.onStateChange?.(newState);
           return newState;
         });
         break;
@@ -649,9 +656,8 @@ export function useSupportWebSocket({
 
       case "server.review_updated": {
         const payload = msg.payload as unknown as ReviewUpdatedPayload;
-        setConversationState((prev) => {
+        updateSupportState((prev) => {
           const newState = mergeConversationState(prev, { review_summary: payload.review_summary });
-          callbacks.onStateChange?.(newState);
           return newState;
         });
         break;
@@ -659,13 +665,12 @@ export function useSupportWebSocket({
 
       case "server.user_online": {
         const payload = msg.payload as unknown as UserPresencePayload;
-        setConversationState((prev) => {
+        updateSupportState((prev) => {
           const newState = {
             ...prev,
             user_online: true,
             peer_last_online_at: payload.last_online_at,
           };
-          callbacks.onStateChange?.(newState);
           return newState;
         });
         break;
@@ -673,13 +678,12 @@ export function useSupportWebSocket({
 
       case "server.user_offline": {
         const payload = msg.payload as unknown as UserPresencePayload;
-        setConversationState((prev) => {
+        updateSupportState((prev) => {
           const newState = {
             ...prev,
             user_online: false,
             peer_last_online_at: payload.last_online_at,
           };
-          callbacks.onStateChange?.(newState);
           return newState;
         });
         setUserTyping(false);
@@ -704,7 +708,7 @@ export function useSupportWebSocket({
         break;
       }
     }
-  }, []);
+  }, [updateSupportState]);
 
   // 创建/销毁 manager
   useEffect(() => {

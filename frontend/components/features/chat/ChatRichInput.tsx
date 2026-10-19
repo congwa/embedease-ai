@@ -1,5 +1,7 @@
 "use client";
 
+/** Shared rich reply input keeps formatting, attachment-only sends and accessible editor names consistent. */
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +11,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { EditorContent } from "@tiptap/react";
-import { Bold, Italic, List, ListOrdered, Code, ArrowUp, Square } from "lucide-react";
+import {
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Code,
+  ArrowUp,
+  Square,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useMemo } from "react";
 import { useRichEditor } from "@/components/rich-editor/use-rich-editor";
 import { markdownToHtml } from "@/components/rich-editor/helpers/markdown-converter";
@@ -26,6 +36,9 @@ interface ChatRichInputProps {
   className?: string;
   showToolbar?: boolean;
   imageButton?: React.ReactNode;
+  /** Allows support replies containing only uploaded images. */
+  hasAttachments?: boolean;
+  ariaLabel?: string;
 }
 
 export function ChatRichInput({
@@ -38,13 +51,16 @@ export function ChatRichInput({
   className,
   showToolbar = true,
   imageButton,
+  hasAttachments = false,
+  ariaLabel = "消息内容",
 }: ChatRichInputProps) {
   const theme = useChatThemeOptional();
-  
+
   const { editor, markdown } = useRichEditor({
     initialContent: value,
     placeholder,
     editable: !disabled,
+    ariaLabel,
   });
 
   const lastExternalValue = useRef(value);
@@ -75,32 +91,35 @@ export function ChatRichInput({
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (markdown.trim() && !isLoading) {
+        if ((markdown.trim() || hasAttachments) && !isLoading && !disabled) {
           onSubmit();
         }
       }
     },
-    [markdown, isLoading, onSubmit]
+    [markdown, hasAttachments, isLoading, disabled, onSubmit],
   );
 
   const toggleBold = () => editor?.chain().focus().toggleBold().run();
   const toggleItalic = () => editor?.chain().focus().toggleItalic().run();
-  const toggleBulletList = () => editor?.chain().focus().toggleBulletList().run();
-  const toggleOrderedList = () => editor?.chain().focus().toggleOrderedList().run();
+  const toggleBulletList = () =>
+    editor?.chain().focus().toggleBulletList().run();
+  const toggleOrderedList = () =>
+    editor?.chain().focus().toggleOrderedList().run();
   const toggleCode = () => editor?.chain().focus().toggleCode().run();
 
-  const canSubmit = markdown.trim().length > 0;
+  const canSubmit = markdown.trim().length > 0 || hasAttachments;
 
   // 使用主题系统获取类名，减少重复代码
   const inputWrapperClass = useMemo(
     () => theme?.getClass("inputWrapper") || "chat-default-input-wrapper",
-    [theme]
+    [theme],
   );
 
   const sendButtonClass = useMemo(() => {
     const base = theme?.getClass("sendButton") || "chat-default-send-btn";
     if (canSubmit) {
-      const active = theme?.getClass("sendButtonActive") || "chat-default-send-btn-active";
+      const active =
+        theme?.getClass("sendButtonActive") || "chat-default-send-btn-active";
       return `${base} ${active}`;
     }
     return base;
@@ -108,11 +127,7 @@ export function ChatRichInput({
 
   return (
     <div
-      className={cn(
-        "flex flex-col",
-        inputWrapperClass,
-        className
-      )}
+      className={cn("flex flex-col", inputWrapperClass, className)}
       onKeyDown={handleKeyDown}
     >
       <EditorContent
@@ -126,14 +141,16 @@ export function ChatRichInput({
           "[&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]",
           "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
           "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
-          "[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0"
+          "[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0",
         )}
       />
-      
-      <div className={cn(
-        "flex items-center px-2 py-1.5",
-        showToolbar ? "justify-between" : "justify-end"
-      )}>
+
+      <div
+        className={cn(
+          "flex items-center px-2 py-1.5",
+          showToolbar ? "justify-between" : "justify-end",
+        )}
+      >
         {showToolbar && (
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center gap-0.5">
@@ -144,6 +161,7 @@ export function ChatRichInput({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-[var(--chat-text-secondary)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-user-bubble)]"
+                    aria-label="粗体"
                     onClick={toggleBold}
                     disabled={disabled}
                   >
@@ -160,6 +178,7 @@ export function ChatRichInput({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-[var(--chat-text-secondary)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-user-bubble)]"
+                    aria-label="斜体"
                     onClick={toggleItalic}
                     disabled={disabled}
                   >
@@ -176,6 +195,7 @@ export function ChatRichInput({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-[var(--chat-text-secondary)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-user-bubble)]"
+                    aria-label="无序列表"
                     onClick={toggleBulletList}
                     disabled={disabled}
                   >
@@ -192,6 +212,7 @@ export function ChatRichInput({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-[var(--chat-text-secondary)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-user-bubble)]"
+                    aria-label="有序列表"
                     onClick={toggleOrderedList}
                     disabled={disabled}
                   >
@@ -208,6 +229,7 @@ export function ChatRichInput({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-[var(--chat-text-secondary)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-user-bubble)]"
+                    aria-label="代码"
                     onClick={toggleCode}
                     disabled={disabled}
                   >
@@ -226,6 +248,7 @@ export function ChatRichInput({
             type="button"
             size="icon"
             className={cn("h-8 w-8", sendButtonClass)}
+            aria-label={isLoading ? "停止生成" : "发送回复"}
             onClick={onSubmit}
             disabled={!canSubmit || disabled}
           >

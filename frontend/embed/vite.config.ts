@@ -45,6 +45,8 @@ function cssInjectedByJsPlugin(): Plugin {
 }
 
 export default defineConfig({
+  // 嵌入组件复用主应用模块，与 Next 的 @/ 路径约定保持一致。
+  resolve: { alias: { "@": resolve(__dirname, "..") } },
   plugins: [react(), cssInjectedByJsPlugin()],
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),

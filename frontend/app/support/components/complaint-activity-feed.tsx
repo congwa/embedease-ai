@@ -93,7 +93,8 @@ function buildTaskActivityItems(recentTasks: RecentTaskStateSummary[]): Complain
       task.goal ||
       task.failure_reason ||
       `${task.agent_tag} 正在推进当前问题单`,
-    time: task.finished_at || task.started_at || task.created_at,
+    // 任务时间可能尚未写入，统一用 null 表示未记录。
+    time: task.finished_at || task.started_at || task.created_at || null,
     badge: `${task.agent_tag} · ${getComplaintTaskStatusLabel(task.status)}`,
     tone:
       task.status === "done"

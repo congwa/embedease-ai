@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark"><title>客服工作台 · EmbedEase</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- Cascade layers keep Tailwind preflight before Basecoat, including browser-injected styles. -->
+  <style>@layer theme, base, components, utilities;</style>
+  <script src="vendor/tailwindcss.js"></script>
+  <style type="text/tailwindcss">@theme inline { --color-background:var(--background); --color-foreground:var(--foreground); --color-card:var(--card); --color-primary:var(--primary); --color-primary-foreground:var(--primary-foreground); --color-muted:var(--muted); --color-muted-foreground:var(--muted-foreground); --color-accent:var(--accent); --color-accent-foreground:var(--accent-foreground); --color-border:var(--border); --color-destructive:var(--destructive); }</style>
+  <style>@import url('vendor/basecoat.css') layer(components);</style>
+  <link rel="stylesheet" href="theme.css">
+  <script src="vendor/basecoat-all.min.js" defer></script><script src="vendor/lucide.min.js" defer></script><script src="vendor/motion.js" defer></script>
+  <script src="demo-data.js" defer></script><script src="app.js" defer></script>
+</head>
+<body class="bg-background text-foreground antialiased">
+  <a class="skip-link" href="#workspace">跳到会话工作区</a>
+  <div id="app" class="flex h-dvh min-h-0 overflow-hidden" data-mobile-view="queue">
+    <aside class="hidden w-[68px] shrink-0 flex-col items-center border-r border-border bg-card py-5 md:flex" aria-label="产品导航">
+      <a href="#workspace" class="brand-mark" aria-label="EmbedEase 客服工作台"><i data-lucide="audio-lines" aria-hidden="true"></i></a>
+      <div class="mt-9 flex flex-col gap-3">
+        <button class="rail-button" data-action="navigation" aria-label="概览" title="概览"><i data-lucide="layout-dashboard" aria-hidden="true"></i></button>
+        <button class="rail-button rail-current" aria-label="会话工作台" aria-current="page" title="会话工作台"><i data-lucide="inbox" aria-hidden="true"></i><span class="rail-dot"></span></button>
+        <button class="rail-button" data-action="navigation" aria-label="客户" title="客户"><i data-lucide="users" aria-hidden="true"></i></button>
+        <button class="rail-button" data-action="navigation" aria-label="知识库" title="知识库"><i data-lucide="book-open" aria-hidden="true"></i></button>
+        <button class="rail-button" data-action="navigation" aria-label="数据分析" title="数据分析"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i></button>
+      </div>
+      <div class="mt-auto flex flex-col items-center gap-4"><button class="rail-button" data-action="help" aria-label="设计说明" title="设计说明"><i data-lucide="circle-help" aria-hidden="true"></i></button><span class="operator-avatar" title="客服小乔 · 在线">乔<span></span></span></div>
+    </aside>
+    <div class="flex min-w-0 flex-1 flex-col">
+      <header class="flex h-[74px] shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 md:px-7">
+        <div><p class="mb-1 hidden text-[12px] font-medium tracking-wider text-muted-foreground md:block">工作空间 <span class="mx-2 opacity-50">/</span> 客户服务</p><div class="flex items-center gap-3"><h1 class="text-[24px] font-semibold tracking-tight">客服工作台</h1><span class="status-badge success service-indicator hidden sm:inline-flex"><span class="status-dot"></span>服务进行中</span></div></div>
+        <div class="flex items-center gap-3"><span class="preview-label"><span></span>静态设计预览</span><span class="hidden h-5 border-l border-border md:block"></span><button class="btn hidden sm:inline-flex" data-variant="ghost" data-size="icon" data-action="refresh" aria-label="刷新模拟队列" title="刷新队列"><i data-lucide="refresh-cw" aria-hidden="true"></i></button><div class="hidden items-center gap-2.5 lg:flex"><span class="h-8 w-8 rounded-full bg-accent text-center text-xs font-semibold leading-8 text-accent-foreground">乔</span><span class="text-xs">客服小乔<i class="ml-1 inline-block size-3 text-muted-foreground" data-lucide="chevron-down" aria-hidden="true"></i></span></div></div>
+      </header>
+      <section class="flex shrink-0 items-center gap-5 border-b border-border bg-card px-4 py-3 md:px-7" aria-label="全局队列统计">
+        <div class="hidden shrink-0 text-[12px] leading-5 text-muted-foreground 2xl:block">队列概览<br><span class="font-medium text-foreground">全局实时</span></div>
+        <div id="global-metrics" class="grid min-w-0 flex-1 grid-cols-4 gap-3 md:gap-7"></div>
+        <div class="hidden shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground xl:flex"><span class="status-dot"></span><span id="sync-status">刚刚更新</span></div>
+      </section>
+      <main id="workspace" class="workspace-grid grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_280px] 2xl:grid-cols-[336px_minmax(0,1fr)_308px]" tabindex="-1">
+        <section id="queue-pane" class="flex min-h-0 flex-col border-r border-border bg-card" aria-label="会话队列">
+          <div class="px-5 pb-3 pt-5"><div class="mb-4 flex items-center justify-between"><h2 class="flex items-center gap-2 text-sm font-semibold">会话收件箱 <span id="queue-total" class="count-label">8</span></h2><button class="btn" data-variant="ghost" data-size="icon-sm" data-action="help" aria-label="会话队列说明"><i data-lucide="sliders-horizontal" aria-hidden="true"></i></button></div>
+            <div class="relative"><i data-lucide="search" class="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" aria-hidden="true"></i><input id="queue-search" class="input w-full pl-9 text-xs" type="search" placeholder="搜索客户、问题或订单号" aria-label="搜索客户、问题或订单号"><kbd class="absolute right-3 top-2 hidden text-[12px] text-muted-foreground 2xl:block">⌘ K</kbd></div>
+          </div>
+          <nav id="queue-filters" class="flex gap-1 border-b border-border px-5" aria-label="筛选会话状态"></nav>
+          <div class="flex items-center justify-between px-5 py-3"><span id="result-summary" class="text-[12px] text-muted-foreground">8 个会话</span><label class="flex items-center gap-1 text-[12px] text-muted-foreground"><i data-lucide="arrow-down-wide-narrow" class="size-3.5" aria-hidden="true"></i><select id="queue-sort" class="cursor-pointer bg-transparent text-foreground outline-offset-4" aria-label="会话排序"><option value="priority">优先处理</option><option value="time">最新消息</option></select></label></div>
+          <div id="queue-list" class="min-h-0 flex-1 overflow-y-auto px-2 pb-2"></div>
+          <footer class="border-t border-border bg-background/60 px-5 py-3.5"><div class="mb-2 flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground"><span>当前筛选结果</span><span>示例数据</span></div><div id="filtered-metrics" class="grid grid-cols-5 gap-1"></div></footer>
+        </section>
+        <section id="conversation-pane" class="flex min-h-0 min-w-0 flex-col bg-background" aria-label="当前会话">
+          <header id="conversation-header" class="flex min-h-[80px] shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 py-4 lg:px-6"></header>
+          <div id="handoff-notice" class="shrink-0 border-b border-border px-4 py-2.5 lg:px-6"></div>
+          <div id="message-scroll" class="min-h-0 flex-1 overflow-y-auto px-4 py-6 lg:px-7"><div id="messages" class="mx-auto max-w-[760px] space-y-5"></div></div>
+          <section class="shrink-0 border-t border-border bg-card px-4 pb-4 pt-3 lg:px-6" aria-label="回复编辑器">
+            <div class="mb-2 flex items-center justify-between"><div class="flex items-center gap-4"><span class="flex items-center gap-1.5 text-xs font-semibold"><i data-lucide="message-square" class="size-3.5" aria-hidden="true"></i>回复客户</span><button class="text-xs text-muted-foreground hover:text-foreground" data-action="quick-reply">快捷回复 <kbd class="ml-1 rounded border border-border px-1 text-[11px]">/</kbd></button></div><span id="composer-status" class="text-[12px] text-muted-foreground"></span></div>
+            <label class="sr-only" for="reply-input">回复内容</label><textarea id="reply-input" class="textarea min-h-[76px] w-full resize-none border-0 bg-transparent px-0 py-2 text-sm shadow-none focus-visible:ring-0" placeholder="接入会话后，开始与客户沟通…" rows="2" maxlength="2000"></textarea>
+            <div id="reply-error" class="mb-2 hidden text-xs text-destructive" role="alert"></div>
+            <div class="flex items-center justify-between gap-2"><div class="flex items-center gap-0.5"><button class="btn" data-variant="ghost" data-size="icon-sm" data-action="attachment" aria-label="添加附件"><i data-lucide="paperclip" aria-hidden="true"></i></button><button class="btn" data-variant="ghost" data-size="icon-sm" data-action="quick-reply" aria-label="插入快捷回复"><i data-lucide="zap" aria-hidden="true"></i></button><span class="ml-1 hidden text-[11px] text-muted-foreground sm:inline">所有操作仅用于静态演示</span></div><div class="flex items-center gap-3"><span class="hidden text-[11px] text-muted-foreground lg:block">⌘ / Ctrl + Enter 发送</span><button id="send-reply" class="btn" data-action="send" data-size="sm">发送回复<i data-lucide="arrow-up-right" aria-hidden="true"></i></button></div></div>
+          </section>
+        </section>
+        <aside id="details-pane" class="hidden min-h-0 flex-col border-l border-border bg-card xl:flex" aria-label="会话处理信息">
+          <header class="flex h-[65px] shrink-0 items-center justify-between border-b border-border px-5"><h2 id="details-heading" class="text-sm font-semibold" tabindex="-1">会话详情</h2><button class="btn xl:hidden" data-variant="ghost" data-size="icon-sm" data-action="close-details" aria-label="关闭会话详情"><i data-lucide="x" aria-hidden="true"></i></button><span class="hidden text-[11px] text-muted-foreground xl:block">当前会话</span></header>
+          <div id="info-tabs" class="tabs flex min-h-0 flex-1 flex-col px-5 pt-4"><nav role="tablist" aria-label="会话详情内容" class="mb-5 w-full"><button type="button" role="tab" id="overview-tab" aria-controls="overview-panel" aria-selected="true">问题概览</button><button type="button" role="tab" id="activity-tab" aria-controls="activity-panel" aria-selected="false">处理记录</button></nav><section id="overview-panel" role="tabpanel" aria-labelledby="overview-tab" class="min-h-0 flex-1 overflow-y-auto pb-5"></section><section id="activity-panel" role="tabpanel" aria-labelledby="activity-tab" class="min-h-0 flex-1 overflow-y-auto pb-5" hidden></section></div>
+        </aside>
+      </main>
+    </div>
+  </div>
+  <button id="details-scrim" class="details-scrim" data-action="close-details" aria-label="关闭会话详情" hidden></button>
+  <div id="toaster" class="toaster" data-position="bottom-right"></div><div id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

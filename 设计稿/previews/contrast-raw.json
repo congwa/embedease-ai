@@ -1,0 +1,335 @@
+[
+  {
+    "selector": "[data-action=\"takeover\"]",
+    "condition": "normal",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(16, 16, 18)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(237, 237, 241)"
+    ],
+    "foreground": "rgb(22, 22, 24)"
+  },
+  {
+    "selector": "[data-action=\"takeover\"]",
+    "condition": "hover",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(16, 16, 18)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "oklab(0.947238 0.00154081 -0.00510406 / 0.991976)"
+    ],
+    "foreground": "rgb(22, 22, 24)"
+  },
+  {
+    "selector": "[data-action=\"takeover\"]",
+    "condition": "active",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(16, 16, 18)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "oklab(0.947238 0.00154081 -0.00510406 / 0.977181)"
+    ],
+    "foreground": "rgb(22, 22, 24)"
+  },
+  {
+    "selector": ".queue-row[aria-current=true]",
+    "condition": "normal",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(39, 39, 45)"
+    ],
+    "foreground": "rgb(240, 240, 243)"
+  },
+  {
+    "selector": ".queue-row[aria-current=true]",
+    "condition": "hover",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(39, 39, 45)"
+    ],
+    "foreground": "rgb(240, 240, 243)"
+  },
+  {
+    "selector": ".queue-row[aria-current=true]",
+    "condition": "active",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(39, 39, 45)"
+    ],
+    "foreground": "rgb(240, 240, 243)"
+  },
+  {
+    "selector": ".queue-filter[aria-pressed=true]",
+    "condition": "normal",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(41, 41, 47)"
+    ],
+    "foreground": "rgb(230, 230, 239)"
+  },
+  {
+    "selector": ".queue-filter[aria-pressed=true]",
+    "condition": "hover",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(41, 41, 47)"
+    ],
+    "foreground": "rgb(230, 230, 239)"
+  },
+  {
+    "selector": ".queue-filter[aria-pressed=true]",
+    "condition": "active",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(41, 41, 47)"
+    ],
+    "foreground": "rgb(230, 230, 239)"
+  },
+  {
+    "selector": ".status-badge.warning",
+    "condition": "normal",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(51, 42, 31)"
+    ],
+    "foreground": "rgb(223, 188, 135)"
+  },
+  {
+    "selector": ".status-badge.warning",
+    "condition": "hover",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(51, 42, 31)"
+    ],
+    "foreground": "rgb(223, 188, 135)"
+  },
+  {
+    "selector": ".status-badge.warning",
+    "condition": "active",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(51, 42, 31)"
+    ],
+    "foreground": "rgb(223, 188, 135)"
+  },
+  {
+    "selector": ".success",
+    "condition": "normal",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(34, 50, 41)"
+    ],
+    "foreground": "rgb(167, 215, 188)"
+  },
+  {
+    "selector": ".success",
+    "condition": "hover",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(34, 50, 41)"
+    ],
+    "foreground": "rgb(167, 215, 188)"
+  },
+  {
+    "selector": ".success",
+    "condition": "active",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(34, 50, 41)"
+    ],
+    "foreground": "rgb(167, 215, 188)"
+  },
+  {
+    "selector": ".text-muted-foreground",
+    "condition": "normal",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)"
+    ],
+    "foreground": "rgb(165, 165, 175)"
+  },
+  {
+    "selector": ".text-muted-foreground",
+    "condition": "hover",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)"
+    ],
+    "foreground": "rgb(165, 165, 175)"
+  },
+  {
+    "selector": ".text-muted-foreground",
+    "condition": "active",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)"
+    ],
+    "foreground": "rgb(165, 165, 175)"
+  },
+  {
+    "selector": "#send-reply",
+    "condition": "normal",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(16, 16, 18)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(34, 34, 38)"
+    ],
+    "foreground": "rgb(165, 165, 175)"
+  },
+  {
+    "selector": "#send-reply",
+    "condition": "hover",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(16, 16, 18)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(34, 34, 38)"
+    ],
+    "foreground": "rgb(165, 165, 175)"
+  },
+  {
+    "selector": "#send-reply",
+    "condition": "active",
+    "backgrounds": [
+      "rgba(0, 0, 0, 0)",
+      "rgb(9, 9, 11)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(20, 20, 22)",
+      "rgb(16, 16, 18)",
+      "rgb(20, 20, 22)",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
+      "rgb(34, 34, 38)"
+    ],
+    "foreground": "rgb(165, 165, 175)"
+  }
+]
