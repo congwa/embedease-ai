@@ -41,3 +41,6 @@ docs/
 # OS
 .DS_Store
 Thumbs.db
+
+# 本地解释器不能进入 Linux 构建上下文
+.venv/

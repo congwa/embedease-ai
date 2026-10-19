@@ -1,0 +1,62 @@
+# 只运行已构建的版本化镜像；数据与日志独立于发布目录。
+version: "3.8"
+services:
+  qdrant:
+    image: qdrant/qdrant@sha256:f1c7272cdac52b38c1a0e89313922d940ba50afd90d593a1605dbbc214e66ffb
+    restart: unless-stopped
+    volumes:
+      - /srv/embedease-ai/data/qdrant:/qdrant/storage
+    mem_limit: 768m
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  minio:
+    image: quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    env_file: /srv/embedease-ai/config/minio.env
+    ports:
+      - "127.0.0.1:19362:9000"
+    volumes:
+      - /srv/embedease-ai/data/minio:/data
+    mem_limit: 512m
+    logging: *logging
+  backend:
+    image: embedease/backend:${RELEASE_VERSION:?set RELEASE_VERSION}
+    restart: unless-stopped
+    env_file: /srv/embedease-ai/config/backend.env
+    ports:
+      - "127.0.0.1:19360:8000"
+    volumes:
+      - /srv/embedease-ai/data/backend:/app/data
+      - /srv/embedease-ai/logs:/app/logs
+      - /srv/embedease-ai/config/env-json:/app/.env.json:ro
+    depends_on:
+      - qdrant
+      - minio
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=10)"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+    mem_limit: 1536m
+    logging: *logging
+  frontend:
+    image: embedease/frontend:${RELEASE_VERSION:?set RELEASE_VERSION}
+    restart: unless-stopped
+    environment:
+      API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "127.0.0.1:19361:3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/chat').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 512m
+    logging: *logging

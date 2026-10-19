@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // SSE（/api/v1/chat）通过 Next Route Handler 透传流，避免 rewrites 代理可能造成的缓冲。
   // 其他 API 仍然使用 rewrites 代理到后端。
   compress: false,
+  // 生产镜像只打包运行服务所需的文件。
+  output: "standalone",
   // 统一通过 Next 代理后端 API：
   // - 前端只请求同源 /api/v1/*
   // - rewrites 将请求转发到本机后端（默认 127.0.0.1:8000）

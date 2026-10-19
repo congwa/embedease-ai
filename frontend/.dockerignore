@@ -37,3 +37,7 @@ doc/
 # OS
 .DS_Store
 Thumbs.db
+
+# 工作区子包也必须排除本机依赖与编译结果。
+**/node_modules/
+**/dist/
