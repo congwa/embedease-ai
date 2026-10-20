@@ -39,6 +39,7 @@ class StreamEventType(StrEnum):
     TOOL_END = "tool.end"
 
     # ========== 数据事件 ==========
+    ASSISTANT_CITATIONS = "assistant.citations"  # 托管知识库引用
     ASSISTANT_PRODUCTS = "assistant.products"
     ASSISTANT_TODOS = "assistant.todos"
     CONTEXT_SUMMARIZED = "context.summarized"

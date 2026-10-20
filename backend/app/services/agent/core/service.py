@@ -22,6 +22,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
+from langgraph_agent_kit import ChatContext
 from sqlalchemy import select
 
 from app.core.config import settings
@@ -34,7 +35,6 @@ from app.schemas.events import StreamEventType
 from app.services.agent.core.config import AgentConfigLoader, get_or_create_default_agent
 from app.services.agent.core.factory import build_agent
 from app.services.agent.streams import BusinessResponseHandler
-from langgraph_agent_kit import ChatContext
 
 logger = get_logger("agent.service")
 
@@ -278,7 +278,7 @@ class AgentService:
             agent = await self.get_agent(agent_id=agent_id)
 
             # 获取模型实例
-            model = get_chat_model()
+            get_chat_model()
         except Exception as e:
             # Agent 构建失败，通知前端
             error_msg = "智能助手初始化失败，可能是依赖服务（如 Qdrant）不可用，请稍后再试"
@@ -286,7 +286,6 @@ class AgentService:
                 "Agent 构建失败",
                 error=str(e),
                 agent_id=agent_id,
-                mode=mode,
                 conversation_id=conversation_id,
             )
             try:
@@ -304,9 +303,13 @@ class AgentService:
             return
 
         # 使用业务扩展响应处理器
+        # 每次调用只使用本轮来源，避免复用上下文导致历史来源混入。
+        context.rag_sources.clear()
+        context.rag_context_chars = 0
         handler = BusinessResponseHandler(
             emitter=emitter,
             conversation_id=conversation_id,
+            context=context,
         )
 
         # 准备 Agent 输入

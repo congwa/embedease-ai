@@ -47,6 +47,8 @@ def create_retriever(
             collection_name=knowledge_config.collection_name,
             top_k=knowledge_config.top_k,
             rerank_enabled=knowledge_config.rerank_enabled,
+            similarity_threshold=knowledge_config.similarity_threshold,
+            knowledge_config_id=knowledge_config.id,
         )
 
     elif knowledge_type == "product":

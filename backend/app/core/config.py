@@ -102,6 +102,20 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 800
     CHUNK_OVERLAP: int = 100
 
+    # 托管 RAG：私有文件、持久任务及引用凭证，不使用聊天图片公开桶。
+    KNOWLEDGE_ADMIN_KEY: str = ""
+    KNOWLEDGE_SIGNING_KEY: str = ""
+    KNOWLEDGE_BUCKET: str = "knowledge-documents"
+    KNOWLEDGE_MAX_FILE_BYTES: int = 20 * 1024 * 1024
+    KNOWLEDGE_MAX_TEXT_CHARS: int = 2_000_000
+    KNOWLEDGE_MAX_CHUNKS: int = 10_000
+    KNOWLEDGE_DOCX_MAX_UNPACKED_BYTES: int = 100 * 1024 * 1024
+    KNOWLEDGE_PARSE_TIMEOUT: int = 120
+    KNOWLEDGE_CONTEXT_CHARS: int = 8000
+    KNOWLEDGE_CITATION_TTL: int = 3600
+    KNOWLEDGE_RAG_ENABLED: bool = True
+    KNOWLEDGE_WORKER_ENABLED: bool = True
+
     # 服务配置
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000

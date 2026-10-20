@@ -29,6 +29,8 @@ from app.routers.agents import (
     suggested_questions_router,
 )
 from app.routers.agents import router as agents_router
+from app.routers.knowledge_documents import citation_router
+from app.routers.knowledge_documents import router as knowledge_documents_router
 from app.scheduler import task_registry, task_scheduler
 from app.scheduler.routers import router as scheduler_router
 from app.scheduler.tasks import (
@@ -41,6 +43,7 @@ from app.services.agent.bootstrap import bootstrap_default_agents
 from app.services.agent.core.service import agent_service
 from app.services.crawler import crawler_config_service
 from app.services.crawler.site_initializer import init_config_sites
+from app.services.knowledge.rag.settings import RagError
 from app.services.websocket.heartbeat import heartbeat_manager
 
 
@@ -134,6 +137,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         task_registry.register(ComplaintScoreSnapshotTask())
     if "complaint_knowledge_gap_task" not in task_registry:
         task_registry.register(ComplaintKnowledgeGapTask())
+
+    from app.scheduler.tasks.knowledge_ingestion import KnowledgeIngestionTask
+    if "knowledge_ingestion_task" not in task_registry:
+        task_registry.register(KnowledgeIngestionTask())
+
+    # 引用凭证不能进入 Uvicorn 的普通访问日志。
+    import logging
+
+    from app.services.knowledge.rag.security import CitationAccessLogFilter
+    access_logger = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, CitationAccessLogFilter) for f in access_logger.filters):
+        access_logger.addFilter(CitationAccessLogFilter())
 
     # 如果爬虫启用，初始化站点配置和调度任务
     if crawler_enabled:
@@ -320,10 +335,18 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     )
 
 
+@app.exception_handler(RagError)
+async def rag_error_handler(request: Request, exc: RagError):
+    """托管 RAG 使用稳定业务错误状态，不暴露外部服务错误正文。"""
+    return JSONResponse(status_code=exc.status, content={"detail": str(exc)})
+
+
 # 注册路由
 app.include_router(admin.router)
 app.include_router(agents_router)
 app.include_router(knowledge_router)
+app.include_router(knowledge_documents_router)
+app.include_router(citation_router)
 app.include_router(faq_router)
 app.include_router(suggested_questions_router)
 app.include_router(suggested_question_item_router)

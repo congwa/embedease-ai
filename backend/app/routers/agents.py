@@ -5,7 +5,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,7 +113,11 @@ async def create_agent(
     db: AsyncSession = Depends(get_db_session),
 ):
     """创建 Agent"""
-    from app.services.agent.core.config import DEFAULT_PROMPTS, DEFAULT_TOOL_CATEGORIES, DEFAULT_TOOL_POLICIES
+    from app.services.agent.core.config import (
+        DEFAULT_PROMPTS,
+        DEFAULT_TOOL_CATEGORIES,
+        DEFAULT_TOOL_POLICIES,
+    )
 
     # 如果设为默认，先取消其他默认
     if data.is_default:
@@ -361,7 +365,6 @@ async def get_agent_effective_config(
     - 策略配置
     - 配置健康度
     """
-    from app.schemas.effective_config import EffectiveConfigResponse
     from app.services.agent.effective_config import EffectiveConfigBuilder
 
     stmt = select(Agent).where(Agent.id == agent_id).options(selectinload(Agent.knowledge_config))
@@ -679,14 +682,29 @@ async def update_knowledge_config(
     config_id: str,
     data: KnowledgeConfigUpdate,
     db: AsyncSession = Depends(get_db_session),
+    x_knowledge_admin_key: str | None = Header(default=None),
 ):
     """更新知识源配置"""
+    # 与托管模式启用及文档入队串行化，避免并发请求绕过密钥和归属检查。
+    from sqlalchemy import update
+    await db.execute(update(KnowledgeConfig).where(KnowledgeConfig.id == config_id)
+                     .values(name=KnowledgeConfig.name))
     stmt = select(KnowledgeConfig).where(KnowledgeConfig.id == config_id)
     result = await db.execute(stmt)
     config = result.scalar_one_or_none()
 
     if not config:
         raise HTTPException(status_code=404, detail="知识源配置不存在")
+
+    # 托管知识源不能通过旧管理接口绕过文档访问边界。
+    from app.models.knowledge_document import RagSource
+    from app.services.knowledge.rag.security import require_admin_key
+    if await db.get(RagSource, config_id):
+        require_admin_key(x_knowledge_admin_key)
+        restricted = {"type", "collection_name", "index_name", "embedding_model"}
+        changes = data.model_dump(exclude_unset=True)
+        if any(key in changes and changes[key] != getattr(config, key) for key in restricted):
+            raise HTTPException(409, "托管知识源不能直接修改索引归属或模型")
 
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -709,14 +727,39 @@ async def update_knowledge_config(
 async def delete_knowledge_config(
     config_id: str,
     db: AsyncSession = Depends(get_db_session),
+    x_knowledge_admin_key: str | None = Header(default=None),
 ):
     """删除知识源配置"""
+    # 与托管模式启用及文档入队串行化，避免并发请求绕过密钥和归属检查。
+    from sqlalchemy import update
+    await db.execute(update(KnowledgeConfig).where(KnowledgeConfig.id == config_id)
+                     .values(name=KnowledgeConfig.name))
     stmt = select(KnowledgeConfig).where(KnowledgeConfig.id == config_id)
     result = await db.execute(stmt)
     config = result.scalar_one_or_none()
 
     if not config:
         raise HTTPException(status_code=404, detail="知识源配置不存在")
+
+    # 托管知识源不能通过旧管理接口绕过文档访问边界。
+    from app.models.knowledge_document import Document, RagSource
+    from app.services.knowledge.rag.security import require_admin_key
+    if await db.get(RagSource, config_id):
+        require_admin_key(x_knowledge_admin_key)
+        remaining = await db.scalar(select(Document.id).where(
+            Document.config_id == config_id, Document.cleaned.is_(False)).limit(1))
+        if remaining:
+            raise HTTPException(409, "请先删除并完成清理知识源内的文档")
+        # 清理完成后删除 SQL 墓碑及任务，引用快照独立保留。
+        from sqlalchemy import delete
+
+        from app.models.knowledge_document import DocumentRevision, IngestionJob
+        doc_ids = select(Document.id).where(Document.config_id == config_id)
+        await db.execute(delete(IngestionJob).where(IngestionJob.document_id.in_(doc_ids)))
+        await db.execute(delete(DocumentRevision).where(DocumentRevision.document_id.in_(doc_ids)))
+        await db.execute(delete(Document).where(Document.config_id == config_id))
+        await db.delete(await db.get(RagSource, config_id))
+        await db.flush()
 
     await db.delete(config)
     logger.info("删除知识源配置", config_id=config_id)
