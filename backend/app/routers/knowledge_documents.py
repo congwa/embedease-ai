@@ -343,7 +343,9 @@ async def retry_job(config_id: str, job_id: str):
         )
         if result.rowcount != 1:
             raise RagError("任务已被其他请求更新", 409)
-        rev.status, rev.error = "queued", None
+        # 已切换的内容只需继续清理旧索引，不能重新生成当前在线的分块。
+        if doc.current_revision_id != rev.id:
+            rev.status, rev.error = "queued", None
         return {"document_id": doc.id, "revision_id": rev.id, "job_id": job.id, "status": "queued"}
 
 
@@ -357,7 +359,7 @@ async def search_documents(config_id: str, body: SearchRequest):
 async def read_citation(
     citation_id: str, token: str = Query(..., max_length=2048), original: bool = False
 ):
-    """签名仅授权这一消息引用的文章版本，不提供自由浏览知识库的能力。"""
+    """凭证绑定真实引用，读取该文章当前最新原文，不提供历史正文回放。"""
     claims = verify_token(token)
     async with get_db_context() as db:
         row = await db.get(MessageCitation, citation_id)
@@ -372,12 +374,16 @@ async def read_citation(
         doc = await db.get(Document, row.document_id)
         if not doc or doc.deleted:
             raise RagError("原文已删除", 410)
-        rev = await service.revision(db, doc, row.revision_id)
-        chunk = await db.get(DocumentChunk, row.chunk_id)
-        if not chunk or chunk.revision_id != rev.id:
-            raise RagError("原文段落已不可用", 410)
+        rev = await service.revision(db, doc)
+        from app.services.knowledge.rag.citations import citation_view
+
+        view = citation_view(row, doc)
+        if not view["source_updated"]:
+            chunk = await db.get(DocumentChunk, row.chunk_id)
+            if not chunk or chunk.revision_id != rev.id:
+                raise RagError("原文段落已不可用", 410)
         result = {
-            **row.snapshot,
+            **view,
             "text": rev.full_text,
             "original_url": f"/api/v1/knowledge/citations/{row.id}?token={quote(token)}&original=true",
         }

@@ -71,3 +71,11 @@ async def remove_revision(collection: str, config_id: str, revision_id: str) -> 
                 models.FilterSelector(filter=scope_filter(config_id, revision_id=revision_id)),
                 wait=True,
             )
+            # wait=True 确认操作完成后，再核对数量；未确认清理不能报告入库成功。
+            remaining = await client.count(
+                collection,
+                count_filter=scope_filter(config_id, revision_id=revision_id),
+                exact=True,
+            )
+            if remaining.count:
+                raise ConnectionError("旧版本向量清理尚未完成")

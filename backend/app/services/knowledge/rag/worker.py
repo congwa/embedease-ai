@@ -60,7 +60,7 @@ async def stage(job: IngestionJob, status: str, progress: int) -> None:
         if job.kind == "ingest":
             await db.execute(
                 update(DocumentRevision)
-                .where(DocumentRevision.id == job.revision_id)
+                .where(DocumentRevision.id == job.revision_id, DocumentRevision.status != "ready")
                 .values(status=status, error=None)
             )
 
@@ -108,6 +108,10 @@ async def ingest(job: IngestionJob) -> None:
         doc = await db.get(Document, job.document_id)
         if not rev or not doc or doc.deleted:
             raise LeaseLost()
+    # SQL 切换后清理可能遇到网络故障；恢复时只重试清理，不能重建正在服务的分块。
+    if doc.current_revision_id == rev.id and rev.status == "ready":
+        await finish_publication(job, doc, rev)
+        return
     if rev.profile["embedding"] != embedding_profile():
         raise RagError("任务模型配置已过期，请使用当前配置重新索引")
     await stage(job, "parsing", 5)
@@ -169,20 +173,51 @@ async def ingest(job: IngestionJob) -> None:
         current = await db.get(Document, doc.id)
         if current.deleted:
             raise LeaseLost()
-        old = current.current_revision_id
         current.current_revision_id = rev.id
         await db.execute(
             update(DocumentRevision)
             .where(DocumentRevision.id == rev.id)
             .values(status="ready", error=None)
         )
+        # 新内容此时可以提供查询，但任务须等旧索引物理删除后才完成。
+        await db.execute(
+            update(IngestionJob)
+            .where(IngestionJob.id == job.id)
+            .values(status="publishing", progress=97, error=None)
+        )
+    await finish_publication(job, doc, rev)
+
+
+async def finish_publication(job: IngestionJob, doc: Document, rev: DocumentRevision) -> None:
+    """清除文章所有较旧构建的向量后才确认成功；失败可独立恢复。"""
+    await stage(job, "publishing", 97)
+    async with get_db_context() as db:
+        current = await db.get(Document, doc.id)
+        if current.deleted or current.current_revision_id != rev.id:
+            raise LeaseLost()
+        previous = list(
+            (
+                await db.scalars(
+                    select(DocumentRevision).where(
+                        DocumentRevision.document_id == doc.id,
+                        DocumentRevision.version < rev.version,
+                    )
+                )
+            ).all()
+        )
+    for old in previous:
+        await stage(job, "publishing", 97)
+        await remove_revision(old.collection, doc.config_id, old.id)
+    async with get_db_context() as db:
+        await guard(db, job.id, job.token)
+        current = await db.get(Document, doc.id)
+        if current.deleted or current.current_revision_id != rev.id:
+            raise LeaseLost()
         await db.execute(
             update(IngestionJob)
             .where(IngestionJob.id == job.id)
             .values(status="ready", progress=100, token=None, lease_until=0, error=None)
         )
-        if old and old != rev.id:
-            db.add(IngestionJob(id=uid(), document_id=doc.id, revision_id=old, kind="prune"))
 
 
 async def cleanup(job: IngestionJob) -> None:
@@ -272,11 +307,13 @@ async def failure(job: IngestionJob, exc: Exception) -> None:
             )
         )
         if job.kind == "ingest":
-            await db.execute(
-                update(DocumentRevision)
-                .where(DocumentRevision.id == job.revision_id)
-                .values(status=status, error=error)
-            )
+            current = await db.get(Document, job.document_id)
+            if current.current_revision_id != job.revision_id:
+                await db.execute(
+                    update(DocumentRevision)
+                    .where(DocumentRevision.id == job.revision_id)
+                    .values(status=status, error=error)
+                )
     logger.warning("知识库任务失败", job_id=job.id, error=error, retry=retry)
 
 

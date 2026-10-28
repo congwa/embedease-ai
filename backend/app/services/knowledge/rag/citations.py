@@ -11,6 +11,27 @@ from app.services.knowledge.rag.security import signing_key, source_url
 from app.services.knowledge.rag.settings import RagError
 
 
+def citation_view(row: MessageCitation, doc: Document | None) -> dict:
+    """业务只展示最新原文，文章更新后清空旧摘要和旧坐标，避免误定位。"""
+    item = dict(row.snapshot)
+    updated = bool(doc and doc.current_revision_id != row.revision_id)
+    item["source_updated"] = updated
+    item["deleted"] = not doc or doc.deleted
+    if updated and not item["deleted"]:
+        item.update(
+            revision_id=doc.current_revision_id,
+            title=doc.title,
+            chunk_id=None,
+            excerpt=None,
+            page=None,
+            heading_path=[],
+            start_offset=None,
+            end_offset=None,
+            notice="原文已更新，当前展示最新内容；此历史回答可能已过时。",
+        )
+    return item
+
+
 async def finalize_citations(context, content: str) -> list[dict]:
     """模型标记必须匹配本轮 registry，模型不能自行创造可访问来源。"""
     registry = getattr(context, "rag_sources", {}) if context else {}
@@ -49,7 +70,7 @@ async def finalize_citations(context, content: str) -> list[dict]:
                     snapshot=snapshot,
                 )
                 db.add(row)
-            result.append({**snapshot, "source_url": source_url(row)})
+            result.append({**citation_view(row, doc), "source_url": source_url(row)})
     return result
 
 
@@ -73,9 +94,8 @@ async def history_metadata(db, message) -> dict | None:
     ).all()
     result = []
     for row in rows:
-        item = dict(row.snapshot)
         doc = await db.get(Document, row.document_id)
-        item["deleted"] = not doc or doc.deleted
+        item = citation_view(row, doc)
         if not item["deleted"]:
             try:
                 item["source_url"] = source_url(row)

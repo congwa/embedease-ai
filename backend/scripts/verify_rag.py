@@ -65,6 +65,12 @@ async def main():
     settings.KNOWLEDGE_ADMIN_KEY = secrets.token_hex(32)
     settings.KNOWLEDGE_BUCKET = "rag-qa-" + secrets.token_hex(5)
     settings.CHECKPOINT_DB_PATH = str(Path(tmp.name) / "checkpoints.db")
+    # 验收只覆盖 RAG，关闭跨轮长期记忆并隔离其路径，避免后台抽取触及真实数据。
+    settings.MEMORY_ENABLED = False
+    settings.MEMORY_ORCHESTRATION_ENABLED = False
+    settings.MEMORY_STORE_DB_PATH = str(Path(tmp.name) / "memory.db")
+    settings.MEMORY_FACT_DB_PATH = str(Path(tmp.name) / "facts.db")
+    settings.MEMORY_GRAPH_FILE_PATH = str(Path(tmp.name) / "graph.jsonl")
     settings.DATABASE_BACKEND = "sqlite"
     provider._provider = provider.SQLiteProvider(
         "sqlite+aiosqlite:///" + str(Path(tmp.name) / "app.db")
@@ -287,12 +293,65 @@ async def main():
                 data={"text": "海蓝会员新规则：退货期限改为签收后十五天。"},
             )
             assert replacement.status_code == 202, replacement.text
-            await worker.run_once()
+            # 新内容已构建但旧向量清理失败时，任务不能提前显示 ready。
+            real_remove_revision = worker.remove_revision
+
+            async def cleanup_unavailable(*args):
+                """只注入旧索引删除故障，不停止共享 Qdrant。"""
+                raise ConnectionError("injected old-index cleanup failure")
+
+            worker.remove_revision = cleanup_unavailable
+            try:
+                await worker.run_once()
+            finally:
+                worker.remove_revision = real_remove_revision
             async with get_db_context() as db:
                 doc = await db.get(Document, old["document_id"])
                 assert doc.current_revision_id == replacement.json()["revision_id"]
-            assert (await client.get(citation_url)).status_code == 200
-            await worker.run_once()  # prune
+                job = await db.get(IngestionJob, replacement.json()["job_id"])
+                assert job.status == "retry_wait"
+                assert (await db.get(DocumentRevision, doc.current_revision_id)).status == "ready"
+                await db.execute(
+                    update(IngestionJob).where(IngestionJob.id == job.id).values(available_at=0)
+                )
+            # 恢复仅清理旧向量，禁止再次调用模型、改写正在服务的分块。
+            real_model = worker.get_embedding_model
+
+            def forbid_reembedding():
+                """重试清理不应重建已发布内容。"""
+                raise AssertionError("published content must not be re-embedded")
+
+            worker.get_embedding_model = forbid_reembedding
+            try:
+                await worker.run_once()
+            finally:
+                worker.get_embedding_model = real_model
+            assert (await client.get(base + "/jobs/" + replacement.json()["job_id"])).json()[
+                "status"
+            ] == "ready"
+            async with qdrant() as q:
+                for col in collections:
+                    remaining = await q.count(
+                        col,
+                        count_filter=scope_filter(config_id, revision_id=old["revision_id"]),
+                        exact=True,
+                    )
+                    assert remaining.count == 0
+            print("OLD_VECTORS_PHYSICALLY_REMOVED_BEFORE_SUCCESS_OK", flush=True)
+            latest_source = await client.get(citation_url)
+            assert latest_source.status_code == 200
+            latest_body = latest_source.json()
+            assert latest_body["revision_id"] == replacement.json()["revision_id"]
+            assert latest_body["source_updated"] is True
+            assert latest_body["start_offset"] is None and latest_body["excerpt"] is None
+            assert "十五天" in latest_body["text"]
+            assert "十五天" in (await client.get(latest_body["original_url"])).content.decode()
+            async with get_db_context() as db:
+                saved = await db.get(Message, msg_id)
+                metadata = await history_metadata(db, saved)
+                assert metadata["citations"][0]["source_updated"] is True
+                assert metadata["citations"][0]["start_offset"] is None
+            print("HISTORICAL_CITATION_READS_LATEST_SOURCE_OK", flush=True)
             newhits = await service.search(config_id, "海蓝会员退货期限")
             assert all(h["revision_id"] != old["revision_id"] for h in newhits)
             assert any("十五天" in h["content"] for h in newhits)
@@ -434,6 +493,12 @@ async def main():
             from app.services.agent.core.service import agent_service
 
             await agent_service.close()
+            from app.services.memory import fact_memory, store
+
+            if store._store_instance is not None:
+                await store._store_instance.close()
+            if fact_memory._fact_service is not None:
+                await fact_memory._fact_service.close()
             # Delete only QA points scoped to our random config IDs; never drop shared collection.
             async with get_db_context() as db:
                 collections.update((await db.scalars(select(DocumentRevision.collection))).all())
