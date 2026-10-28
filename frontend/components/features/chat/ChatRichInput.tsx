@@ -250,7 +250,7 @@ export function ChatRichInput({
             className={cn("h-8 w-8", sendButtonClass)}
             aria-label={isLoading ? "停止生成" : "发送回复"}
             onClick={onSubmit}
-            disabled={!canSubmit || disabled}
+            disabled={(!isLoading && !canSubmit) || disabled}
           >
             {isLoading ? (
               <Square className="h-4 w-4" />

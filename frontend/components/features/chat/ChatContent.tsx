@@ -22,7 +22,6 @@ import {
   TimelineToolCallItem,
   TimelineSupportEventItem,
   TimelineGreetingItem,
-  TimelineWaitingItem,
   TimelineSkillActivatedItem,
 } from "@/components/features/chat/timeline";
 import {
@@ -39,6 +38,7 @@ import { useSuggestedQuestions } from "@/lib/hooks/use-suggested-questions";
 import { useAgentStore } from "@/stores/agent-store";
 import { ComplaintStatusBar } from "@/components/features/chat/ComplaintStatusBar";
 import type { ComplaintEventItem } from "@/lib/timeline/types";
+import { ChatRunStatus } from "./ChatRunStatus";
 
 interface ChatContentProps {
   isHumanMode?: boolean;
@@ -48,7 +48,8 @@ interface ChatContentProps {
 
 export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMessage }: ChatContentProps) {
   // 从 Store 获取状态
-  const timeline = useChatStore((s) => s.timelineState.timeline);
+  const timelineState = useChatStore((s) => s.timelineState);
+  const timeline = timelineState.timeline;
   const isStreaming = useChatStore((s) => s.isStreaming);
   const error = useChatStore((s) => s.error);
   const sendMessageToAI = useChatStore((s) => s.sendMessage);
@@ -203,14 +204,8 @@ export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMe
         );
 
       case "waiting":
-        return (
-          <Message
-            key={item.id}
-            className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 items-start"
-          >
-            <TimelineWaitingItem item={item} />
-          </Message>
-        );
+        // The run-level status stays visible when llm.call.start removes this SDK placeholder.
+        return null;
 
       case "skill.activated":
         return (
@@ -322,6 +317,7 @@ export function ChatContent({ isHumanMode = false, wsConnected = false, wsSendMe
             )}
 
             {timeline.map((item) => renderTimelineItem(item))}
+            <ChatRunStatus state={timelineState} isStreaming={isStreaming && !isHumanMode} />
           </ChatContainerContent>
 
           <div className="absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-end px-5">

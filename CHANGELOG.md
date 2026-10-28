@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- 聊天等待提示覆盖模型首段回复前的空档，显示处理阶段、等待秒数和长时间等待提醒；输入框清空后仍可停止生成。
 - 知识库检索与原文引用跟随当前文档版本，失效及删除修订不再进入检索结果，并兼容模型内容块输出。
 - 客诉 Planner、Executor 调用模型前提交当前阶段，避免一个用户等待模型时阻塞其他用户的数据库写入。
 - 聊天会话绑定所选 Agent，普通 Agent 使用自身配置执行，客诉 Agent 使用绑定的提示词和知识源；防止跨会话用户或 Agent 混用历史。
