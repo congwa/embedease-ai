@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.paths import get_project_root
@@ -119,6 +120,7 @@ class Settings(BaseSettings):
     # 服务配置
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
+    CHAT_MAX_CONCURRENT_RUNS: int = Field(default=16, ge=1)
     CORS_ORIGINS: str = "http://localhost:3000"
 
     # 日志配置

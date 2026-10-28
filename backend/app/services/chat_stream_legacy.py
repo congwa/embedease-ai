@@ -7,6 +7,7 @@ import json
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from anyio import CancelScope
 from langgraph_agent_kit import (
     ChatContext,
     QueueDomainEmitter,
@@ -82,6 +83,7 @@ class ChatStreamOrchestrator:
             },
         )
 
+        producer_task: asyncio.Task | None = None
         try:
             loop = asyncio.get_running_loop()
             # 逐字推理会产生大量事件；队列容量适当加大，避免频繁 backpressure/丢弃
@@ -231,3 +233,9 @@ class ChatStreamOrchestrator:
                 type=StreamEventType.ERROR.value,
                 payload={"message": str(e)},
             )
+        finally:
+            if producer_task is not None:
+                if not producer_task.done():
+                    producer_task.cancel()
+                with CancelScope(shield=True):
+                    await asyncio.gather(producer_task, return_exceptions=True)

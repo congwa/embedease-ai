@@ -55,8 +55,9 @@ class AgentService:
     """
 
     _instance: "AgentService | None" = None
-    _agents: dict[tuple[str, str], CompiledStateGraph]  # (agent_id, mode) -> agent
-    _agent_configs: dict[tuple[str, str], CachedConfig]  # (agent_id, mode) -> cached config
+    _agents: dict[tuple[str, bool], CompiledStateGraph]
+    _agent_configs: dict[str, CachedConfig]
+    _agent_locks: dict[str, asyncio.Lock]
     _checkpointer: BaseCheckpointSaver | None = None
     _default_agent_id: str | None = None
     _init_lock: asyncio.Lock | None = None
@@ -67,6 +68,7 @@ class AgentService:
             cls._instance = super().__new__(cls)
             cls._instance._agents = {}
             cls._instance._agent_configs = {}
+            cls._instance._agent_locks = {}
             cls._instance._init_lock = asyncio.Lock()
         return cls._instance
 
@@ -154,8 +156,7 @@ class AgentService:
                 old_version=cached.version,
                 new_version=current_version,
             )
-            self._agent_configs.pop(cache_key, None)
-            self._agents.pop(cache_key, None)
+            self.invalidate_agent(agent_id)
 
         # 从数据库加载
         async with get_db_context() as session:
@@ -207,32 +208,28 @@ class AgentService:
         if agent_id is None:
             agent_id = await self.get_default_agent_id()
 
-        cache_key = agent_id
-
-        if cache_key not in self._agents:
-            # 加载配置
+        # 每个 Agent 独立构建锁；不同 Agent 冷启动可以同时进行。
+        lock = self._agent_locks.setdefault(agent_id, asyncio.Lock())
+        async with lock:
+            cache_key = (agent_id, use_structured_output)
+            # 每次获取都经过 TTL 校验，配置变化会清除该 Agent 的全部图缓存。
             config = await self.get_agent_config(agent_id)
-
-            # 获取 checkpointer
-            checkpointer = await self._get_checkpointer()
-
-            # 构建 Agent（使用数据库 session 获取 LLM 配置）
-            async with get_db_context() as session:
-                agent = await build_agent(
-                    config=config,
-                    checkpointer=checkpointer,
-                    use_structured_output=use_structured_output,
-                    session=session,
+            if cache_key not in self._agents:
+                checkpointer = await self._get_checkpointer()
+                async with get_db_context() as session:
+                    agent = await build_agent(
+                        config=config,
+                        checkpointer=checkpointer,
+                        use_structured_output=use_structured_output,
+                        session=session,
+                    )
+                self._agents[cache_key] = agent
+                logger.info(
+                    "创建 Agent 实例",
+                    agent_id=agent_id,
+                    agent_type=config.type,
                 )
-
-            self._agents[cache_key] = agent
-            logger.info(
-                "创建 Agent 实例",
-                agent_id=agent_id,
-                agent_type=config.type,
-            )
-
-        return self._agents[cache_key]
+            return self._agents[cache_key]
 
     def invalidate_agent(self, agent_id: str) -> None:
         """使 Agent 缓存失效
@@ -240,7 +237,9 @@ class AgentService:
         Args:
             agent_id: Agent ID
         """
-        self._agents.pop(agent_id, None)
+        for key in list(self._agents):
+            if key[0] == agent_id:
+                self._agents.pop(key, None)
         self._agent_configs.pop(agent_id, None)
         logger.info("Agent 缓存已失效", agent_id=agent_id)
 
@@ -346,10 +345,12 @@ class AgentService:
             except Exception:
                 pass
         finally:
-            try:
-                await emitter.aemit("__end__", None)
-            except Exception:
-                pass
+            # 消费流已关闭时不再向可能已满的队列写入终止事件。
+            if not asyncio.current_task().cancelling():
+                try:
+                    await emitter.aemit("__end__", None)
+                except Exception:
+                    pass
 
     async def get_history(
         self,

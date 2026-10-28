@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- 知识库检索与原文引用跟随当前文档版本，失效及删除修订不再进入检索结果，并兼容模型内容块输出。
+- 客诉 Planner、Executor 调用模型前提交当前阶段，避免一个用户等待模型时阻塞其他用户的数据库写入。
+- 聊天会话绑定所选 Agent，普通 Agent 使用自身配置执行，客诉 Agent 使用绑定的提示词和知识源；防止跨会话用户或 Agent 混用历史。
+- Agent 冷启动去重，工具串行锁和 TODO 广播状态按每轮运行隔离；流式连接结束时停止后台 Agent 并释放运行名额。
+
+### Added
+
+- 知识库文档上传、版本化入库、重建与删除流程，以及带出处的检索和原文引用能力。
+- 聊天并发上限 `CHAT_MAX_CONCURRENT_RUNS`（默认 16）；同会话重复请求返回 409，超过并发配置返回 503。
+- 多 Agent 并发说明及基于一次性 SQLite 的独立验证脚本。
+
 ## [0.1.18] - 2025-02-12
 
 ### 核心亮点

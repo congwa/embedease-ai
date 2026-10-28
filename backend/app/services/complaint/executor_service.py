@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.models.complaint_ticket import ComplaintTicket
+from app.schemas.agent import AgentConfig
 from app.schemas.complaint import ComplaintTriageResult, ExecutorResult, PlannerDecision
 
 ORDER_ID_PATTERN = re.compile(r"(?:订单号?|单号|order[\s:_-]*id)[：:\s#-]*([A-Za-z0-9-]{6,})", re.IGNORECASE)
@@ -32,13 +33,14 @@ class ExecutorService:
     规则模板模式，保证主链路在任何情况下都能产出候选回复。
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, *, agent_config: AgentConfig | None = None):
         """初始化 executor 服务。
 
         Args:
             session: 当前业务请求使用的数据库会话。
         """
         self.session = session
+        self.agent_config = agent_config
 
     async def execute(
         self,
@@ -104,6 +106,8 @@ class ExecutorService:
             planner_decision=planner_decision,
             collected_slots=collected_slots,
         )
+        if self.agent_config and self.agent_config.system_prompt:
+            system_prompt += f"\n\n## 当前智能体要求\n{self.agent_config.system_prompt}"
 
         messages: list[Any] = [
             SystemMessage(content=system_prompt),
@@ -256,7 +260,7 @@ class ExecutorService:
         try:
             from app.schemas.agent import AgentConfig
 
-            config = AgentConfig(
+            config = self.agent_config or AgentConfig(
                 agent_id="complaint_executor",
                 name="客诉执行 Agent",
                 type="custom",

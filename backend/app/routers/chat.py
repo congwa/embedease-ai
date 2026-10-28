@@ -5,22 +5,30 @@ import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
+from anyio import CancelScope
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langgraph_agent_kit import encode_sse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 
 from app.core.database import get_db_context
 from app.core.dependencies import get_db_session
 from app.core.logging import get_logger
 from app.models.agent import SuggestedQuestion
-from app.models.conversation import HandoffState
+from app.models.conversation import Conversation, HandoffState
 from app.schemas.chat import ChatRequest
 from app.schemas.suggested_question import (
     SuggestedQuestionPublicItem,
     SuggestedQuestionsPublicResponse,
 )
+from app.services.agent.core.config import (
+    COMPLAINT_ROLE_TOOL_CATEGORIES,
+    AgentConfigLoader,
+    get_or_create_default_agent,
+)
+from app.services.chat_runs import chat_run_coordinator
 from app.services.chat_stream_adapter import (
     get_agent_service,
     get_chat_stream_orchestrator,
@@ -28,7 +36,6 @@ from app.services.chat_stream_adapter import (
 from app.services.complaint import (
     ComplaintChatStreamOrchestrator,
     ComplaintConversationOrchestrator,
-    ComplaintRunContext,
 )
 from app.services.conversation import ConversationService
 from app.services.support.handoff import HandoffService
@@ -42,6 +49,34 @@ async def chat(
     request_data: ChatRequest,
     request: Request,
 ):
+    """为整轮聊天保留并发名额，并在异常、断线和流完成后释放。"""
+    lease = chat_run_coordinator.acquire(request_data.conversation_id)
+    try:
+        response = await _chat(request_data, request)
+    except BaseException:
+        lease.release()
+        raise
+
+    source = response.body_iterator
+
+    async def guarded_stream():
+        """先停止上游生成器，再允许当前会话接收下一轮消息。"""
+        try:
+            async for chunk in source:
+                yield chunk
+        finally:
+            try:
+                with CancelScope(shield=True):
+                    await source.aclose()
+            finally:
+                lease.release()
+
+    response.body_iterator = guarded_stream()
+    response.background = BackgroundTask(lease.release)
+    return response
+
+
+async def _chat(request_data: ChatRequest, request: Request):
     """流式聊天接口
 
     使用 SSE (Server-Sent Events) 返回流式响应。
@@ -65,14 +100,34 @@ async def chat(
     - error: 错误 {"type": "error", "payload": {"message": "..."}}
     """
     complaint_initial_events: list[dict] = []
-    complaint_run_context: ComplaintRunContext | None = None
 
     # 使用独立短事务保存用户消息和检查状态
     # 避免整个 SSE 流持有数据库连接
     async with get_db_context() as db:
         conversation_service = ConversationService(db)
-        complaint_orchestrator = ComplaintConversationOrchestrator(db)
         handoff_service = HandoffService(db)
+
+        # 会话绑定唯一 Agent，省略 agent_id 时继续使用原 Agent，避免历史串用。
+        conversation = await db.get(Conversation, request_data.conversation_id)
+        if conversation is None or conversation.user_id != request_data.user_id:
+            raise HTTPException(status_code=404, detail="会话不存在")
+        if (
+            conversation.agent_id
+            and request_data.agent_id
+            and conversation.agent_id != request_data.agent_id
+        ):
+            raise HTTPException(status_code=409, detail="会话已绑定其他智能体，请新建会话")
+        agent_id = conversation.agent_id or request_data.agent_id
+        if agent_id is None:
+            agent_id = await get_or_create_default_agent(db)
+        agent_config = await AgentConfigLoader(db).load_config(agent_id)
+        if agent_config is None:
+            raise HTTPException(status_code=404, detail="智能体不存在或已禁用")
+        conversation.agent_id = agent_id
+        is_complaint_agent = (
+            agent_config.business_domain == "complaint"
+            or agent_config.role_tag in COMPLAINT_ROLE_TOOL_CATEGORIES
+        )
 
         # 检查会话的 handoff 状态
         handoff_state = await handoff_service.get_handoff_state(request_data.conversation_id)
@@ -95,33 +150,6 @@ async def chat(
             message_type=message_type,
             extra_metadata=extra_metadata,
         )
-
-        try:
-            if not is_human_mode:
-                complaint_run_context = await complaint_orchestrator.handle_user_message(
-                    conversation_id=request_data.conversation_id,
-                    user_id=request_data.user_id,
-                    user_message_id=user_message.id,
-                    user_message=request_data.message,
-                )
-                complaint_initial_events = complaint_run_context.pre_stream_events
-                logger.info(
-                    "客诉主链路编排完成",
-                    conversation_id=request_data.conversation_id,
-                    ticket_id=complaint_run_context.ticket_id,
-                    review_status=complaint_run_context.review_decision.status.value,
-                    handoff_requested=bool(complaint_run_context.handoff_result),
-                )
-            else:
-                logger.info(
-                    "人工模式下跳过 complaint orchestrator",
-                    conversation_id=request_data.conversation_id,
-                )
-        except Exception:
-            logger.exception(
-                "客诉主链路编排失败，降级继续聊天",
-                conversation_id=request_data.conversation_id,
-            )
 
         # 提取需要的数据，在 session 关闭前获取
         user_message_id = user_message.id
@@ -202,67 +230,65 @@ async def chat(
         )
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        """生成 SSE 事件流，支持中断检测
-        
-        SQLite 防死锁优化：
-        - 使用 NullPool，每个请求都是新连接，不会阻塞连接池
-        - WAL 模式允许读写并发
-        - 工具内部使用 get_db_context() 创建独立短事务
-        - db=None 让工具不复用外层 session，避免嵌套事务
-        """
+        """提交用户消息后运行 Agent；关闭流时停止上游任务并回滚未完成写入。"""
         assistant_message_id = str(uuid.uuid4())
-        
-        # 为保存 assistant 消息创建独立 session
-        # 注意：db=None 让工具自行创建短事务，避免嵌套
-        async with get_db_context() as stream_db:
-            stream_conversation_service = ConversationService(stream_db)
-            if complaint_run_context is not None:
-                orchestrator = ComplaintChatStreamOrchestrator(
-                    conversation_service=stream_conversation_service,
-                    run_context=complaint_run_context,
-                    assistant_message_id=assistant_message_id,
-                )
+        stream = None
+        try:
+            # 先发送 SSE 注释，让客户端在客诉模型准备期间也能主动断开连接。
+            yield ": processing\n\n"
+            if is_complaint_agent:
+                async with get_db_context() as complaint_db:
+                    complaint_orchestrator = ComplaintConversationOrchestrator(
+                        complaint_db, agent_config=agent_config,
+                    )
+                    complaint_run_context = await complaint_orchestrator.handle_user_message(
+                        conversation_id=request_data.conversation_id,
+                        user_id=request_data.user_id,
+                        user_message_id=user_message_id,
+                        user_message=request_data.message,
+                    )
             else:
-                # 获取适配后的服务
-                agent_service = get_agent_service()
-                OrchestratorClass = get_chat_stream_orchestrator()
-                
-                orchestrator = OrchestratorClass(
-                    conversation_service=stream_conversation_service,
-                    agent_service=agent_service,
-                    conversation_id=request_data.conversation_id,
-                    user_id=request_data.user_id,
-                    user_message=request_data.message,
-                    user_message_id=user_message_id,
-                    assistant_message_id=assistant_message_id,
-                    agent_id=request_data.agent_id,
-                    images=request_data.images,
-                    initial_events=complaint_initial_events,
-                    db=None,  # 不传递 session，让工具自行创建短事务
-                )
+                complaint_run_context = None
 
-            try:
-                async for event in orchestrator.run():
-                    # 检测客户端是否断开连接
-                    if await request.is_disconnected():
-                        logger.info(
-                            "客户端断开连接，中止生成（不保存消息）",
-                            conversation_id=request_data.conversation_id,
-                            assistant_message_id=assistant_message_id,
-                        )
-                        break
-                    yield encode_sse(event)
-            except asyncio.CancelledError:
-                logger.info(
-                    "生成被取消（不保存消息）",
-                    conversation_id=request_data.conversation_id,
-                    assistant_message_id=assistant_message_id,
-                )
-                # 用户主动停止属于正常路径：不保存不完整的消息，直接返回
-                return
-            except Exception as e:
-                logger.error("生成过程出错", error=str(e), exc_info=True)
-                yield encode_sse({"type": "error", "payload": {"message": str(e)}})
+            # 创建 Session 不会立即占用连接；实际写入只发生在流结束落库时。
+            async with get_db_context() as stream_db:
+                stream_conversation_service = ConversationService(stream_db)
+                if complaint_run_context is not None:
+                    orchestrator = ComplaintChatStreamOrchestrator(
+                        conversation_service=stream_conversation_service,
+                        run_context=complaint_run_context,
+                        assistant_message_id=assistant_message_id,
+                    )
+                else:
+                    OrchestratorClass = get_chat_stream_orchestrator()
+                    orchestrator = OrchestratorClass(
+                        conversation_service=stream_conversation_service,
+                        agent_service=get_agent_service(),
+                        conversation_id=request_data.conversation_id,
+                        user_id=request_data.user_id,
+                        user_message=request_data.message,
+                        user_message_id=user_message_id,
+                        assistant_message_id=assistant_message_id,
+                        agent_id=agent_id,
+                        images=request_data.images,
+                        db=None,
+                    )
+                stream = orchestrator.run()
+                try:
+                    async for event in stream:
+                        if await request.is_disconnected():
+                            break
+                        yield encode_sse(event)
+                finally:
+                    # 明确关闭生成器，确保先停止模型，再释放会话准入名额。
+                    with CancelScope(shield=True):
+                        await stream.aclose()
+        except asyncio.CancelledError:
+            logger.info("生成被取消", conversation_id=request_data.conversation_id)
+            raise
+        except Exception:
+            logger.exception("生成过程出错", conversation_id=request_data.conversation_id)
+            yield encode_sse({"type": "error", "payload": {"message": "本轮处理失败，请稍后重试"}})
 
     return StreamingResponse(
         event_generator(),

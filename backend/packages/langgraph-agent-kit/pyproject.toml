@@ -4,6 +4,7 @@ version = "0.2.0"
 description = "LangGraph Agent Streaming SDK - 统一的流式聊天 Agent 框架"
 requires-python = ">=3.11"
 dependencies = [
+    "anyio>=4.0.0",
     "langchain-core>=0.3.0",
     "langgraph>=0.2.0",
     "pydantic>=2.0.0",

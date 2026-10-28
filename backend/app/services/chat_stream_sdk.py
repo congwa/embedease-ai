@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncGenerator
+from contextlib import aclosing
 from typing import Any
 
 from langgraph_agent_kit import (
@@ -168,38 +169,40 @@ class ChatStreamOrchestratorSDK:
         seq_offset = 0
         prelude_emitted = False
 
-        async for event in self._orchestrator.run(
+        stream = self._orchestrator.run(
             message=self._user_message,
             conversation_id=self._conversation_id,
             user_id=self._user_id,
             assistant_message_id=self._assistant_message_id,
             user_message_id=self._user_message_id,
             db=self._db,
-        ):
-            event_payload = event.model_dump() if hasattr(event, "model_dump") else dict(event)
+        )
+        async with aclosing(stream):
+            async for event in stream:
+                event_payload = event.model_dump() if hasattr(event, "model_dump") else dict(event)
 
-            if (
-                not prelude_emitted
-                and event_payload.get("type") == "meta.start"
-                and self._initial_events
-            ):
-                prelude_emitted = True
-                yield event
+                if (
+                    not prelude_emitted
+                    and event_payload.get("type") == "meta.start"
+                    and self._initial_events
+                ):
+                    prelude_emitted = True
+                    yield event
 
-                base_seq = event_payload.get("seq", 0)
-                for index, initial_event in enumerate(self._initial_events, start=1):
-                    yield {
-                        "seq": base_seq + index,
-                        "conversation_id": self._conversation_id,
-                        "message_id": self._assistant_message_id,
-                        "type": initial_event["type"],
-                        "payload": initial_event.get("payload", {}),
-                    }
+                    base_seq = event_payload.get("seq", 0)
+                    for index, initial_event in enumerate(self._initial_events, start=1):
+                        yield {
+                            "seq": base_seq + index,
+                            "conversation_id": self._conversation_id,
+                            "message_id": self._assistant_message_id,
+                            "type": initial_event["type"],
+                            "payload": initial_event.get("payload", {}),
+                        }
 
-                seq_offset = len(self._initial_events)
-                continue
+                    seq_offset = len(self._initial_events)
+                    continue
 
-            if seq_offset:
-                yield self._shift_event_seq(event, seq_offset)
-            else:
-                yield event
+                if seq_offset:
+                    yield self._shift_event_seq(event, seq_offset)
+                else:
+                    yield event

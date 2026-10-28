@@ -35,7 +35,6 @@ class TodoBroadcastMiddleware(AgentMiddleware):
 
     def __init__(self) -> None:
         super().__init__()
-        self._last_todos_hash: str = ""
 
     async def aafter_model(
         self,
@@ -51,11 +50,14 @@ class TodoBroadcastMiddleware(AgentMiddleware):
 
             # 计算 hash 检测变化
             current_hash = _hash_todos(todos)
-            if current_hash == self._last_todos_hash:
+            context = getattr(runtime, "context", None)
+            if context is None:
+                return None
+            if current_hash == getattr(context, "_last_todos_hash", ""):
                 return None
             logger.debug("TODO 列表内容", todos=todos)
             # 更新 hash
-            self._last_todos_hash = current_hash
+            context._last_todos_hash = current_hash
 
             # 获取 emitter
             context = getattr(runtime, "context", None)
@@ -131,17 +133,15 @@ class TodoBroadcastMiddleware(AgentMiddleware):
                         current_hash = _hash_todos(todos)
 
                         # 只在实际变化时广播（避免重复发送）
-                        if current_hash != self._last_todos_hash:
-                            self._last_todos_hash = current_hash
+                        runtime = getattr(request, "runtime", None)
+                        context = getattr(runtime, "context", None)
+                        if context is not None and current_hash != getattr(context, "_last_todos_hash", ""):
+                            context._last_todos_hash = current_hash
 
                             logger.debug(
                                 "write_todos 检测到 TODO 变化",
                                 todo_count=len(todos),
                             )
-
-                            # 从 ToolCallRequest.runtime.context 获取（与 llm_call_sse.py 保持一致）
-                            runtime = getattr(request, "runtime", None)
-                            context = getattr(runtime, "context", None) if runtime else None
 
                             if context:
                                 emitter = getattr(context, "emitter", None)

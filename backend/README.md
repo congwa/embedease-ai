@@ -73,6 +73,11 @@ DELETE /api/v1/conversations/{id}         # 删除会话
 POST /api/v1/chat  # 流式聊天（SSE）
 ```
 
+不同用户、不同 Agent 的会话可以同时运行。同一会话每次只允许一轮运行，
+重复提交返回 `409`；进程达到 `CHAT_MAX_CONCURRENT_RUNS`（默认 `16`）时返回 `503`。
+请求省略 `agent_id` 时沿用会话绑定的 Agent，切换 Agent 需要新建会话。
+并发机制、配置和验证方法见 [多用户与多 Agent 并发](../docs/agent-concurrency.md)。
+
 ## 目录结构
 
 ```
