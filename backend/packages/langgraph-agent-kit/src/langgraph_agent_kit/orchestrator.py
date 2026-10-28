@@ -28,12 +28,11 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from langgraph_agent_kit.core.events import StreamEventType
-from langgraph_agent_kit.core.stream_event import StreamEvent
 from langgraph_agent_kit.core.context import ChatContext
 from langgraph_agent_kit.core.emitter import QueueDomainEmitter
+from langgraph_agent_kit.core.events import StreamEventType
+from langgraph_agent_kit.core.stream_event import StreamEvent
 from langgraph_agent_kit.streaming.sse import make_event
-
 
 # ==================== AgentRunner 协议 ====================
 
@@ -87,13 +86,16 @@ class ContentAggregator:
 
     full_content: str = ""
     reasoning: str = ""
+    citations: list[dict[str, Any]] = field(default_factory=list)
     products: Any | None = None
     tool_calls: dict[str, dict[str, Any]] = field(default_factory=dict)
     _tool_call_start_times: dict[str, float] = field(default_factory=dict)
 
     def process_event(self, evt_type: str, payload: dict[str, Any]) -> None:
         """处理单个事件，更新聚合状态"""
-        if evt_type == StreamEventType.ASSISTANT_DELTA.value:
+        if evt_type == StreamEventType.ASSISTANT_CITATIONS.value:
+            self.citations = payload.get("items") or []
+        elif evt_type == StreamEventType.ASSISTANT_DELTA.value:
             delta = payload.get("delta", "")
             if delta:
                 self.full_content += delta

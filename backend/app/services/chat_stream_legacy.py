@@ -8,10 +8,10 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from langgraph_agent_kit import (
-    StreamEventType,
-    StreamEvent,
     ChatContext,
     QueueDomainEmitter,
+    StreamEvent,
+    StreamEventType,
     make_event,
 )
 
@@ -59,6 +59,7 @@ class ChatStreamOrchestrator:
         self._full_content = ""
         self._reasoning = ""
         self._products: Any | None = None
+        self._citations: list[dict[str, Any]] = []
 
         # 工具调用追踪：收集 tool.start/tool.end 事件中的信息
         self._tool_calls: dict[str, dict[str, Any]] = {}  # tool_call_id -> tool_call_data
@@ -124,6 +125,8 @@ class ChatStreamOrchestrator:
                     if delta:
                         self._reasoning += delta
 
+                elif evt_type == StreamEventType.ASSISTANT_CITATIONS.value:
+                    self._citations = payload.get("items") or []
                 elif evt_type == StreamEventType.ASSISTANT_PRODUCTS.value:
                     self._products = payload.get("items")
 
@@ -185,6 +188,9 @@ class ChatStreamOrchestrator:
 
             # 构建 extra_metadata（含工具调用、推理等信息）
             extra_metadata: dict[str, Any] = {}
+            if self._citations:
+                from app.services.knowledge.rag.citations import stable_citations
+                extra_metadata["citations"] = stable_citations(self._citations)
             if self._reasoning:
                 extra_metadata["reasoning"] = self._reasoning
             if tool_calls_data:

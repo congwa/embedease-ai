@@ -25,7 +25,9 @@ class KBRetriever:
         top_k: int = 10,
         rerank_enabled: bool = False,
         similarity_threshold: float | None = None,
+        knowledge_config_id: str | None = None,
     ):
+        self.knowledge_config_id = knowledge_config_id
         self.collection_name = collection_name or "knowledge_base"
         self.top_k = top_k
         self.rerank_enabled = rerank_enabled
@@ -40,6 +42,15 @@ class KBRetriever:
         Returns:
             文档列表，每个包含 content, source, score 等
         """
+        if self.knowledge_config_id:
+            from app.core.database import get_db_context
+            from app.models.knowledge_document import RagSource
+            from app.services.knowledge.rag.service import search
+            async with get_db_context() as db:
+                managed = await db.get(RagSource, self.knowledge_config_id) is not None
+            if managed:
+                return await search(self.knowledge_config_id, query)
+
         from qdrant_client import AsyncQdrantClient
 
         from app.core.config import settings
@@ -59,12 +70,15 @@ class KBRetriever:
             # 检索更多结果以便 rerank
             search_limit = self.top_k * 3 if self.rerank_enabled else self.top_k
 
-            results = await client.search(
-                collection_name=self.collection_name,
-                query_vector=query_vector,
-                limit=search_limit,
-                score_threshold=self.similarity_threshold,
-            )
+            try:
+                results = (await client.query_points(
+                    collection_name=self.collection_name,
+                    query=query_vector,
+                    limit=search_limit,
+                    score_threshold=self.similarity_threshold,
+                )).points
+            finally:
+                await client.close()
 
             # 3. 格式化结果
             documents: list[dict[str, Any]] = []

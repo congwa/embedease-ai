@@ -62,6 +62,9 @@ async def _save_assistant_message(
     tool_calls_data = agg.tool_calls_list or None
 
     extra_metadata: dict[str, Any] = {}
+    if agg.citations:
+        from app.services.knowledge.rag.citations import stable_citations
+        extra_metadata["citations"] = stable_citations(agg.citations)
     if agg.reasoning:
         extra_metadata["reasoning"] = agg.reasoning
     if tool_calls_data:

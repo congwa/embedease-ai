@@ -8,8 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from langchain_core.messages import ToolMessage
-
-from langgraph_agent_kit import StreamingResponseHandler, StreamEventType
+from langgraph_agent_kit import StreamEventType, StreamingResponseHandler
 
 from app.core.logging import get_logger
 
@@ -62,6 +61,9 @@ class BusinessResponseHandler(StreamingResponseHandler):
     - ASSISTANT_PRODUCTS 事件推送
     """
 
+    # 本轮上下文供最终引用校验，不能从模型生成的链接创建来源。
+    context: Any = None
+
     # 商品数据
     products_data: list[dict[str, Any]] | None = field(default=None, init=False)
 
@@ -99,6 +101,15 @@ class BusinessResponseHandler(StreamingResponseHandler):
 
     async def finalize(self) -> dict[str, Any]:
         """发送最终事件，返回汇总数据"""
+        # 引用先登记后发出，保证客户端收到 URL 时即可读取原文。
+        from app.services.knowledge.rag.citations import finalize_citations
+        citation_content = self.full_content
+        if self.content_events == 0 and self.full_reasoning.strip():
+            citation_content = self.full_reasoning
+        citations = await finalize_citations(self.context, citation_content)
+        if citations:
+            await self.emitter.aemit("assistant.citations", {"items": citations})
+
         # 在总结阶段统一推送商品数据
         if self.products_data:
             await self.emitter.aemit(
@@ -121,4 +132,5 @@ class BusinessResponseHandler(StreamingResponseHandler):
             else [self.products_data]
         )
 
+        result["citations"] = citations
         return result

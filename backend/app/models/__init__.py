@@ -18,6 +18,14 @@ from app.models.complaint_task import ComplaintTask
 from app.models.complaint_ticket import ComplaintTicket
 from app.models.conversation import Conversation, ConversationMode, HandoffState
 from app.models.crawler import CrawlPage, CrawlSite, CrawlTask
+from app.models.knowledge_document import (  # noqa: F401 注册托管 RAG 表
+    Document,
+    DocumentChunk,
+    DocumentRevision,
+    IngestionJob,
+    MessageCitation,
+    RagSource,
+)
 from app.models.message import Message
 from app.models.product import Product
 from app.models.prompt import Prompt, PromptCategory

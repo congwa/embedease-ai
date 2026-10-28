@@ -91,6 +91,7 @@ class ExecutorService:
         """
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
+        from app.core.chat_models import parse_content_blocks
         from app.core.llm import get_chat_model
 
         llm = get_chat_model()
@@ -117,7 +118,8 @@ class ExecutorService:
 
             tool_calls = getattr(response, "tool_calls", None)
             if not tool_calls:
-                final_content = response.content or ""
+                # LangChain v1 may return text/reasoning blocks; only customer-facing text is a reply.
+                final_content = parse_content_blocks(response).text
                 break
 
             for tc in tool_calls:
@@ -134,7 +136,7 @@ class ExecutorService:
             # 达到最大轮次，提取最近一条 AIMessage 内容
             for m in reversed(messages):
                 if isinstance(m, AIMessage) and m.content:
-                    final_content = m.content
+                    final_content = parse_content_blocks(m).text
                     break
 
         handoff_recommended = planner_decision.assigned_agent_tag == "handoff_orchestrator_agent"

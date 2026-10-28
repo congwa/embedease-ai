@@ -54,6 +54,7 @@ class ToolCallEventType(StrEnum):
 class DataEventType(StrEnum):
     """数据事件：可能在 LLM 调用内部或工具执行时产生。"""
 
+    ASSISTANT_CITATIONS = "assistant.citations"  # 托管知识库引用
     ASSISTANT_PRODUCTS = "assistant.products"  # 商品数据
     ASSISTANT_TODOS = "assistant.todos"  # TODO 规划列表更新
     CONTEXT_SUMMARIZED = "context.summarized"  # 上下文压缩完成

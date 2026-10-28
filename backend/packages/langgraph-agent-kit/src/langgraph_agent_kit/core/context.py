@@ -53,6 +53,9 @@ class ChatContext(BaseModel):
     assistant_message_id: str
     emitter: Any = Field(exclude=True, repr=False)
     db: Any = Field(default=None, exclude=True, repr=False)
+    # 单次回答的来源注册表，工具实例可以复用，但来源不能跨会话或跨轮次共享。
+    rag_sources: dict[str, Any] = Field(default_factory=dict, exclude=True, repr=False)
+    rag_context_chars: int = 0
     response_latency_ms: int | None = None
 
     model_config = ConfigDict(

@@ -13,6 +13,7 @@ from app.schemas.conversation import (
     ToolCallResponse,
 )
 from app.services.conversation import ConversationService
+from app.services.knowledge.rag.citations import history_metadata
 
 router = APIRouter(prefix="/api/v1/conversations", tags=["conversations"])
 
@@ -100,7 +101,7 @@ async def get_conversation(
                 content=msg.content,
                 products=msg.products,
                 message_type=getattr(msg, "message_type", "text"),
-                extra_metadata=getattr(msg, "extra_metadata", None),
+                extra_metadata=await history_metadata(db, msg),
                 token_count=getattr(msg, "token_count", None),
                 tool_calls=tool_calls_resp,
                 created_at=msg.created_at,
@@ -191,7 +192,7 @@ async def get_conversation_messages(
                 content=msg.content,
                 products=msg.products,
                 message_type=getattr(msg, "message_type", "text"),
-                extra_metadata=getattr(msg, "extra_metadata", None),
+                extra_metadata=await history_metadata(db, msg),
                 token_count=getattr(msg, "token_count", None),
                 tool_calls=tool_calls_resp,
                 created_at=msg.created_at,
