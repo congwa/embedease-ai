@@ -442,7 +442,11 @@ export function timelineReducer(
       if (state.activeTurn.currentToolCallId) {
         return appendSubItemToCurrentToolCall(state, subItem);
       }
-      return appendSubItemToCurrentCluster(state, subItem);
+      // 总结商品发生在 llm.call.end 之后，按本轮最后一个 cluster 定位，保持运行状态不变。
+      const lastCluster = [...state.timeline].reverse().find(
+        (item) => item.type === "llm.call.cluster" && item.turnId === turnId
+      );
+      return appendSubItemToCurrentCluster(state, subItem, lastCluster?.id);
     }
 
     case "assistant.todos": {

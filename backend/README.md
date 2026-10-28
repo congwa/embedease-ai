@@ -122,3 +122,5 @@ LOG_VERBOSE_AGENT=true uv run python -m app.main
 - **SQLite**: 数据库
 - **Qdrant**: 向量数据库
 - **硅基流动**: LLM + Embedding API
+
+商品旧索引迁移、增量更新和回收策略见 [商品检索说明](../docs/product-retrieval.md)。

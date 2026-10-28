@@ -74,9 +74,10 @@ export function getCurrentLlmCluster(
 
 export function appendSubItemToCurrentCluster(
   state: TimelineState,
-  subItem: LLMCallSubItem
+  subItem: LLMCallSubItem,
+  fallbackClusterId?: string
 ): TimelineState {
-  const llmCallId = state.activeTurn.currentLlmCallId;
+  const llmCallId = state.activeTurn.currentLlmCallId ?? fallbackClusterId;
   if (!llmCallId) return state;
 
   return updateItemById(state, llmCallId, (item) => {

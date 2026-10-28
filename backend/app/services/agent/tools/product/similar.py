@@ -25,11 +25,13 @@ import uuid
 from typing import Annotated
 
 from langchain.tools import ToolRuntime, tool
+from langchain_core.documents import Document
 from pydantic import BaseModel, Field
 
 from app.core.logging import get_logger
 from app.schemas.events import StreamEventType
-from app.services.agent.retrieval.product import get_retriever
+from app.services.agent.retrieval.catalog import load_products
+from app.services.agent.retrieval.enhanced import enhanced_search
 
 logger = get_logger("tool.find_similar_products")
 
@@ -124,14 +126,15 @@ async def find_similar_products(
 
         # 校验通过，继续执行
         # 首先获取源商品信息
-        retriever = get_retriever(k=10)
-        source_docs = retriever.invoke(f"商品编号: {product_id}")
-
-        source_product = None
-        for doc in source_docs:
-            if doc.metadata.get("product_id") == product_id:
-                source_product = doc
-                break
+        record = (await load_products([product_id])).get(product_id)
+        source_product = (
+            Document(
+                page_content=record["summary"] + "\n" + record["description"],
+                metadata={**record, "product_id": product_id, "product_name": record["name"]},
+            )
+            if record
+            else None
+        )
 
         if not source_product:
             logger.warning("未找到源商品", product_id=product_id)
@@ -155,8 +158,7 @@ async def find_similar_products(
 
         # 使用源商品的内容进行相似度搜索
         query = source_product.page_content
-        retriever_similar = get_retriever(k=top_k + 5)  # 多取一些，用于过滤源商品
-        similar_docs = retriever_similar.invoke(query)
+        similar_docs = await enhanced_search(query, k=top_k + 1, category=record["category"])
 
         logger.verbose(
             "│ [2] 检索到相似文档",
@@ -185,7 +187,7 @@ async def find_similar_products(
                 "id": doc_product_id,
                 "name": doc.metadata.get("product_name"),
                 "price": doc.metadata.get("price"),
-                "summary": doc.page_content[:200],
+                "summary": doc.metadata.get("summary") or doc.page_content[:200],
                 "similarity_score": None,  # 向量库不直接返回分数，可以后续优化
                 "url": doc.metadata.get("url"),
                 "category": doc.metadata.get("category"),

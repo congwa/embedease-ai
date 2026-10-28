@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field
 
 from app.core.logging import get_logger
 from app.schemas.events import StreamEventType
-from app.services.agent.retrieval.product import get_retriever
+from app.services.agent.retrieval.catalog import load_products
 
 logger = get_logger("tool.compare_products")
 
@@ -80,7 +80,7 @@ class CompareProductsResponse(BaseModel):
 
 
 @tool
-def compare_products(
+async def compare_products(
     product_ids: Annotated[list[str], Field(description="要比较的商品ID列表（至少2个）")],
     runtime: ToolRuntime,
 ) -> str:
@@ -146,26 +146,10 @@ def compare_products(
                 ensure_ascii=False,
             )
 
-        # 获取所有商品的详细信息
-        retriever = get_retriever(k=10)
-        products: list[dict[str, Any]] = []
-
-        for pid in product_ids:
-            docs = retriever.invoke(f"商品ID: {pid}")
-
-            for doc in docs:
-                if doc.metadata.get("product_id") == pid:
-                    product = {
-                        "id": pid,
-                        "name": doc.metadata.get("product_name"),
-                        "price": doc.metadata.get("price"),
-                        "category": doc.metadata.get("category"),
-                        "description": doc.page_content[:300],
-                        "url": doc.metadata.get("url"),
-                    }
-                    products.append(product)
-                    logger.debug(f"│ 已找到商品: {product['name']}")
-                    break
+        # 同一商品详情、对比、检索展示使用相同的 SQL 事实，避免分块截断规格。
+        unique_ids = list(dict.fromkeys(product_ids))
+        records = await load_products(unique_ids)
+        products: list[dict[str, Any]] = [records[pid] for pid in unique_ids if pid in records]
 
         if not products:
             runtime.context.emitter.emit(

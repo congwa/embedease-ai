@@ -70,6 +70,9 @@ async def search_products(
         str, Field(description="用户的搜索需求描述，必须是单一商品或品类，不能包含多个商品类型")
     ],
     runtime: ToolRuntime,
+    min_price: Annotated[float | None, Field(description="明确预算下限（元）", ge=0)] = None,
+    max_price: Annotated[float | None, Field(description="明确预算上限（元）", ge=0)] = None,
+    category: Annotated[str | None, Field(description="明确的商品分类；未确定时留空")] = None,
 ) -> str:
     """根据用户需求搜索匹配的商品。
 
@@ -141,7 +144,15 @@ async def search_products(
         # 步骤 1 & 2: 使用增强检索或标准检索
         if USE_ENHANCED_RETRIEVAL:
             logger.debug("│ [1] 使用增强检索策略...")
-            docs = await enhanced_search(query, k=5, enable_keyword_filter=True, enable_rerank=True)
+            docs = await enhanced_search(
+                query,
+                k=5,
+                enable_keyword_filter=True,
+                enable_rerank=True,
+                min_price=min_price,
+                max_price=max_price,
+                category=category,
+            )
         else:
             logger.debug("│ [1] 使用标准向量检索...")
             retriever = get_retriever(k=5)
@@ -218,7 +229,8 @@ async def search_products(
                 "id": product_id,
                 "name": doc.metadata.get("product_name"),
                 "price": doc.metadata.get("price"),
-                "summary": doc.page_content[:200],
+                "summary": doc.metadata.get("summary") or doc.page_content[:200],
+                "matched_context": doc.page_content,
                 "url": doc.metadata.get("url"),
                 "category": doc.metadata.get("category"),
                 # 扩展字段

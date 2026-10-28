@@ -1,4 +1,4 @@
-# 按本次 SFO 发布授权在服务器构建；运行镜像不包含包管理器构建步骤。
+# 在本地为目标 Linux 平台构建；服务器只加载镜像并运行。
 FROM node:22.14.0-bookworm-slim AS build
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 WORKDIR /app

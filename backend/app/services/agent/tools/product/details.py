@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field
 
 from app.core.logging import get_logger
 from app.schemas.events import StreamEventType
-from app.services.agent.retrieval.product import get_retriever
+from app.services.agent.retrieval.catalog import load_products
 
 logger = get_logger("tool.get_product_details")
 
@@ -50,7 +50,7 @@ class ProductDetail(BaseModel):
 
 
 @tool
-def get_product_details(
+async def get_product_details(
     product_id: Annotated[str, Field(description="商品ID，如 P001")],
     runtime: ToolRuntime,
 ) -> str:
@@ -90,53 +90,20 @@ def get_product_details(
     )
 
     try:
-        # 使用 product_id 作为查询
-        retriever = get_retriever(k=10)
-        docs = retriever.invoke(f"商品ID: {product_id}")
-
-        if not docs:
-            logger.warning("未找到指定商品", product_id=product_id)
+        # ID 是精确身份，不能把“没有进入向量前十名”解释为商品不存在。
+        product_detail = (await load_products([product_id])).get(product_id)
+        if product_detail:
             runtime.context.emitter.emit(
                 StreamEventType.TOOL_END.value,
                 {
                     "tool_call_id": tool_call_id,
                     "name": "get_product_details",
-                    "status": "empty",
-                    "count": 0,
-                    "output_preview": {},
-                    "message": f"未找到商品 {product_id}",
+                    "status": "success",
+                    "output_preview": product_detail,
+                    "count": 1,
                 },
             )
-            return json.dumps({"error": f"未找到商品 {product_id}"}, ensure_ascii=False)
-
-        # 查找匹配的商品
-        for doc in docs:
-            if doc.metadata.get("product_id") == product_id:
-                product_detail = {
-                    "id": product_id,
-                    "name": doc.metadata.get("product_name"),
-                    "price": doc.metadata.get("price"),
-                    "category": doc.metadata.get("category"),
-                    "description": doc.page_content,
-                    "url": doc.metadata.get("url"),
-                }
-
-                runtime.context.emitter.emit(
-                    StreamEventType.TOOL_END.value,
-                    {
-                        "tool_call_id": tool_call_id,
-                        "name": "get_product_details",
-                        "status": "success",
-                        "output_preview": product_detail,
-                        "count": 1,
-                    },
-                )
-                result_json = json.dumps(product_detail, ensure_ascii=False, indent=2)
-                logger.verbose(
-                    "└── 工具: get_product_details 结束 ──┘",
-                    product_name=product_detail["name"],
-                )
-                return result_json
+            return json.dumps(product_detail, ensure_ascii=False)
 
         logger.warning("在结果中未找到匹配的商品", product_id=product_id)
         runtime.context.emitter.emit(

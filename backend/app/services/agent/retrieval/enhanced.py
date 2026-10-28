@@ -3,12 +3,11 @@
 import re
 
 from langchain_core.documents import Document
-from langchain_core.vectorstores import VectorStoreRetriever
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.rerank import rerank_documents
-from app.services.agent.retrieval.product import get_retriever
+from app.services.agent.retrieval.catalog import load_products
 
 logger = get_logger("enhanced_retriever")
 settings = get_settings()
@@ -155,7 +154,7 @@ async def rerank_by_relevance(
             # 根据 Rerank 结果重新排序文档
             reranked_docs = []
             for original_idx, relevance_score in rerank_results:
-                if original_idx < len(docs):
+                if 0 <= original_idx < len(docs) and relevance_score >= 0.05:
                     reranked_docs.append(docs[original_idx])
 
             logger.verbose(
@@ -236,81 +235,87 @@ async def rerank_by_relevance(
     return [doc for doc, _ in scored_docs]
 
 
+def price_bounds(query: str) -> tuple[float | None, float | None]:
+    """解析明确的数字预算，不把商品型号或“左右”当成硬价格限制。"""
+    interval = re.search(r"(\d+(?:\.\d+)?)\s*(?:元)?\s*[-~～至到]\s*(\d+(?:\.\d+)?)\s*元", query)
+    if interval:
+        return float(interval[1]), float(interval[2])
+    upper = re.search(r"(?:不超过|最多|预算(?:不超过)?|低于)\s*(\d+(?:\.\d+)?)\s*元", query)
+    upper = upper or re.search(r"(\d+(?:\.\d+)?)\s*元(?:以内|以下|之内)", query)
+    if upper and query[upper.end() :].lstrip().startswith(("左右", "上下", "附近")):
+        upper = None
+    lower = re.search(r"(?:至少|不低于)\s*(\d+(?:\.\d+)?)\s*元", query)
+    return (float(lower[1]) if lower else None, float(upper[1]) if upper else None)
+
+
 async def enhanced_search(
-    query: str, k: int = 5, enable_keyword_filter: bool = True, enable_rerank: bool = True
+    query: str,
+    k: int = 5,
+    enable_keyword_filter: bool = True,
+    enable_rerank: bool = True,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    category: str | None = None,
 ) -> list[Document]:
-    """增强的商品搜索
-
-    结合向量相似度、关键词过滤和重排序的混合检索策略
-
-    Args:
-        query: 搜索查询
-        k: 返回结果数量
-        enable_keyword_filter: 是否启用关键词过滤
-        enable_rerank: 是否启用重排序
-
-    Returns:
-        搜索结果文档列表
-    """
-    logger.verbose(
-        "开始增强检索",
-        query=query,
-        k=k,
-        keyword_filter=enable_keyword_filter,
-        rerank=enable_rerank,
-    )
-
-    # 1. 向量相似度检索（检索更多结果以供后续过滤）
-    # 优先使用异步版本（支持数据库配置）
+    """异步召回、SQL 校验、商品聚合后重排；字面关键词不再清空语义候选。"""
     from app.services.agent.retrieval.product import get_retriever_async
-    retriever = await get_retriever_async(k=k * 2)
+
+    if k <= 0:
+        return []
+    retriever = await get_retriever_async(k=min(max(k * 6, 30), 200))
     if retriever is None:
-        logger.warning("检索器不可用")
+        raise RuntimeError("商品检索服务暂时不可用")
+    docs = await retriever.ainvoke(query)
+    grouped: dict[str, list[Document]] = {}
+    for doc in docs:
+        pid = doc.metadata.get("product_id")
+        if pid:
+            grouped.setdefault(str(pid), []).append(doc)
+    records = await load_products(list(grouped))
+    inferred_min, inferred_max = price_bounds(query)
+    lows = [x for x in [min_price, inferred_min] if x is not None]
+    highs = [x for x in [max_price, inferred_max] if x is not None]
+    low, high = (max(lows) if lows else None), (min(highs) if highs else None)
+    if low is not None and high is not None and low > high:
         return []
-    docs = retriever.invoke(query)
-
-    if not docs:
-        logger.warning("向量检索无结果")
-        return []
-
-    logger.verbose("向量检索完成", doc_count=len(docs))
-
-    # 2. 提取关键词
+    candidates = []
+    for pid, chunks in grouped.items():
+        product = records.get(pid)
+        # SQL 删除的商品即使尚有旧向量，也不能再次被推荐。
+        if product is None:
+            continue
+        price = product["price"]
+        if (low is not None or high is not None) and price is None:
+            continue
+        if (low is not None and price < low) or (high is not None and price > high):
+            continue
+        if category and category not in (product["category"] or ""):
+            continue
+        excerpts = list(dict.fromkeys(c.page_content for c in chunks))[:2]
+        content = (
+            f"商品ID: {pid}\n商品名称: {product['name']}\n分类: {product['category']}\n"
+            f"价格: {price}\n摘要: {product['summary']}\n匹配资料：\n" + "\n".join(excerpts)
+        )
+        metadata = {
+            **chunks[0].metadata,
+            "product_id": pid,
+            "product_name": product["name"],
+            **{
+                key: product[key]
+                for key in [
+                    "price",
+                    "category",
+                    "url",
+                    "brand",
+                    "summary",
+                    "specs",
+                    "tags",
+                    "extra_metadata",
+                ]
+            },
+        }
+        candidates.append(Document(page_content=content, metadata=metadata))
     keywords = extract_keywords(query)
-
-    # 3. 关键词过滤
-    if enable_keyword_filter and keywords:
-        docs = filter_by_keywords(docs, keywords, min_match=1)
-
-    if not docs:
-        logger.warning("关键词过滤后无结果")
-        return []
-
-    # 4. 重排序
-    if enable_rerank:
-        docs = await rerank_by_relevance(docs, query, keywords)
-
-    # 5. 返回前 k 个结果
-    result = docs[:k]
-
-    logger.verbose(
-        "增强检索完成",
-        final_count=len(result),
-        product_ids=[doc.metadata.get("product_id") for doc in result],
-    )
-
-    return result
-
-
-def get_enhanced_retriever(k: int = 5) -> VectorStoreRetriever:
-    """获取增强的检索器（保持接口兼容性）
-
-    Args:
-        k: 返回结果数量
-
-    Returns:
-        增强的检索器
-    """
-    # 注意：这里返回的是标准检索器，实际增强逻辑在 enhanced_search 函数中
-    # 如果需要在工具中使用增强检索，应该直接调用 enhanced_search 函数
-    return get_retriever(k=k)
+    if enable_rerank and candidates:
+        candidates = await rerank_by_relevance(candidates, query, keywords)
+    return candidates[:k]

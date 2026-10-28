@@ -39,10 +39,12 @@ from typing import Annotated
 
 from langchain.tools import ToolRuntime, tool
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
+from app.core.database import get_db_context
 from app.core.logging import get_logger
+from app.models.product import Product
 from app.schemas.events import StreamEventType
-from app.services.agent.retrieval.product import get_retriever
 
 logger = get_logger("tool.filter_by_price")
 
@@ -121,70 +123,27 @@ async def filter_by_price(
     )
 
     try:
-        # 构建价格查询
-        price_query = []
+        # 价格是结构化约束，必须检查全量 SQL 商品，不能只筛向量前二十名。
+        statement = select(Product).where(Product.price.is_not(None))
         if min_price is not None:
-            price_query.append(f"价格 {min_price} 元以上")
+            statement = statement.where(Product.price >= min_price)
         if max_price is not None:
-            price_query.append(f"价格 {max_price} 元以下")
-
-        query = " ".join(price_query) if price_query else "所有商品"
-
-        logger.debug(f"│ 价格查询: {query}")
-
-        # 检索商品（检索更多以供过滤）- 使用异步版本支持数据库配置
-        from app.services.agent.retrieval.product import get_retriever_async
-        retriever = await get_retriever_async(k=20)
-        if retriever is None:
-            return json.dumps({"error": "检索器不可用，请稍后重试"}, ensure_ascii=False)
-        docs = retriever.invoke(query)
-
-        logger.debug(f"│ 检索到 {len(docs)} 个文档")
-
-        # 去重并按价格过滤
-        seen_products = set()
-        results = []
-
-        for doc in docs:
-            product_id = doc.metadata.get("product_id")
-            if product_id in seen_products:
-                continue
-
-            price = doc.metadata.get("price")
-            if price is None:
-                logger.debug(f"│ 跳过无价格商品: {product_id}")
-                continue
-
-            # 价格过滤
-            if min_price is not None and price < min_price:
-                logger.debug(f"│ 价格过低({price}): {product_id}")
-                continue
-            if max_price is not None and price > max_price:
-                logger.debug(f"│ 价格过高({price}): {product_id}")
-                continue
-
-            seen_products.add(product_id)
-
-            product = {
-                "id": product_id,
-                "name": doc.metadata.get("product_name"),
-                "price": price,
-                "summary": doc.page_content[:200],
-                "url": doc.metadata.get("url"),
-                "category": doc.metadata.get("category"),
-            }
-            results.append(product)
-
-            logger.debug(
-                f"│ ✓ 符合条件 #{len(results)}",
-                product_id=product_id,
-                name=product["name"],
-                price=price,
-            )
-
-            # 最多返回 5 个商品
-            if len(results) >= 5:
-                break
+            statement = statement.where(Product.price <= max_price)
+        async with get_db_context() as session:
+            rows = (
+                await session.scalars(statement.order_by(Product.price, Product.id).limit(5))
+            ).all()
+            results = [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "price": p.price,
+                    "summary": p.summary or "",
+                    "url": p.url,
+                    "category": p.category,
+                }
+                for p in rows
+            ]
 
         if not results:
             runtime.context.emitter.emit(
