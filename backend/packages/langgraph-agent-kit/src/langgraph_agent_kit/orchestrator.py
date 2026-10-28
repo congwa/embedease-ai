@@ -28,12 +28,13 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from langgraph_agent_kit.core.events import StreamEventType
-from langgraph_agent_kit.core.stream_event import StreamEvent
+from anyio import CancelScope
+
 from langgraph_agent_kit.core.context import ChatContext
 from langgraph_agent_kit.core.emitter import QueueDomainEmitter
+from langgraph_agent_kit.core.events import StreamEventType
+from langgraph_agent_kit.core.stream_event import StreamEvent
 from langgraph_agent_kit.streaming.sse import make_event
-
 
 # ==================== AgentRunner 协议 ====================
 
@@ -302,6 +303,7 @@ class Orchestrator:
         )
 
         aggregator = ContentAggregator()
+        producer_task: asyncio.Task | None = None
 
         try:
             loop = asyncio.get_running_loop()
@@ -377,6 +379,14 @@ class Orchestrator:
                 type=StreamEventType.ERROR.value,
                 payload={"message": str(e)},
             )
+
+        finally:
+            # 客户端断线或调用方关闭生成器时，同步停止真正运行中的 Agent。
+            if producer_task is not None:
+                if not producer_task.done():
+                    producer_task.cancel()
+                with CancelScope(shield=True):
+                    await asyncio.gather(producer_task, return_exceptions=True)
 
     def create_sse_response(self, **kwargs: Any) -> Any:
         """创建 FastAPI SSE 响应

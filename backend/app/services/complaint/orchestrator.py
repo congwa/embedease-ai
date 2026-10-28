@@ -6,19 +6,23 @@ ticket 归并、triage、plan、execute、review、handoff 与事件输出都在
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any
 
+from anyio import CancelScope
 from langgraph_agent_kit import make_event
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.models.complaint_review import ComplaintReview
 from app.models.complaint_task import ComplaintTask
 from app.models.complaint_ticket import ComplaintTicket
 from app.repositories.complaint_ticket import ComplaintTicketRepository
 from app.repositories.conversation import ConversationRepository
+from app.schemas.agent import AgentConfig
 from app.schemas.complaint import (
     ComplaintMessageIntakeResult,
     ComplaintReviewStatus,
@@ -54,6 +58,7 @@ SERVICE_ISSUES = {"service_attitude", "manual_request"}
 LEGAL_RISK_MARKERS = ("投诉平台", "监管", "12315", "起诉", "曝光", "律师", "法院", "报警")
 ANGER_MARKERS = ("气死", "太差", "离谱", "垃圾", "生气", "投诉", "不满", "骗人", "发泄", "失望")
 HIGH_EMOTION_MARKERS = ("气炸", "忍无可忍", "立刻处理", "马上给我", "太过分")
+logger = get_logger("complaint.orchestrator")
 
 
 @dataclass
@@ -104,13 +109,14 @@ class ComplaintConversationOrchestrator:
     这个编排器把 router 入口从“直接回答消息”改成“围绕当前主 ticket 推进处理闭环”。
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, *, agent_config: AgentConfig | None = None):
         """初始化客诉编排器。
 
         Args:
             session: 当前业务请求使用的数据库会话。
         """
         self.session = session
+        self._running_task_id: str | None = None
         self.conversation_repo = ConversationRepository(session)
         self.ticket_repo = ComplaintTicketRepository(session)
         self.ticket_service = TicketService(session)
@@ -118,7 +124,7 @@ class ComplaintConversationOrchestrator:
         self.review_service = ReviewService(session)
         self.message_intake_service = ComplaintMessageIntakeService(session)
         self.planner_service = PlannerService(session)
-        self.executor_service = ExecutorService(session)
+        self.executor_service = ExecutorService(session, agent_config=agent_config)
         self.complaint_handoff_service = ComplaintHandoffService(session)
         self.support_state_service = SupportStateService(session)
 
@@ -134,13 +140,28 @@ class ComplaintConversationOrchestrator:
 
         这个方法是 router 层唯一需要依赖的 complaint 主入口。
         """
-        prepared = await self.prepare_run(
-            conversation_id=conversation_id,
-            user_id=user_id,
-            user_message_id=user_message_id,
-            user_message=user_message,
-        )
-        return await self.execute_run(prepared)
+        try:
+            prepared = await self.prepare_run(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                user_message_id=user_message_id,
+                user_message=user_message,
+            )
+            return await self.execute_run(prepared)
+        except (Exception, asyncio.CancelledError):
+            # 先撤销当前阶段；已经提交的运行任务记录为失败，避免中断后悬挂。
+            with CancelScope(shield=True):
+                await self.session.rollback()
+                if self._running_task_id:
+                    try:
+                        task = await self.task_service.task_repo.get_by_id(self._running_task_id)
+                        if task and task.status == "running":
+                            await self.task_service.fail_task(task, reason="run_interrupted")
+                            await self.session.commit()
+                    except Exception:
+                        await self.session.rollback()
+                        logger.exception("记录中断任务失败", task_id=self._running_task_id)
+            raise
 
     async def prepare_run(
         self,
@@ -234,6 +255,10 @@ class ComplaintConversationOrchestrator:
         plan_task = await self.task_service.start_task(plan_task)
         pre_stream_events.append(self._build_task_event("complaint.task.started", plan_task))
 
+        # 先提交 triage 和 plan 任务，模型等待期间归还连接并释放 SQLite 写锁。
+        # Session 工厂使用 expire_on_commit=False，已加载快照仍可用于提示词。
+        await self.session.commit()
+        self._running_task_id = plan_task.id
         planner_decision = await self.planner_service.plan(
             ticket=ticket,
             triage_result=triage_result,
@@ -304,6 +329,9 @@ class ComplaintConversationOrchestrator:
         executor_task = prepared.executor_task
         post_stream_events: list[dict[str, Any]] = []
 
+        # 持久化待执行任务后再调用模型和工具，不让网络等待占用写事务。
+        await self.session.commit()
+        self._running_task_id = executor_task.id
         executor_result = await self.executor_service.execute(
             ticket=ticket,
             triage_result=prepared.triage_result,

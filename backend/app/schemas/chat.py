@@ -28,7 +28,7 @@ class ChatRequest(BaseModel):
     )
     agent_id: str | None = Field(
         default=None,
-        description="智能体 ID，为空时使用默认智能体",
+        description="智能体 ID；省略时沿用会话绑定，未绑定会话使用默认智能体",
     )
 
     @property

@@ -15,9 +15,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import threading
 from typing import TYPE_CHECKING, Any, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 if TYPE_CHECKING:
     pass
@@ -54,6 +56,11 @@ class ChatContext(BaseModel):
     emitter: Any = Field(exclude=True, repr=False)
     db: Any = Field(default=None, exclude=True, repr=False)
     response_latency_ms: int | None = None
+
+    # 中间件实例会被缓存的 Agent 共享；可变运行状态必须保存在本轮 context。
+    _sync_tool_lock: Any = PrivateAttr(default_factory=threading.Lock)
+    _async_tool_lock: Any = PrivateAttr(default_factory=asyncio.Lock)
+    _last_todos_hash: str = PrivateAttr(default="")
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

@@ -15,6 +15,7 @@ import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from anyio import CancelScope
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.provider import get_database_provider
@@ -51,10 +52,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             logger.debug(f"get_db: commit 完成，耗时 {(time.perf_counter() - commit_start) * 1000:.2f}ms")
         except asyncio.CancelledError:
             logger.debug("get_db: 请求被取消，开始 rollback")
-            try:
-                await session.rollback()
-            except Exception:
-                pass
+            with CancelScope(shield=True):
+                try:
+                    await session.rollback()
+                finally:
+                    await session.close()
             raise
         except Exception as e:
             logger.debug(f"get_db: 发生异常 {type(e).__name__}，开始 rollback")
@@ -80,10 +82,12 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
             yield session
             await session.commit()
         except asyncio.CancelledError:
-            try:
-                await session.rollback()
-            except Exception:
-                pass
+            # ASGI 断开使用持续取消域，回滚与关闭必须屏蔽后续取消。
+            with CancelScope(shield=True):
+                try:
+                    await session.rollback()
+                finally:
+                    await session.close()
             raise
         except Exception:
             try:

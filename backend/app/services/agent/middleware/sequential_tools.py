@@ -38,7 +38,8 @@ class SequentialToolExecutionMiddleware(AgentMiddleware):
         tool_call = getattr(request, "tool_call", None) or {}
         tool_name = tool_call.get("name", "")
         logger.debug("串行执行工具（同步）", tool_name=tool_name)
-        with self._lock:
+        context = getattr(getattr(request, "runtime", None), "context", None)
+        with getattr(context, "_sync_tool_lock", self._lock):
             return handler(request)
 
     async def awrap_tool_call(
@@ -50,5 +51,6 @@ class SequentialToolExecutionMiddleware(AgentMiddleware):
         tool_call = getattr(request, "tool_call", None) or {}
         tool_name = tool_call.get("name", "")
         logger.debug("串行执行工具（异步）", tool_name=tool_name)
-        async with self._alock:
+        context = getattr(getattr(request, "runtime", None), "context", None)
+        async with getattr(context, "_async_tool_lock", self._alock):
             return await handler(request)
