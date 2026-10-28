@@ -272,6 +272,14 @@ async def enhanced_search(
         if pid:
             grouped.setdefault(str(pid), []).append(doc)
     records = await load_products(list(grouped))
+    # 模型省略分类参数时，查询中唯一明确出现的库内分类仍应约束卡片。
+    # 没有字面分类的口语查询继续走语义召回，不要求商品名称包含关键词。
+    if not category:
+        explicit_categories = {
+            p["category"] for p in records.values() if p["category"] and p["category"] in query
+        }
+        if len(explicit_categories) == 1:
+            category = explicit_categories.pop()
     inferred_min, inferred_max = price_bounds(query)
     lows = [x for x in [min_price, inferred_min] if x is not None]
     highs = [x for x in [max_price, inferred_max] if x is not None]

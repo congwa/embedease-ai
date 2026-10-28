@@ -120,6 +120,21 @@ class ProductChecks(unittest.IsolatedAsyncioTestCase):
             result = await enhanced_search("键盘", category="不存在分类", enable_rerank=False)
             self.assertEqual(result, [])
 
+    async def test_explicit_category_excludes_related_accessory(self):
+        """询问键盘时，静音鼠标不能因语义接近混入推荐卡片。"""
+        async with get_db_context() as db:
+            db.add(Product(id="C", name="静音鼠标", price=79, category="鼠标"))
+        docs = [
+            Document(page_content="安静打字", metadata={"product_id": "A"}),
+            Document(page_content="安静点击", metadata={"product_id": "C"}),
+        ]
+        with patch(
+            "app.services.agent.retrieval.product.get_retriever_async",
+            AsyncMock(return_value=SimpleNamespace(ainvoke=AsyncMock(return_value=docs))),
+        ):
+            result = await enhanced_search("室友睡觉用的安静无线键盘", enable_rerank=False)
+            self.assertEqual([d.metadata["product_id"] for d in result], ["A"])
+
     async def test_price_filter_uses_sql(self):
         """价格过滤不遗漏向量候选之外的商品。"""
         from app.services.agent.tools.product.filter_price import filter_by_price
