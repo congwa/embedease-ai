@@ -5,6 +5,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from langchain_core.vectorstores import VectorStoreRetriever
+from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
@@ -13,7 +14,6 @@ if TYPE_CHECKING:
 
 from app.core.config import settings
 from app.core.health import DependencyStatus, dependency_registry
-from app.core.llm import get_embeddings
 from app.core.logging import get_logger
 
 logger = get_logger("retriever")
@@ -59,13 +59,22 @@ def get_qdrant_client() -> QdrantClient | None:
         return None
 
 
+@lru_cache
+def get_default_product_embeddings() -> OpenAIEmbeddings:
+    """商品专用原文编码，保留其他已建索引使用的共享工厂行为。"""
+    return OpenAIEmbeddings(
+        model=settings.EMBEDDING_MODEL,
+        base_url=settings.effective_embedding_base_url,
+        api_key=settings.effective_embedding_api_key,
+        check_embedding_ctx_length=False,
+    )
+
+
 async def get_product_embeddings():
     """商品入库和检索使用同一生效配置，第三方接口统一发送原文。"""
     # 优先从数据库获取 Embedding 配置
     embeddings = None
     try:
-        from langchain_openai import OpenAIEmbeddings
-
         from app.core.database import get_db_context
         from app.services.system_config import get_effective_embedding_config
 
@@ -88,7 +97,7 @@ async def get_product_embeddings():
 
     # 回退到默认配置
     if embeddings is None:
-        embeddings = get_embeddings()
+        embeddings = get_default_product_embeddings()
 
     return embeddings
 
@@ -152,7 +161,7 @@ def get_vector_store() -> QdrantVectorStore | None:
         if client is None:
             return None
 
-        embeddings = get_embeddings()
+        embeddings = get_default_product_embeddings()
 
         logger.verbose(
             "│ 初始化向量存储",

@@ -208,6 +208,4 @@ def get_embeddings() -> OpenAIEmbeddings:
         model=settings.EMBEDDING_MODEL,
         base_url=settings.effective_embedding_base_url,
         api_key=settings.effective_embedding_api_key,
-        # 商品入库与查询统一发送原文，第三方模型不能使用 OpenAI tokenizer 的 ID。
-        check_embedding_ctx_length=False,
     )

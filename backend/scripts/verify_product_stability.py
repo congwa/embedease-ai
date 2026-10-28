@@ -199,13 +199,19 @@ class ProductChecks(unittest.IsolatedAsyncioTestCase):
     async def test_embedding_transport(self):
         """商品工厂与默认商品模型均明确发送原文。"""
         from app.core.llm import get_embeddings
-        from app.services.agent.retrieval.product import get_product_embeddings
+        from app.services.agent.retrieval.product import (
+            get_default_product_embeddings,
+            get_product_embeddings,
+        )
 
         with patch.object(settings, "LLM_API_KEY", "qa-only-key"):
             get_embeddings.cache_clear()
-            self.assertFalse(get_embeddings().check_embedding_ctx_length)
+            get_default_product_embeddings.cache_clear()
+            self.assertTrue(get_embeddings().check_embedding_ctx_length)
+            self.assertFalse(get_default_product_embeddings().check_embedding_ctx_length)
             self.assertFalse((await get_product_embeddings()).check_embedding_ctx_length)
             get_embeddings.cache_clear()
+            get_default_product_embeddings.cache_clear()
 
 
 class IndexChecks(unittest.IsolatedAsyncioTestCase):
